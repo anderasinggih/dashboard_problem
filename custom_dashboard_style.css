@@ -799,3 +799,89 @@
   border-bottom: none;
   background-color: #1f242c;
 }
+
+/* NOC Grid Table & Badges Styles */
+.custom-noc-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 11px;
+  color: #c9d1d9;
+  text-align: left;
+}
+
+.custom-noc-table th, .custom-noc-table td {
+  padding: 10px 12px;
+  border-bottom: 1px solid #30363d;
+  vertical-align: middle;
+}
+
+.custom-noc-table th {
+  color: #8b949e;
+  background-color: #1f242c;
+  font-weight: 600;
+  text-transform: uppercase;
+  font-size: 10px;
+}
+
+.custom-noc-table tr:hover {
+  background-color: #161b22;
+}
+
+/* Severity Badges */
+.custom-badge-severity {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-weight: 700;
+  font-size: 9px;
+  text-transform: uppercase;
+}
+
+.custom-badge-sev-emergency {
+  background-color: #341212;
+  color: #ff7b72;
+  border: 1px solid #da3633;
+}
+
+.custom-badge-sev-critical {
+  background-color: #3c1f0d;
+  color: #f0883e;
+  border: 1px solid #d15704;
+}
+
+.custom-badge-sev-major {
+  background-color: #382a0f;
+  color: #e3b341;
+  border: 1px solid #b58900;
+}
+
+.custom-badge-sev-minor {
+  background-color: #132d15;
+  color: #56d364;
+  border: 1px solid #238636;
+}
+
+/* Status Badges */
+.custom-badge-status {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: 12px;
+  font-weight: 700;
+  font-size: 10px;
+  text-transform: uppercase;
+}
+
+.custom-badge-open {
+  background-color: #da3633;
+  color: #ffffff;
+}
+
+.custom-badge-pending {
+  background-color: #d15704;
+  color: #ffffff;
+}
+
+.custom-badge-closed {
+  background-color: #238636;
+  color: #ffffff;
+}
