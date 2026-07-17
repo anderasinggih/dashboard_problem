@@ -124,10 +124,19 @@ function renderTicketsData(tickets) {
         var assign = String(item.createptassignto || '').toLowerCase();
         var operator = String(item.currentoperator || '').toLowerCase();
         var originator = String(item.originator || '').toLowerCase();
+        var respParty = String(item.problem_responsible_party || item.problemresponsibleparty || '').toLowerCase();
         var tLower = title.toLowerCase();
         var desc = String(item.createptproblemdes || '').toLowerCase();
 
-        if (tLower.indexOf('telkom') !== -1 || tLower.indexOf('akses') !== -1 || desc.indexOf('telkom') !== -1) {
+        if (respParty.indexOf('telkom') !== -1 || respParty.indexOf('akses') !== -1) {
+            partner = 'Telkom Akses';
+        } else if (respParty.indexOf('mandau') !== -1) {
+            partner = 'Mandau';
+        } else if (respParty.indexOf('persada') !== -1) {
+            partner = 'Persada';
+        } else if (respParty.indexOf('ije') !== -1) {
+            partner = 'IJE';
+        } else if (tLower.indexOf('telkom') !== -1 || tLower.indexOf('akses') !== -1 || desc.indexOf('telkom') !== -1) {
             partner = 'Telkom Akses';
         } else if (tLower.indexOf('mandau') !== -1 || desc.indexOf('mandau') !== -1) {
             partner = 'Mandau';
@@ -482,8 +491,15 @@ function renderPhaseDashboard(tickets) {
             var title = String(t.title || t.problem_name || '').toLowerCase();
             var desc = String(t.createptproblemdes || '').toLowerCase();
             var assign = String(t.createptassignto || '').toLowerCase();
+            var respParty = String(t.problem_responsible_party || t.problemresponsibleparty || '').toLowerCase();
             
-            if (title.indexOf('mandau') !== -1 || desc.indexOf('mandau') !== -1 || assign.indexOf('pm') !== -1) {
+            if (respParty.indexOf('telkom') !== -1 || respParty.indexOf('akses') !== -1) {
+                partner = 'TelkomAkses';
+            } else if (respParty.indexOf('mandau') !== -1) {
+                partner = 'Mandau';
+            } else if (respParty.indexOf('persada') !== -1) {
+                partner = 'Persada';
+            } else if (title.indexOf('mandau') !== -1 || desc.indexOf('mandau') !== -1 || assign.indexOf('pm') !== -1) {
                 partner = 'Mandau';
             } else if (title.indexOf('persada') !== -1 || desc.indexOf('persada') !== -1 || assign.indexOf('pwx') !== -1) {
                 partner = 'Persada';
