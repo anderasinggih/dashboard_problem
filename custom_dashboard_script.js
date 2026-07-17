@@ -1,3 +1,22 @@
+function calculateAgingDays(createTimeStr, closeTimeStr, lastUpdateTimeStr, operateTimeStr, ticketstatus) {
+    if (!createTimeStr) return 0;
+    // Replace '-' with '/' for broad browser support of date parsing
+    var start = new Date(createTimeStr.replace(/-/g, '/'));
+    var end = new Date();
+    
+    var statusLower = String(ticketstatus || '').toLowerCase();
+    if (statusLower === 'completed' || statusLower === 'closed') {
+        var endStr = closeTimeStr || lastUpdateTimeStr || operateTimeStr;
+        if (endStr) {
+            end = new Date(endStr.replace(/-/g, '/'));
+        }
+    }
+    
+    var diffMs = end - start;
+    if (isNaN(diffMs) || diffMs < 0) return 0;
+    return diffMs / (1000 * 60 * 60 * 24);
+}
+
 function loadProblemTickets() {
     var container = document.querySelector('#ticketContainer');
     if (container) {
@@ -97,7 +116,9 @@ function renderTicketsData(tickets) {
         var title = item.title || item.problem_name || item.description || 'Tanpa Judul';
         var id = item.orderid || item.id || item.code || 'TCK';
         var phase = item.operate_phase || item.phase || item.current_phase || '-';
-        var agingVal = item.aging || item.aging_days || item.days || 0;
+        
+        // Calculate aging days dynamically from timestamps if not pre-calculated in DB
+        var agingVal = item.aging || item.aging_days || item.days || calculateAgingDays(item.createtime, item.closetime, item.lastupdatetime, item.operate_time, status);
 
         var partner = 'Telkom Akses';
         var assign = String(item.createptassignto || '').toLowerCase();
@@ -121,19 +142,22 @@ function renderTicketsData(tickets) {
             partner = rawAssign.replace('user:', '');
         }
 
-        // Map Severity
+        // Map Severity (including OWS createticketlevel UUID checks)
         var sevRaw = String(item.severity || item.createticketlevel || '').toLowerCase();
         var sevLabel = 'Minor';
         var sevClass = 'custom-badge-sev-minor';
-        if (sevRaw.indexOf('emergency') !== -1 || sevRaw === '1') {
+        if (sevRaw.indexOf('507') !== -1 || sevRaw.indexOf('emergency') !== -1 || sevRaw === '1') {
             sevLabel = 'Emergency';
             sevClass = 'custom-badge-sev-emergency';
-        } else if (sevRaw.indexOf('critical') !== -1 || sevRaw === '2') {
+        } else if (sevRaw.indexOf('508') !== -1 || sevRaw.indexOf('critical') !== -1 || sevRaw === '2') {
             sevLabel = 'Critical';
             sevClass = 'custom-badge-sev-critical';
-        } else if (sevRaw.indexOf('major') !== -1 || sevRaw === '3') {
+        } else if (sevRaw.indexOf('50c') !== -1 || sevRaw.indexOf('major') !== -1 || sevRaw === '3') {
             sevLabel = 'Major';
             sevClass = 'custom-badge-sev-major';
+        } else if (sevRaw.indexOf('1029') !== -1 || sevRaw.indexOf('minor') !== -1 || sevRaw === '4') {
+            sevLabel = 'Minor';
+            sevClass = 'custom-badge-sev-minor';
         }
 
         // Map Status
@@ -248,10 +272,10 @@ function renderSeverityDashboard(tickets) {
         tickets.forEach(function(t) {
             var sevRaw = String(t.severity || t.createticketlevel || t.priority || '').toLowerCase();
             var sev = 'Minor';
-            if (sevRaw.indexOf('emergency') !== -1 || sevRaw === '1') sev = 'Emergency';
-            else if (sevRaw.indexOf('critical') !== -1 || sevRaw === '2') sev = 'Critical';
-            else if (sevRaw.indexOf('major') !== -1 || sevRaw === '3') sev = 'Major';
-            else if (sevRaw.indexOf('minor') !== -1 || sevRaw === '4') sev = 'Minor';
+            if (sevRaw.indexOf('507') !== -1 || sevRaw.indexOf('emergency') !== -1 || sevRaw === '1') sev = 'Emergency';
+            else if (sevRaw.indexOf('508') !== -1 || sevRaw.indexOf('critical') !== -1 || sevRaw === '2') sev = 'Critical';
+            else if (sevRaw.indexOf('50c') !== -1 || sevRaw.indexOf('major') !== -1 || sevRaw === '3') sev = 'Major';
+            else if (sevRaw.indexOf('1029') !== -1 || sevRaw.indexOf('minor') !== -1 || sevRaw === '4') sev = 'Minor';
 
             severityData[sev].total++;
 
@@ -260,7 +284,7 @@ function renderSeverityDashboard(tickets) {
                 severityData[sev].pending++;
             }
 
-            var slaOver = t.over_sla || t.sla_over || t.is_over_sla;
+            var slaOver = t.over_sla || t.sla_over || t.is_over_sla || (t.slastatus && String(t.slastatus).toLowerCase() === 'over');
             if (slaOver === true || String(slaOver).toLowerCase() === 'true' || String(slaOver) === '1') {
                 severityData[sev].overSla++;
             }
@@ -451,7 +475,8 @@ function renderPhaseDashboard(tickets) {
             else if (phaseRaw.indexOf('handle implement') !== -1) phase = '4. Handle Implement PT';
             else if (phaseRaw.indexOf('implement') !== -1) phase = '5. Implement PT';
 
-            var aging = parseFloat(t.aging || t.aging_days || t.days || 0);
+            var statusRaw = String(t.ticketstatus || t.status || '').toLowerCase();
+            var aging = parseFloat(t.aging || t.aging_days || t.days || calculateAgingDays(t.createtime, t.closetime, t.lastupdatetime, t.operate_time, statusRaw));
             
             var partner = 'TelkomAkses';
             var title = String(t.title || t.problem_name || '').toLowerCase();
