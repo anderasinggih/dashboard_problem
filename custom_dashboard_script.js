@@ -32,7 +32,8 @@ function loadProblemTickets() {
         MessageProcessor.process({
             serviceId: '/adc-service/rest/v1/services/dashboard_problem_ticket_test/dashboard_problem_ticket_test/dashboard__problem_ticket',
             data: {
-                "limit": 1000000
+                "start": 0,
+                "limit": 50
             },
             success: function (res) {
                 console.log('Response OWS Success:', res);
