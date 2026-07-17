@@ -117,7 +117,8 @@ function renderTicketsData(tickets) {
         } else if (assign.indexOf('pm') !== -1 || operator.indexOf('pm') !== -1) {
             partner = 'Mandau';
         } else {
-            partner = 'Telkom Akses';
+            var rawAssign = item.createptassignto || item.currentoperator || item.originator || 'Surge';
+            partner = rawAssign.replace('user:', '');
         }
 
         // Map Severity
