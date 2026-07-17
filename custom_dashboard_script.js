@@ -256,7 +256,7 @@ function renderSeverityDashboard(tickets) {
     var severityData = JSON.parse(JSON.stringify(defaultSeverityData));
 
     // Optional: Parse from API dynamically if elements are present
-    if (tickets && tickets.length > 0 && tickets[0].severity) {
+    if (tickets && tickets.length > 0 && (tickets[0].severity || tickets[0].createticketlevel)) {
         // Reset counts if using live data
         var categories = ['Emergency', 'Critical', 'Major', 'Minor'];
         for (var c = 0; c < categories.length; c++) {
@@ -268,17 +268,17 @@ function renderSeverityDashboard(tickets) {
         }
 
         tickets.forEach(function(t) {
-            var sevRaw = String(t.severity || t.priority || '').toLowerCase();
+            var sevRaw = String(t.severity || t.priority || t.createticketlevel || '').toLowerCase();
             var sev = 'Minor';
-            if (sevRaw.indexOf('emergency') !== -1 || sevRaw === '1') sev = 'Emergency';
-            else if (sevRaw.indexOf('critical') !== -1 || sevRaw === '2') sev = 'Critical';
-            else if (sevRaw.indexOf('major') !== -1 || sevRaw === '3') sev = 'Major';
-            else if (sevRaw.indexOf('minor') !== -1 || sevRaw === '4') sev = 'Minor';
+            if (sevRaw.indexOf('emergency') !== -1 || sevRaw === '1' || sevRaw.indexOf('2507') !== -1) sev = 'Emergency';
+            else if (sevRaw.indexOf('critical') !== -1 || sevRaw === '2' || sevRaw.indexOf('2508') !== -1) sev = 'Critical';
+            else if (sevRaw.indexOf('major') !== -1 || sevRaw === '3' || sevRaw.indexOf('250c') !== -1) sev = 'Major';
+            else if (sevRaw.indexOf('minor') !== -1 || sevRaw === '4' || sevRaw.indexOf('18bb') !== -1) sev = 'Minor';
 
             severityData[sev].total++;
 
             var statusRaw = String(t.ticketstatus || t.status || '').toLowerCase();
-            if (statusRaw === 'pending' || statusRaw === 'in progress') {
+            if (statusRaw === 'pending' || statusRaw === 'running' || statusRaw === 'in progress' || statusRaw === 'open') {
                 severityData[sev].pending++;
             }
 
@@ -483,7 +483,7 @@ function renderPhaseDashboard(tickets) {
     var phaseData = JSON.parse(JSON.stringify(defaultPhaseData));
 
     // Dynamically aggregate values if the api response tickets contain phase/aging info
-    if (tickets && tickets.length > 0 && (tickets[0].phase || tickets[0].aging || tickets[0].aging_days)) {
+    if (tickets && tickets.length > 0 && (tickets[0].phase || tickets[0].aging || tickets[0].aging_days || tickets[0].operate_phase)) {
         var categories = ['Overall', 'TelkomAkses', 'Mandau', 'Persada'];
         categories.forEach(function(cat) {
             phaseData[cat].forEach(function(row) {
@@ -492,7 +492,7 @@ function renderPhaseDashboard(tickets) {
         });
 
         tickets.forEach(function(t) {
-            var phaseRaw = String(t.phase || t.current_phase || t.state || '').toLowerCase();
+            var phaseRaw = String(t.phase || t.current_phase || t.state || t.operate_phase || '').toLowerCase();
             var phase = '1. Create PT';
             if (phaseRaw.indexOf('confirm') !== -1) phase = '6. Confirm PT';
             else if (phaseRaw.indexOf('handle analyze') !== -1) phase = '2. Handle Analyze PT';
@@ -501,6 +501,13 @@ function renderPhaseDashboard(tickets) {
             else if (phaseRaw.indexOf('implement') !== -1) phase = '5. Implement PT';
 
             var aging = parseFloat(t.aging || t.aging_days || t.days || 0);
+            if (!aging && t.createtime) {
+                var createTime = new Date(t.createtime.replace(/-/g, '/'));
+                var diffMs = Date.now() - createTime.getTime();
+                if (diffMs > 0) {
+                    aging = diffMs / (1000 * 60 * 60 * 24);
+                }
+            }
             
             // Map partner
             var partner = 'TelkomAkses';
@@ -729,7 +736,7 @@ function renderTrendsAndCompliance(tickets) {
     var complianceData = JSON.parse(JSON.stringify(defaultSlaComplianceData));
 
     // Dynamic aggregation if api tickets have root cause / sla / dates
-    if (tickets && tickets.length > 0 && tickets[0].severity) {
+    if (tickets && tickets.length > 0 && (tickets[0].severity || tickets[0].createticketlevel)) {
         // Reset root cause
         rootCauseData.forEach(function(rc) { rc.value = 0; });
 
@@ -755,7 +762,7 @@ function renderTrendsAndCompliance(tickets) {
             var desc = String(t.createptproblemdes || '').toLowerCase();
             var assign = String(t.createptassignto || '').toLowerCase();
             
-            if (assign.indexOf('persada') !== -1 || title.indexOf('persada') !== -1) partner = 'Persada';
+            if (assign.indexOf('persada') !== -1 || title.indexOf('persada') !== -1 || assign.indexOf('pwx') !== -1) partner = 'Persada';
             else if (assign.indexOf('telkom') !== -1 || assign.indexOf('akses') !== -1 || title.indexOf('akses') !== -1) partner = 'Telkom Akses';
             else if (assign.indexOf('mandau') !== -1 || assign.indexOf('pm') !== -1 || title.indexOf('mandau') !== -1) partner = 'Mandau';
             else if (assign.indexOf('ije') !== -1 || title.indexOf('ije') !== -1) partner = 'IJE';
