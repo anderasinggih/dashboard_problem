@@ -1,0 +1,1052 @@
+function loadProblemTickets() {
+    var container = document.querySelector('#ticketContainer');
+    if (container) {
+        container.innerHTML = '';
+        var loadingDiv = document.createElement('div');
+        loadingDiv.style.color = '#6c757d';
+        loadingDiv.style.padding = '12px';
+        loadingDiv.textContent = 'Memuat data real dari server...';
+        container.appendChild(loadingDiv);
+    }
+
+    if (typeof MessageProcessor !== 'undefined') {
+        MessageProcessor.process({
+            serviceId: '/adc-service/rest/v1/services/dashboard_problem_ticket_test/dashboard_problem_ticket_test/dashboard__problem_ticket',
+            data: {
+                "start": 0,
+                "limit": 50
+            },
+            success: function (res) {
+                console.log('Response OWS Success:', res);
+                parseAndRender(res);
+            },
+            error: function (err) {
+                console.error('Response OWS Error:', err);
+                showError('Gagal memuat data: ' + (err.message || 'Error Service'));
+            }
+        });
+    } else {
+        showError('MessageProcessor OWS tidak ditemukan di browser context.');
+    }
+}
+
+function parseAndRender(res) {
+    var tickets = [];
+    if (res && res.result && res.result._values) {
+        tickets = res.result._values;
+    } else if (res && res.result && res.result.results) {
+        tickets = res.result.results;
+    } else if (res && res.results) {
+        tickets = res.results;
+    } else if (res && res._values) {
+        tickets = res._values;
+    } else if (res && res.data) {
+        tickets = res.data;
+    } else if (Array.isArray(res)) {
+        tickets = res;
+    }
+    renderTicketsData(tickets);
+}
+
+function renderTicketsData(tickets) {
+    var container = document.querySelector('#ticketContainer');
+    if (!container) return;
+
+    container.innerHTML = '';
+
+    if (!tickets || tickets.length === 0) {
+        var emptyDiv = document.createElement('div');
+        emptyDiv.style.color = '#6c757d';
+        emptyDiv.style.padding = '12px';
+        emptyDiv.textContent = 'Tidak ada data tiket ditemukan.';
+        container.appendChild(emptyDiv);
+
+        setCardValue('statTotal', 0);
+        setCardValue('statOpen', 0);
+        setCardValue('statInProgress', 0);
+        setCardValue('statClosed', 0);
+        
+        setCardValue('taOpen', 0); setCardValue('taPending', 0); setCardValue('taClosed', 0);
+        setCardValue('mOpen', 0); setCardValue('mPending', 0); setCardValue('mClosed', 0);
+        setCardValue('pOpen', 0); setCardValue('pPending', 0); setCardValue('pClosed', 0);
+        return;
+    }
+
+    var openCount = 0, inProgressCount = 0, closedCount = 0;
+    var taOpen = 0, taPending = 0, taClosed = 0;
+    var mOpen = 0, mPending = 0, mClosed = 0;
+    var pOpen = 0, pPending = 0, pClosed = 0;
+
+    for (var i = 0; i < tickets.length; i++) {
+        var item = tickets[i];
+        var status = item.ticketstatus || item.status || item.active_status || 'Open';
+        var title = item.title || item.problem_name || item.description || 'Tanpa Judul';
+        var id = item.orderid || item.id || item.code || 'TCK';
+
+        var badgeColor = 'custom-bg-secondary';
+        var statusLower = String(status).toLowerCase();
+
+        var partner = 'Telkom Akses';
+        var assign = String(item.createptassignto || '').toLowerCase();
+        var operator = String(item.currentoperator || '').toLowerCase();
+        var originator = String(item.originator || '').toLowerCase();
+        var tLower = title.toLowerCase();
+        var desc = String(item.createptproblemdes || '').toLowerCase();
+
+        if (tLower.indexOf('telkom') !== -1 || tLower.indexOf('akses') !== -1 || desc.indexOf('telkom') !== -1) {
+            partner = 'Telkom Akses';
+        } else if (tLower.indexOf('mandau') !== -1 || desc.indexOf('mandau') !== -1) {
+            partner = 'Mandau';
+        } else if (tLower.indexOf('persada') !== -1 || desc.indexOf('persada') !== -1) {
+            partner = 'Persada';
+        } else if (assign.indexOf('pwx') !== -1 || originator.indexOf('pwx') !== -1 || operator.indexOf('pwx') !== -1) {
+            partner = 'Persada';
+        } else if (assign.indexOf('pm') !== -1 || operator.indexOf('pm') !== -1) {
+            partner = 'Mandau';
+        } else {
+            partner = 'Telkom Akses';
+        }
+
+        if (statusLower === 'running' || statusLower === 'open' || statusLower === 'true' || statusLower === '1') {
+            badgeColor = 'custom-bg-danger';
+            openCount++;
+            if (partner === 'Telkom Akses') taOpen++;
+            else if (partner === 'Mandau') mOpen++;
+            else if (partner === 'Persada') pOpen++;
+        } else if (statusLower === 'in progress' || statusLower === 'pending') {
+            badgeColor = 'custom-bg-warning';
+            inProgressCount++;
+            if (partner === 'Telkom Akses') taPending++;
+            else if (partner === 'Mandau') mPending++;
+            else if (partner === 'Persada') pPending++;
+        } else if (statusLower === 'closed' || statusLower === 'completed' || statusLower === 'false' || statusLower === '0') {
+            badgeColor = 'custom-bg-success';
+            closedCount++;
+            if (partner === 'Telkom Akses') taClosed++;
+            else if (partner === 'Mandau') mClosed++;
+            else if (partner === 'Persada') pClosed++;
+        }
+
+        var itemDiv = document.createElement('div');
+        itemDiv.className = 'custom-ticket-item-hover';
+
+        var textDiv = document.createElement('div');
+        var strongEl = document.createElement('strong');
+        strongEl.textContent = id;
+        textDiv.appendChild(strongEl);
+        textDiv.appendChild(document.createTextNode(' - ' + title));
+
+        var badgeSpan = document.createElement('span');
+        badgeSpan.className = 'custom-badge ' + badgeColor;
+        badgeSpan.textContent = status;
+
+        itemDiv.appendChild(textDiv);
+        itemDiv.appendChild(badgeSpan);
+        container.appendChild(itemDiv);
+    }
+
+    setCardValue('statTotal', tickets.length);
+    setCardValue('statOpen', openCount);
+    setCardValue('statInProgress', inProgressCount);
+    setCardValue('statClosed', closedCount);
+
+    setCardValue('taOpen', taOpen);
+    setCardValue('taPending', taPending);
+    setCardValue('taClosed', taClosed);
+
+    setCardValue('mOpen', mOpen);
+    setCardValue('mPending', mPending);
+    setCardValue('mClosed', mClosed);
+
+    setCardValue('pOpen', pOpen);
+    setCardValue('pPending', pPending);
+    setCardValue('pClosed', pClosed);
+
+    // Render the Severity Overview charts and tables
+    renderSeverityDashboard(tickets);
+
+    // Render the Phase Status tables
+    renderPhaseDashboard(tickets);
+
+    // Render Weekly Trend, Top Root Cause, and SLA Compliance panels
+    renderTrendsAndCompliance(tickets);
+}
+
+function setCardValue(id, val) {
+    var el = document.querySelector('#' + id);
+    if (el) el.innerText = val;
+}
+
+function showError(msg) {
+    var container = document.querySelector('#ticketContainer');
+    if (container) {
+        container.innerHTML = '';
+        var errDiv = document.createElement('div');
+        errDiv.style.color = '#dc3545';
+        errDiv.style.padding = '12px';
+        errDiv.textContent = msg;
+        container.appendChild(errDiv);
+    }
+}
+
+// Default/Fallback data from mockup if tickets are empty or miss severity info
+var defaultSeverityData = {
+    Emergency: {
+        total: 48,
+        pending: 10,
+        overSla: 2,
+        pctOfTotal: '6%',
+        rootCauses: [
+            { name: 'Fiber Cut', value: 22, pct: '46%', color: '#0f62fe' },
+            { name: 'Hardware', value: 10, pct: '21%', color: '#ff7849' },
+            { name: 'Power', value: 7, pct: '15%', color: '#24a148' },
+            { name: 'Configuration', value: 6, pct: '13%', color: '#8a3ffc' },
+            { name: 'Others', value: 3, pct: '5%', color: '#8d8d8d' }
+        ]
+    },
+    Critical: {
+        total: 120,
+        pending: 18,
+        overSla: 6,
+        pctOfTotal: '14%',
+        rootCauses: [
+            { name: 'Fiber Cut', value: 54, pct: '45%', color: '#0f62fe' },
+            { name: 'Hardware', value: 24, pct: '20%', color: '#ff7849' },
+            { name: 'Power', value: 18, pct: '15%', color: '#24a148' },
+            { name: 'Configuration', value: 14, pct: '12%', color: '#8a3ffc' },
+            { name: 'Others', value: 10, pct: '8%', color: '#8d8d8d' }
+        ]
+    },
+    Major: {
+        total: 204,
+        pending: 42,
+        overSla: 8,
+        pctOfTotal: '24%',
+        rootCauses: [
+            { name: 'Fiber Cut', value: 92, pct: '45%', color: '#0f62fe' },
+            { name: 'Hardware', value: 40, pct: '20%', color: '#ff7849' },
+            { name: 'Power', value: 32, pct: '16%', color: '#24a148' },
+            { name: 'Configuration', value: 24, pct: '12%', color: '#8a3ffc' },
+            { name: 'Others', value: 16, pct: '7%', color: '#8d8d8d' }
+        ]
+    },
+    Minor: {
+        total: 108,
+        pending: 25,
+        overSla: 4,
+        pctOfTotal: '13%',
+        rootCauses: [
+            { name: 'Fiber Cut', value: 48, pct: '44%', color: '#0f62fe' },
+            { name: 'Hardware', value: 22, pct: '20%', color: '#ff7849' },
+            { name: 'Power', value: 15, pct: '14%', color: '#24a148' },
+            { name: 'Configuration', value: 13, pct: '12%', color: '#8a3ffc' },
+            { name: 'Others', value: 10, pct: '10%', color: '#8d8d8d' }
+        ]
+    }
+};
+
+function renderSeverityDashboard(tickets) {
+    // If ECharts library is not loaded yet, schedule a retry or log warning
+    if (typeof echarts === 'undefined') {
+        console.warn('ECharts library is not loaded. Retrying in 500ms...');
+        setTimeout(function() { renderSeverityDashboard(tickets); }, 500);
+        return;
+    }
+
+    var severityData = JSON.parse(JSON.stringify(defaultSeverityData));
+
+    // Optional: Parse from API dynamically if elements are present
+    if (tickets && tickets.length > 0 && tickets[0].severity) {
+        // Reset counts if using live data
+        var categories = ['Emergency', 'Critical', 'Major', 'Minor'];
+        for (var c = 0; c < categories.length; c++) {
+            var cat = categories[c];
+            severityData[cat].total = 0;
+            severityData[cat].pending = 0;
+            severityData[cat].overSla = 0;
+            severityData[cat].rootCauses.forEach(function(rc) { rc.value = 0; });
+        }
+
+        tickets.forEach(function(t) {
+            var sevRaw = String(t.severity || t.priority || '').toLowerCase();
+            var sev = 'Minor';
+            if (sevRaw.indexOf('emergency') !== -1 || sevRaw === '1') sev = 'Emergency';
+            else if (sevRaw.indexOf('critical') !== -1 || sevRaw === '2') sev = 'Critical';
+            else if (sevRaw.indexOf('major') !== -1 || sevRaw === '3') sev = 'Major';
+            else if (sevRaw.indexOf('minor') !== -1 || sevRaw === '4') sev = 'Minor';
+
+            severityData[sev].total++;
+
+            var statusRaw = String(t.ticketstatus || t.status || '').toLowerCase();
+            if (statusRaw === 'pending' || statusRaw === 'in progress') {
+                severityData[sev].pending++;
+            }
+
+            var slaOver = t.over_sla || t.sla_over || t.is_over_sla;
+            if (slaOver === true || String(slaOver).toLowerCase() === 'true' || String(slaOver) === '1') {
+                severityData[sev].overSla++;
+            }
+
+            // Map Root Cause
+            var rcRaw = String(t.root_cause || t.rootcause || t.cause || '').toLowerCase();
+            var rcName = 'Others';
+            if (rcRaw.indexOf('fiber') !== -1 || rcRaw.indexOf('cut') !== -1) rcName = 'Fiber Cut';
+            else if (rcRaw.indexOf('hardware') !== -1 || rcRaw.indexOf('hw') !== -1) rcName = 'Hardware';
+            else if (rcRaw.indexOf('power') !== -1 || rcRaw.indexOf('pwr') !== -1) rcName = 'Power';
+            else if (rcRaw.indexOf('config') !== -1) rcName = 'Configuration';
+
+            var rcObj = severityData[sev].rootCauses.find(function(rc) { return rc.name === rcName; });
+            if (rcObj) {
+                rcObj.value++;
+            } else {
+                var otherObj = severityData[sev].rootCauses.find(function(rc) { return rc.name === 'Others'; });
+                if (otherObj) otherObj.value++;
+            }
+        });
+
+        // Recalculate percentages
+        categories.forEach(function(cat) {
+            var catTotal = severityData[cat].total;
+            severityData[cat].pctOfTotal = tickets.length ? Math.round((catTotal / tickets.length) * 100) + '%' : '0%';
+            
+            severityData[cat].rootCauses.forEach(function(rc) {
+                rc.pct = catTotal ? Math.round((rc.value / catTotal) * 100) + '%' : '0%';
+            });
+        });
+    }
+
+    // Render components for each severity card
+    var types = ['Emergency', 'Critical', 'Major', 'Minor'];
+    types.forEach(function(type) {
+        var data = severityData[type];
+        
+        // Update stats table
+        setCardValue(type.toLowerCase() + 'Total', data.total);
+        setCardValue(type.toLowerCase() + 'Pending', data.pending);
+        setCardValue(type.toLowerCase() + 'Over', data.overSla);
+
+        // Render legend table
+        renderLegend('legend' + type, data.rootCauses);
+
+        // Render ECharts Donut Chart
+        renderDonutChart('chart' + type, data, data.total, data.pctOfTotal);
+    });
+}
+
+function renderLegend(containerId, rootCauses) {
+    var legendDom = document.querySelector('#' + containerId);
+    if (!legendDom) return;
+    
+    var html = '<table class="custom-legend-table">';
+    html += '<thead><tr style="border-bottom: 1px solid #f0f0f0;"><td style="font-weight:bold;color:#666;font-size:10px;">Root Cause</td><td style="font-weight:bold;color:#666;text-align:right;font-size:10px;">Qty</td><td style="font-weight:bold;color:#666;text-align:right;font-size:10px;">%</td></tr></thead>';
+    html += '<tbody>';
+    for (var i = 0; i < rootCauses.length; i++) {
+        var item = rootCauses[i];
+        var dotClass = '';
+        if (item.name === 'Fiber Cut') dotClass = 'custom-fiber-cut';
+        else if (item.name === 'Hardware') dotClass = 'custom-hardware';
+        else if (item.name === 'Power') dotClass = 'custom-power';
+        else if (item.name === 'Configuration') dotClass = 'custom-configuration';
+        else dotClass = 'custom-others';
+        
+        html += '<tr>';
+        html += '<td><span class="custom-legend-dot ' + dotClass + '"></span>' + item.name + '</td>';
+        html += '<td class="custom-qty-col">' + item.value + '</td>';
+        html += '<td class="custom-pct-col">' + item.pct + '</td>';
+        html += '</tr>';
+    }
+    html += '</tbody></table>';
+    legendDom.innerHTML = html;
+}
+
+function renderDonutChart(containerId, data, totalVal, pctVal) {
+    var chartDom = document.querySelector('#' + containerId);
+    if (!chartDom) return;
+    
+    var existingInstance = echarts.getInstanceByDom(chartDom);
+    if (existingInstance) {
+        existingInstance.dispose();
+    }
+    
+    var myChart = echarts.init(chartDom);
+    
+    var chartData = [];
+    var colors = [];
+    for (var i = 0; i < data.rootCauses.length; i++) {
+        var item = data.rootCauses[i];
+        chartData.push({
+            value: item.value,
+            name: item.name
+        });
+        colors.push(item.color);
+    }
+    
+    var option = {
+        color: colors,
+        tooltip: {
+            trigger: 'item',
+            formatter: '{b}: {c} ({d}%)',
+            confine: true
+        },
+        series: [
+            {
+                name: 'Root Cause',
+                type: 'pie',
+                radius: ['55%', '80%'],
+                avoidLabelOverlap: false,
+                label: {
+                    show: false,
+                    position: 'center'
+                },
+                emphasis: {
+                    label: {
+                        show: false
+                    }
+                },
+                labelLine: {
+                    show: false
+                },
+                data: chartData
+            }
+        ],
+        graphic: [
+            {
+                type: 'text',
+                left: 'center',
+                top: '36%',
+                style: {
+                    text: String(totalVal),
+                    textAlign: 'center',
+                    fill: '#f0f6fc',
+                    fontSize: 16,
+                    fontWeight: 'bold'
+                }
+            },
+            {
+                type: 'text',
+                left: 'center',
+                top: '56%',
+                style: {
+                    text: '(' + pctVal + ')',
+                    textAlign: 'center',
+                    fill: '#8b949e',
+                    fontSize: 9
+                }
+            }
+        ]
+    };
+    
+    myChart.setOption(option);
+    
+    window.addEventListener('resize', function() {
+        myChart.resize();
+    });
+}
+
+// Default/Fallback phase status data matching mockup
+var defaultPhaseData = {
+    Overall: [
+        { phase: '1. Create PT', total: 90, b1: 28, b2: 24, b3: 14, b4: 24, avg: 8.4 },
+        { phase: '2. Handle Analyze PT', total: 108, b1: 32, b2: 28, b3: 20, b4: 28, avg: 11.2 },
+        { phase: '3. Analyze PT', total: 112, b1: 30, b2: 26, b3: 22, b4: 34, avg: 13.6 },
+        { phase: '4. Handle Implement PT', total: 128, b1: 28, b2: 26, b3: 24, b4: 50, avg: 16.8 },
+        { phase: '5. Implement PT', total: 156, b1: 24, b2: 28, b3: 30, b4: 74, avg: 19.5 },
+        { phase: '6. Confirm PT', total: 82, b1: 22, b2: 16, b3: 12, b4: 32, avg: 10.3 }
+    ],
+    TelkomAkses: [
+        { phase: '1. Create PT', total: 90, b1: 28, b2: 24, b3: 14, b4: 24, avg: 8.4 },
+        { phase: '2. Handle Analyze PT', total: 108, b1: 32, b2: 28, b3: 20, b4: 28, avg: 11.2 },
+        { phase: '3. Analyze PT', total: 112, b1: 30, b2: 26, b3: 22, b4: 34, avg: 13.6 },
+        { phase: '4. Handle Implement PT', total: 128, b1: 28, b2: 26, b3: 24, b4: 50, avg: 16.8 },
+        { phase: '5. Implement PT', total: 156, b1: 24, b2: 28, b3: 30, b4: 74, avg: 19.5 },
+        { phase: '6. Confirm PT', total: 82, b1: 22, b2: 16, b3: 12, b4: 32, avg: 10.3 }
+    ],
+    Mandau: [
+        { phase: '1. Create PT', total: 90, b1: 28, b2: 24, b3: 14, b4: 24, avg: 8.4 },
+        { phase: '2. Handle Analyze PT', total: 108, b1: 32, b2: 28, b3: 20, b4: 28, avg: 11.2 },
+        { phase: '3. Analyze PT', total: 112, b1: 30, b2: 26, b3: 22, b4: 34, avg: 13.6 },
+        { phase: '4. Handle Implement PT', total: 128, b1: 28, b2: 26, b3: 24, b4: 50, avg: 16.8 },
+        { phase: '5. Implement PT', total: 156, b1: 24, b2: 28, b3: 30, b4: 74, avg: 19.5 },
+        { phase: '6. Confirm PT', total: 82, b1: 22, b2: 16, b3: 12, b4: 32, avg: 10.3 }
+    ],
+    Persada: [
+        { phase: '1. Create PT', total: 90, b1: 28, b2: 24, b3: 14, b4: 24, avg: 8.4 },
+        { phase: '2. Handle Analyze PT', total: 108, b1: 32, b2: 28, b3: 20, b4: 28, avg: 11.2 },
+        { phase: '3. Analyze PT', total: 112, b1: 30, b2: 26, b3: 22, b4: 34, avg: 13.6 },
+        { phase: '4. Handle Implement PT', total: 128, b1: 28, b2: 26, b3: 24, b4: 50, avg: 16.8 },
+        { phase: '5. Implement PT', total: 156, b1: 24, b2: 28, b3: 30, b4: 74, avg: 19.5 },
+        { phase: '6. Confirm PT', total: 82, b1: 22, b2: 16, b3: 12, b4: 32, avg: 10.3 }
+    ]
+};
+
+function renderPhaseDashboard(tickets) {
+    var phaseData = JSON.parse(JSON.stringify(defaultPhaseData));
+
+    // Dynamically aggregate values if the api response tickets contain phase/aging info
+    if (tickets && tickets.length > 0 && (tickets[0].phase || tickets[0].aging || tickets[0].aging_days)) {
+        var categories = ['Overall', 'TelkomAkses', 'Mandau', 'Persada'];
+        categories.forEach(function(cat) {
+            phaseData[cat].forEach(function(row) {
+                row.total = 0; row.b1 = 0; row.b2 = 0; row.b3 = 0; row.b4 = 0; row.avg = 0;
+            });
+        });
+
+        tickets.forEach(function(t) {
+            var phaseRaw = String(t.phase || t.current_phase || t.state || '').toLowerCase();
+            var phase = '1. Create PT';
+            if (phaseRaw.indexOf('confirm') !== -1) phase = '6. Confirm PT';
+            else if (phaseRaw.indexOf('handle analyze') !== -1) phase = '2. Handle Analyze PT';
+            else if (phaseRaw.indexOf('analyze') !== -1) phase = '3. Analyze PT';
+            else if (phaseRaw.indexOf('handle implement') !== -1) phase = '4. Handle Implement PT';
+            else if (phaseRaw.indexOf('implement') !== -1) phase = '5. Implement PT';
+
+            var aging = parseFloat(t.aging || t.aging_days || t.days || 0);
+            
+            // Map partner
+            var partner = 'TelkomAkses';
+            var title = String(t.title || t.problem_name || '').toLowerCase();
+            var desc = String(t.createptproblemdes || '').toLowerCase();
+            var assign = String(t.createptassignto || '').toLowerCase();
+            if (title.indexOf('mandau') !== -1 || desc.indexOf('mandau') !== -1 || assign.indexOf('pm') !== -1) {
+                partner = 'Mandau';
+            } else if (title.indexOf('persada') !== -1 || desc.indexOf('persada') !== -1 || assign.indexOf('pwx') !== -1) {
+                partner = 'Persada';
+            }
+
+            var buckets = ['b1', 'b2', 'b3', 'b4'];
+            var buck = 'b1';
+            if (aging > 21) buck = 'b4';
+            else if (aging > 15) buck = 'b3';
+            else if (aging > 7) buck = 'b2';
+
+            // Increment row properties
+            [partner, 'Overall'].forEach(function(targetCat) {
+                var row = phaseData[targetCat].find(function(r) { return r.phase === phase; });
+                if (row) {
+                    row.total++;
+                    row[buck]++;
+                    // Accumulate aging to calculate average later
+                    row.avg += aging;
+                }
+            });
+        });
+
+        // Calculate averages
+        categories.forEach(function(cat) {
+            phaseData[cat].forEach(function(row) {
+                if (row.total > 0) {
+                    row.avg = row.avg / row.total;
+                } else {
+                    row.avg = 0;
+                }
+            });
+        });
+    }
+
+    // Render columns
+    renderPhaseOverall('tablePhaseOverall', phaseData.Overall);
+    renderPhasePartner('tablePhaseTelkom', phaseData.TelkomAkses);
+    renderPhasePartner('tablePhaseMandau', phaseData.Mandau);
+    renderPhasePartner('tablePhasePersada', phaseData.Persada);
+}
+
+function renderPhaseOverall(containerId, phaseRows) {
+    var wrapper = document.querySelector('#' + containerId);
+    if (!wrapper) return;
+
+    var totalPT = 0;
+    var totalB1 = 0, totalB2 = 0, totalB3 = 0, totalB4 = 0;
+    var weightedAgingSum = 0;
+
+    var html = '<table class="custom-phase-table">';
+    html += '<thead>';
+    html += '<tr>';
+    html += '<th style="text-align:left;">Phase</th>';
+    html += '<th>Total PT</th>';
+    html += '<th style="width: 120px;">Aging Bucket (Days)</th>';
+    html += '<th>Avg Aging (Days)</th>';
+    html += '</tr>';
+    html += '</thead>';
+    html += '<tbody>';
+
+    phaseRows.forEach(function(row) {
+        totalPT += row.total;
+        totalB1 += row.b1;
+        totalB2 += row.b2;
+        totalB3 += row.b3;
+        totalB4 += row.b4;
+        weightedAgingSum += row.avg * row.total;
+
+        var maxVal = Math.max(1, row.total);
+        var w1 = Math.round((row.b1 / maxVal) * 100);
+        var w2 = Math.round((row.b2 / maxVal) * 100);
+        var w3 = Math.round((row.b3 / maxVal) * 100);
+        var w4 = Math.round((row.b4 / maxVal) * 100);
+
+        var diff = 100 - (w1 + w2 + w3 + w4);
+        if (diff !== 0 && (w1 || w2 || w3 || w4)) {
+            if (w4 > 0) w4 += diff;
+            else if (w3 > 0) w3 += diff;
+            else if (w2 > 0) w2 += diff;
+            else if (w1 > 0) w1 += diff;
+        }
+
+        html += '<tr>';
+        html += '<td class="custom-phase-name-col">' + row.phase + '</td>';
+        html += '<td class="custom-total-val">' + row.total + '</td>';
+        html += '<td>';
+        html += '  <div class="custom-stacked-bar">';
+        if (row.b1 > 0) html += '    <div class="custom-bar-segment custom-seg-0-7" style="width: ' + w1 + '%;">' + row.b1 + '</div>';
+        if (row.b2 > 0) html += '    <div class="custom-bar-segment custom-seg-8-15" style="width: ' + w2 + '%;">' + row.b2 + '</div>';
+        if (row.b3 > 0) html += '    <div class="custom-bar-segment custom-seg-16-21" style="width: ' + w3 + '%;">' + row.b3 + '</div>';
+        if (row.b4 > 0) html += '    <div class="custom-bar-segment custom-seg-sla" style="width: ' + w4 + '%;">' + row.b4 + '</div>';
+        html += '  </div>';
+        html += '</td>';
+        html += '<td class="custom-avg-val">' + parseFloat(row.avg).toFixed(1) + '</td>';
+        html += '</tr>';
+    });
+
+    var totalAvg = totalPT ? (weightedAgingSum / totalPT).toFixed(1) : '0.0';
+    html += '<tr class="custom-total-row">';
+    html += '<td style="text-align:left;">TOTAL</td>';
+    html += '<td class="custom-total-val">' + totalPT + '</td>';
+    html += '<td>';
+    html += '  <div class="custom-stacked-bar">';
+    var tMax = Math.max(1, totalPT);
+    var tw1 = Math.round((totalB1 / tMax) * 100);
+    var tw2 = Math.round((totalB2 / tMax) * 100);
+    var tw3 = Math.round((totalB3 / tMax) * 100);
+    var tw4 = Math.round((totalB4 / tMax) * 100);
+    if (totalB1 > 0) html += '    <div class="custom-bar-segment custom-seg-0-7" style="width: ' + tw1 + '%;">' + totalB1 + '</div>';
+    if (totalB2 > 0) html += '    <div class="custom-bar-segment custom-seg-8-15" style="width: ' + tw2 + '%;">' + totalB2 + '</div>';
+    if (totalB3 > 0) html += '    <div class="custom-bar-segment custom-seg-16-21" style="width: ' + tw3 + '%;">' + totalB3 + '</div>';
+    if (totalB4 > 0) html += '    <div class="custom-bar-segment custom-seg-sla" style="width: ' + tw4 + '%;">' + totalB4 + '</div>';
+    html += '  </div>';
+    html += '</td>';
+    html += '<td class="custom-avg-val">' + totalAvg + '</td>';
+    html += '</tr>';
+
+    html += '</tbody>';
+    html += '</table>';
+
+    wrapper.innerHTML = html;
+}
+
+function renderPhasePartner(containerId, phaseRows) {
+    var wrapper = document.querySelector('#' + containerId);
+    if (!wrapper) return;
+
+    var totalPT = 0;
+    var totalB1 = 0, totalB2 = 0, totalB3 = 0, totalB4 = 0;
+    var weightedAgingSum = 0;
+
+    var html = '<table class="custom-phase-table">';
+    html += '<thead>';
+    html += '<tr>';
+    html += '<th style="text-align:left;">Phase</th>';
+    html += '<th>0-7</th>';
+    html += '<th>8-15</th>';
+    html += '<th>16-21</th>';
+    html += '<th>&gt; SLA</th>';
+    html += '<th>Total PT</th>';
+    html += '<th>Avg Aging (Days)</th>';
+    html += '</tr>';
+    html += '</thead>';
+    html += '<tbody>';
+
+    phaseRows.forEach(function(row) {
+        totalPT += row.total;
+        totalB1 += row.b1;
+        totalB2 += row.b2;
+        totalB3 += row.b3;
+        totalB4 += row.b4;
+        weightedAgingSum += row.avg * row.total;
+
+        html += '<tr>';
+        html += '<td class="custom-phase-name-col">' + row.phase + '</td>';
+        html += '<td class="custom-heatmap-cell custom-heatmap-0-7">' + (row.b1 || '-') + '</td>';
+        html += '<td class="custom-heatmap-cell custom-heatmap-8-15">' + (row.b2 || '-') + '</td>';
+        html += '<td class="custom-heatmap-cell custom-heatmap-16-21">' + (row.b3 || '-') + '</td>';
+        html += '<td class="custom-heatmap-cell custom-heatmap-sla">' + (row.b4 || '-') + '</td>';
+        html += '<td class="custom-total-val">' + row.total + '</td>';
+        html += '<td class="custom-avg-val">' + parseFloat(row.avg).toFixed(1) + '</td>';
+        html += '</tr>';
+    });
+
+    var totalAvg = totalPT ? (weightedAgingSum / totalPT).toFixed(1) : '0.0';
+    html += '<tr class="custom-total-row">';
+    html += '<td style="text-align:left;">TOTAL</td>';
+    html += '<td class="custom-heatmap-cell custom-heatmap-0-7">' + (totalB1 || '-') + '</td>';
+    html += '<td class="custom-heatmap-cell custom-heatmap-8-15">' + (totalB2 || '-') + '</td>';
+    html += '<td class="custom-heatmap-cell custom-heatmap-16-21">' + (totalB3 || '-') + '</td>';
+    html += '<td class="custom-heatmap-cell custom-heatmap-sla">' + (totalB4 || '-') + '</td>';
+    html += '<td class="custom-total-val">' + totalPT + '</td>';
+    html += '<td class="custom-avg-val">' + totalAvg + '</td>';
+    html += '</tr>';
+
+    html += '</tbody>';
+    html += '</table>';
+
+    wrapper.innerHTML = html;
+}
+
+// Fallback data for Weekly Trend, Top Root Cause, and SLA Compliance
+var defaultWeeklyTrendData = {
+    weeks: ['W24', 'W25', 'W26', 'W27', 'W28'],
+    newPT: [142, 156, 186, 160, 171],
+    closedPT: [96, 112, 120, 134, 147],
+    pendingPT: [420, 464, 512, 538, 568],
+    overSla: [45, 52, 61, 71, 73],
+    slaAchievement: [92.1, 91.3, 90.8, 90.5, 91.4]
+};
+
+var defaultRootCauseDistribution = [
+    { name: 'Fiber Cut', value: 216, color: '#58a6ff' },
+    { name: 'Hardware', value: 142, color: '#f0883e' },
+    { name: 'Power', value: 118, color: '#3fb950' },
+    { name: 'Configuration', value: 96, color: '#bc8cff' },
+    { name: 'Software', value: 78, color: '#ff7b72' },
+    { name: 'Others', value: 62, color: '#8b949e' }
+];
+
+var defaultSlaComplianceData = [
+    { party: 'Persada', total: 95, within: 91, over: 4, ach: '95.8%' },
+    { party: 'Telkom Akses', total: 480, within: 426, over: 54, ach: '88.8%' },
+    { party: 'Mandau', total: 120, within: 115, over: 5, ach: '95.8%' },
+    { party: 'IJE', total: 88, within: 84, over: 4, ach: '95.5%' },
+    { party: 'Surge', total: 140, within: 132, over: 8, ach: '94.3%' }
+];
+
+function renderTrendsAndCompliance(tickets) {
+    if (typeof echarts === 'undefined') {
+        console.warn('ECharts not available yet. Retrying in 500ms...');
+        setTimeout(function() { renderTrendsAndCompliance(tickets); }, 500);
+        return;
+    }
+
+    var trendData = JSON.parse(JSON.stringify(defaultWeeklyTrendData));
+    var rootCauseData = JSON.parse(JSON.stringify(defaultRootCauseDistribution));
+    var complianceData = JSON.parse(JSON.stringify(defaultSlaComplianceData));
+
+    // Dynamic aggregation if api tickets have root cause / sla / dates
+    if (tickets && tickets.length > 0 && tickets[0].severity) {
+        // Reset root cause
+        rootCauseData.forEach(function(rc) { rc.value = 0; });
+
+        // Reset compliance
+        complianceData.forEach(function(c) { c.total = 0; c.within = 0; c.over = 0; });
+
+        tickets.forEach(function(t) {
+            // Map Root Cause
+            var rcRaw = String(t.root_cause || t.rootcause || t.cause || '').toLowerCase();
+            var rcName = 'Others';
+            if (rcRaw.indexOf('fiber') !== -1 || rcRaw.indexOf('cut') !== -1) rcName = 'Fiber Cut';
+            else if (rcRaw.indexOf('hardware') !== -1 || rcRaw.indexOf('hw') !== -1) rcName = 'Hardware';
+            else if (rcRaw.indexOf('power') !== -1 || rcRaw.indexOf('pwr') !== -1) rcName = 'Power';
+            else if (rcRaw.indexOf('config') !== -1) rcName = 'Configuration';
+            else if (rcRaw.indexOf('software') !== -1 || rcRaw.indexOf('app') !== -1 || rcRaw.indexOf('sw') !== -1) rcName = 'Software';
+
+            var rcObj = rootCauseData.find(function(rc) { return rc.name === rcName; });
+            if (rcObj) rcObj.value++;
+
+            // Map Partner SLA Compliance
+            var partner = 'Surge';
+            var title = String(t.title || t.problem_name || '').toLowerCase();
+            var desc = String(t.createptproblemdes || '').toLowerCase();
+            var assign = String(t.createptassignto || '').toLowerCase();
+            
+            if (assign.indexOf('persada') !== -1 || title.indexOf('persada') !== -1) partner = 'Persada';
+            else if (assign.indexOf('telkom') !== -1 || assign.indexOf('akses') !== -1 || title.indexOf('akses') !== -1) partner = 'Telkom Akses';
+            else if (assign.indexOf('mandau') !== -1 || assign.indexOf('pm') !== -1 || title.indexOf('mandau') !== -1) partner = 'Mandau';
+            else if (assign.indexOf('ije') !== -1 || title.indexOf('ije') !== -1) partner = 'IJE';
+
+            var compObj = complianceData.find(function(c) { return c.party === partner; });
+            if (compObj) {
+                compObj.total++;
+                var isOver = t.over_sla || t.sla_over || t.is_over_sla;
+                if (isOver === true || String(isOver).toLowerCase() === 'true' || String(isOver) === '1') {
+                    compObj.over++;
+                } else {
+                    compObj.within++;
+                }
+            }
+        });
+
+        // Recalculate SLA Achievements
+        complianceData.forEach(function(c) {
+            c.ach = c.total ? ((c.within / c.total) * 100).toFixed(1) + '%' : '0.0%';
+        });
+    }
+
+    // Render SLA Compliance Table
+    renderSlaComplianceTable('tableSlaCompliance', complianceData);
+
+    // Draw ECharts charts
+    drawWeeklyTrendChart('chartWeeklyTrend', trendData);
+    drawTopRootCauseChart('chartTopRootCause', rootCauseData);
+}
+
+function drawWeeklyTrendChart(containerId, data) {
+    var chartDom = document.querySelector('#' + containerId);
+    if (!chartDom) return;
+
+    var existingInstance = echarts.getInstanceByDom(chartDom);
+    if (existingInstance) {
+        existingInstance.dispose();
+    }
+
+    var myChart = echarts.init(chartDom);
+
+    var option = {
+        backgroundColor: 'transparent',
+        tooltip: {
+            trigger: 'axis',
+            axisPointer: {
+                type: 'shadow'
+            }
+        },
+        legend: {
+            data: ['New PT', 'Closed PT', 'Pending PT', 'Over SLA', 'SLA Achievement (%)'],
+            textStyle: {
+                color: '#c9d1d9',
+                fontSize: 10
+            },
+            bottom: '0%'
+        },
+        grid: {
+            top: '12%',
+            left: '3%',
+            right: '4%',
+            bottom: '12%',
+            containLabel: true
+        },
+        xAxis: [
+            {
+                type: 'category',
+                data: data.weeks,
+                axisLine: { lineStyle: { color: '#30363d' } },
+                axisLabel: { color: '#8b949e' }
+            }
+        ],
+        yAxis: [
+            {
+                type: 'value',
+                name: 'PT (Total)',
+                nameTextStyle: { color: '#8b949e' },
+                axisLine: { lineStyle: { color: '#30363d' } },
+                axisLabel: { color: '#8b949e' },
+                splitLine: { lineStyle: { color: '#30363d' } }
+            },
+            {
+                type: 'value',
+                name: 'SLA %',
+                nameTextStyle: { color: '#8b949e' },
+                min: 0,
+                max: 100,
+                axisLine: { lineStyle: { color: '#30363d' } },
+                axisLabel: {
+                    color: '#8b949e',
+                    formatter: '{value}%'
+                },
+                splitLine: { show: false }
+            }
+        ],
+        series: [
+            {
+                name: 'New PT',
+                type: 'bar',
+                data: data.newPT,
+                itemStyle: { color: '#58a6ff' },
+                barWidth: '20%'
+            },
+            {
+                name: 'Closed PT',
+                type: 'bar',
+                data: data.closedPT,
+                itemStyle: { color: '#3fb950' },
+                barWidth: '20%'
+            },
+            {
+                name: 'Pending PT',
+                type: 'line',
+                data: data.pendingPT,
+                itemStyle: { color: '#f0883e' },
+                lineStyle: { width: 3 },
+                label: {
+                    show: true,
+                    position: 'top',
+                    color: '#f0883e',
+                    fontSize: 10
+                }
+            },
+            {
+                name: 'Over SLA',
+                type: 'line',
+                data: data.overSla,
+                itemStyle: { color: '#ff7b72' },
+                lineStyle: { width: 2 },
+                label: {
+                    show: true,
+                    position: 'top',
+                    color: '#ff7b72',
+                    fontSize: 10
+                }
+            },
+            {
+                name: 'SLA Achievement (%)',
+                type: 'line',
+                yAxisIndex: 1,
+                data: data.slaAchievement,
+                itemStyle: { color: '#bc8cff' },
+                lineStyle: { type: 'dashed', width: 2 },
+                label: {
+                    show: true,
+                    position: 'top',
+                    formatter: '{c}%',
+                    color: '#bc8cff',
+                    fontSize: 10
+                }
+            }
+        ]
+    };
+
+    myChart.setOption(option);
+    window.addEventListener('resize', function() { myChart.resize(); });
+}
+
+function drawTopRootCauseChart(containerId, data) {
+    var chartDom = document.querySelector('#' + containerId);
+    if (!chartDom) return;
+
+    var existingInstance = echarts.getInstanceByDom(chartDom);
+    if (existingInstance) {
+        existingInstance.dispose();
+    }
+
+    var myChart = echarts.init(chartDom);
+
+    var sortedData = data.slice().reverse();
+    var yAxisData = [];
+    var seriesData = [];
+    var colors = [];
+
+    sortedData.forEach(function(item) {
+        yAxisData.push(item.name);
+        seriesData.push(item.value);
+        colors.push(item.color);
+    });
+
+    var totalSum = seriesData.reduce(function(a, b) { return a + b; }, 0);
+
+    var option = {
+        backgroundColor: 'transparent',
+        tooltip: {
+            trigger: 'axis',
+            axisPointer: { type: 'shadow' }
+        },
+        grid: {
+            top: '5%',
+            left: '3%',
+            right: '25%',
+            bottom: '5%',
+            containLabel: true
+        },
+        xAxis: {
+            type: 'value',
+            axisLine: { lineStyle: { color: '#30363d' } },
+            axisLabel: { color: '#8b949e' },
+            splitLine: { lineStyle: { color: '#30363d' } }
+        },
+        yAxis: {
+            type: 'category',
+            data: yAxisData,
+            axisLine: { lineStyle: { color: '#30363d' } },
+            axisLabel: { color: '#c9d1d9', fontSize: 10 }
+        },
+        series: [
+            {
+                type: 'bar',
+                data: seriesData,
+                itemStyle: {
+                    color: function(params) {
+                        return colors[params.dataIndex];
+                    },
+                    borderRadius: [0, 4, 4, 0]
+                },
+                label: {
+                    show: true,
+                    position: 'right',
+                    formatter: function(params) {
+                        var val = params.value;
+                        var pct = totalSum ? Math.round((val / totalSum) * 1000) / 10 + '%' : '0%';
+                        return val + ' (' + pct + ')';
+                    },
+                    color: '#c9d1d9',
+                    fontSize: 9
+                }
+            }
+        ]
+    };
+
+    myChart.setOption(option);
+    window.addEventListener('resize', function() { myChart.resize(); });
+}
+
+function renderSlaComplianceTable(containerId, rows) {
+    var wrapper = document.querySelector('#' + containerId);
+    if (!wrapper) return;
+
+    var totalPT = 0;
+    var totalWithin = 0;
+    var totalOver = 0;
+
+    var html = '<table class="custom-compliance-table">';
+    html += '<thead>';
+    html += '<tr>';
+    html += '<th style="text-align:left;">Party</th>';
+    html += '<th>Total PT</th>';
+    html += '<th>Within SLA</th>';
+    html += '<th>Over SLA</th>';
+    html += '<th>SLA Achievement</th>';
+    html += '</tr>';
+    html += '</thead>';
+    html += '<tbody>';
+
+    rows.forEach(function(row) {
+        totalPT += row.total;
+        totalWithin += row.within;
+        totalOver += row.over;
+
+        var achPct = parseFloat(row.ach);
+        var achClass = 'custom-ach-success';
+        if (achPct < 90) achClass = 'custom-ach-danger';
+        else if (achPct < 95) achClass = 'custom-ach-warning';
+
+        html += '<tr>';
+        html += '<td class="custom-party-name">' + row.party + '</td>';
+        html += '<td>' + row.total + '</td>';
+        html += '<td>' + row.within + '</td>';
+        html += '<td style="color:#ff7b72; font-weight:700;">' + row.over + '</td>';
+        html += '<td class="' + achClass + '">' + row.ach + '</td>';
+        html += '</tr>';
+    });
+
+    var totalAch = totalPT ? ((totalWithin / totalPT) * 100).toFixed(1) + '%' : '0.0%';
+    var totalAchPct = parseFloat(totalAch);
+    var totalAchClass = 'custom-ach-success';
+    if (totalAchPct < 90) totalAchClass = 'custom-ach-danger';
+    else if (totalAchPct < 95) totalAchClass = 'custom-ach-warning';
+
+    html += '<tr class="custom-total-row">';
+    html += '<td style="text-align:left;">TOTAL</td>';
+    html += '<td>' + totalPT + '</td>';
+    html += '<td>' + totalWithin + '</td>';
+    html += '<td style="color:#ff7b72; font-weight:700;">' + totalOver + '</td>';
+    html += '<td class="' + totalAchClass + '">' + totalAch + '</td>';
+    html += '</tr>';
+
+    html += '</tbody></table>';
+    wrapper.innerHTML = html;
+}
+
+loadProblemTickets();
