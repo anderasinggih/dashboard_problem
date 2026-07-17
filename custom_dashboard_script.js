@@ -218,86 +218,35 @@ function showError(msg) {
     }
 }
 
-// Default/Fallback data from mockup if tickets are empty or miss severity info
-var defaultSeverityData = {
-    Emergency: {
-        total: 48,
-        pending: 10,
-        overSla: 2,
-        pctOfTotal: '6%',
-        rootCauses: [
-            { name: 'Fiber Cut', value: 22, pct: '46%', color: '#0f62fe' },
-            { name: 'Hardware', value: 10, pct: '21%', color: '#ff7849' },
-            { name: 'Power', value: 7, pct: '15%', color: '#24a148' },
-            { name: 'Configuration', value: 6, pct: '13%', color: '#8a3ffc' },
-            { name: 'Others', value: 3, pct: '5%', color: '#8d8d8d' }
-        ]
-    },
-    Critical: {
-        total: 120,
-        pending: 18,
-        overSla: 6,
-        pctOfTotal: '14%',
-        rootCauses: [
-            { name: 'Fiber Cut', value: 54, pct: '45%', color: '#0f62fe' },
-            { name: 'Hardware', value: 24, pct: '20%', color: '#ff7849' },
-            { name: 'Power', value: 18, pct: '15%', color: '#24a148' },
-            { name: 'Configuration', value: 14, pct: '12%', color: '#8a3ffc' },
-            { name: 'Others', value: 10, pct: '8%', color: '#8d8d8d' }
-        ]
-    },
-    Major: {
-        total: 204,
-        pending: 42,
-        overSla: 8,
-        pctOfTotal: '24%',
-        rootCauses: [
-            { name: 'Fiber Cut', value: 92, pct: '45%', color: '#0f62fe' },
-            { name: 'Hardware', value: 40, pct: '20%', color: '#ff7849' },
-            { name: 'Power', value: 32, pct: '16%', color: '#24a148' },
-            { name: 'Configuration', value: 24, pct: '12%', color: '#8a3ffc' },
-            { name: 'Others', value: 16, pct: '7%', color: '#8d8d8d' }
-        ]
-    },
-    Minor: {
-        total: 108,
-        pending: 25,
-        overSla: 4,
-        pctOfTotal: '13%',
-        rootCauses: [
-            { name: 'Fiber Cut', value: 48, pct: '44%', color: '#0f62fe' },
-            { name: 'Hardware', value: 22, pct: '20%', color: '#ff7849' },
-            { name: 'Power', value: 15, pct: '14%', color: '#24a148' },
-            { name: 'Configuration', value: 13, pct: '12%', color: '#8a3ffc' },
-            { name: 'Others', value: 10, pct: '10%', color: '#8d8d8d' }
-        ]
-    }
-};
-
 function renderSeverityDashboard(tickets) {
-    // If ECharts library is not loaded yet, schedule a retry or log warning
     if (typeof echarts === 'undefined') {
         console.warn('ECharts library is not loaded. Retrying in 500ms...');
         setTimeout(function() { renderSeverityDashboard(tickets); }, 500);
         return;
     }
 
-    var severityData = JSON.parse(JSON.stringify(defaultSeverityData));
+    var categories = ['Emergency', 'Critical', 'Major', 'Minor'];
+    var severityData = {};
+    
+    categories.forEach(function(cat) {
+        severityData[cat] = {
+            total: 0,
+            pending: 0,
+            overSla: 0,
+            pctOfTotal: '0%',
+            rootCauses: [
+                { name: 'Fiber Cut', value: 0, pct: '0%', color: '#0f62fe' },
+                { name: 'Hardware', value: 0, pct: '0%', color: '#ff7849' },
+                { name: 'Power', value: 0, pct: '0%', color: '#24a148' },
+                { name: 'Configuration', value: 0, pct: '0%', color: '#8a3ffc' },
+                { name: 'Others', value: 0, pct: '0%', color: '#8d8d8d' }
+            ]
+        };
+    });
 
-    // Optional: Parse from API dynamically if elements are present
-    if (tickets && tickets.length > 0 && tickets[0].severity) {
-        // Reset counts if using live data
-        var categories = ['Emergency', 'Critical', 'Major', 'Minor'];
-        for (var c = 0; c < categories.length; c++) {
-            var cat = categories[c];
-            severityData[cat].total = 0;
-            severityData[cat].pending = 0;
-            severityData[cat].overSla = 0;
-            severityData[cat].rootCauses.forEach(function(rc) { rc.value = 0; });
-        }
-
+    if (tickets && tickets.length > 0) {
         tickets.forEach(function(t) {
-            var sevRaw = String(t.severity || t.priority || '').toLowerCase();
+            var sevRaw = String(t.severity || t.createticketlevel || t.priority || '').toLowerCase();
             var sev = 'Minor';
             if (sevRaw.indexOf('emergency') !== -1 || sevRaw === '1') sev = 'Emergency';
             else if (sevRaw.indexOf('critical') !== -1 || sevRaw === '2') sev = 'Critical';
@@ -307,7 +256,7 @@ function renderSeverityDashboard(tickets) {
             severityData[sev].total++;
 
             var statusRaw = String(t.ticketstatus || t.status || '').toLowerCase();
-            if (statusRaw === 'pending' || statusRaw === 'in progress') {
+            if (statusRaw === 'pending' || statusRaw === 'in progress' || statusRaw === 'running') {
                 severityData[sev].pending++;
             }
 
@@ -323,6 +272,7 @@ function renderSeverityDashboard(tickets) {
             else if (rcRaw.indexOf('hardware') !== -1 || rcRaw.indexOf('hw') !== -1) rcName = 'Hardware';
             else if (rcRaw.indexOf('power') !== -1 || rcRaw.indexOf('pwr') !== -1) rcName = 'Power';
             else if (rcRaw.indexOf('config') !== -1) rcName = 'Configuration';
+            else if (rcRaw.indexOf('software') !== -1 || rcRaw.indexOf('app') !== -1 || rcRaw.indexOf('sw') !== -1) rcName = 'Software';
 
             var rcObj = severityData[sev].rootCauses.find(function(rc) { return rc.name === rcName; });
             if (rcObj) {
@@ -472,56 +422,28 @@ function renderDonutChart(containerId, data, totalVal, pctVal) {
     });
 }
 
-// Default/Fallback phase status data matching mockup
-var defaultPhaseData = {
-    Overall: [
-        { phase: '1. Create PT', total: 90, b1: 28, b2: 24, b3: 14, b4: 24, avg: 8.4 },
-        { phase: '2. Handle Analyze PT', total: 108, b1: 32, b2: 28, b3: 20, b4: 28, avg: 11.2 },
-        { phase: '3. Analyze PT', total: 112, b1: 30, b2: 26, b3: 22, b4: 34, avg: 13.6 },
-        { phase: '4. Handle Implement PT', total: 128, b1: 28, b2: 26, b3: 24, b4: 50, avg: 16.8 },
-        { phase: '5. Implement PT', total: 156, b1: 24, b2: 28, b3: 30, b4: 74, avg: 19.5 },
-        { phase: '6. Confirm PT', total: 82, b1: 22, b2: 16, b3: 12, b4: 32, avg: 10.3 }
-    ],
-    TelkomAkses: [
-        { phase: '1. Create PT', total: 90, b1: 28, b2: 24, b3: 14, b4: 24, avg: 8.4 },
-        { phase: '2. Handle Analyze PT', total: 108, b1: 32, b2: 28, b3: 20, b4: 28, avg: 11.2 },
-        { phase: '3. Analyze PT', total: 112, b1: 30, b2: 26, b3: 22, b4: 34, avg: 13.6 },
-        { phase: '4. Handle Implement PT', total: 128, b1: 28, b2: 26, b3: 24, b4: 50, avg: 16.8 },
-        { phase: '5. Implement PT', total: 156, b1: 24, b2: 28, b3: 30, b4: 74, avg: 19.5 },
-        { phase: '6. Confirm PT', total: 82, b1: 22, b2: 16, b3: 12, b4: 32, avg: 10.3 }
-    ],
-    Mandau: [
-        { phase: '1. Create PT', total: 90, b1: 28, b2: 24, b3: 14, b4: 24, avg: 8.4 },
-        { phase: '2. Handle Analyze PT', total: 108, b1: 32, b2: 28, b3: 20, b4: 28, avg: 11.2 },
-        { phase: '3. Analyze PT', total: 112, b1: 30, b2: 26, b3: 22, b4: 34, avg: 13.6 },
-        { phase: '4. Handle Implement PT', total: 128, b1: 28, b2: 26, b3: 24, b4: 50, avg: 16.8 },
-        { phase: '5. Implement PT', total: 156, b1: 24, b2: 28, b3: 30, b4: 74, avg: 19.5 },
-        { phase: '6. Confirm PT', total: 82, b1: 22, b2: 16, b3: 12, b4: 32, avg: 10.3 }
-    ],
-    Persada: [
-        { phase: '1. Create PT', total: 90, b1: 28, b2: 24, b3: 14, b4: 24, avg: 8.4 },
-        { phase: '2. Handle Analyze PT', total: 108, b1: 32, b2: 28, b3: 20, b4: 28, avg: 11.2 },
-        { phase: '3. Analyze PT', total: 112, b1: 30, b2: 26, b3: 22, b4: 34, avg: 13.6 },
-        { phase: '4. Handle Implement PT', total: 128, b1: 28, b2: 26, b3: 24, b4: 50, avg: 16.8 },
-        { phase: '5. Implement PT', total: 156, b1: 24, b2: 28, b3: 30, b4: 74, avg: 19.5 },
-        { phase: '6. Confirm PT', total: 82, b1: 22, b2: 16, b3: 12, b4: 32, avg: 10.3 }
-    ]
-};
-
 function renderPhaseDashboard(tickets) {
-    var phaseData = JSON.parse(JSON.stringify(defaultPhaseData));
+    var phases = [
+        '1. Create PT',
+        '2. Handle Analyze PT',
+        '3. Analyze PT',
+        '4. Handle Implement PT',
+        '5. Implement PT',
+        '6. Confirm PT'
+    ];
 
-    // Dynamically aggregate values if the api response tickets contain phase/aging info
-    if (tickets && tickets.length > 0 && (tickets[0].phase || tickets[0].aging || tickets[0].aging_days)) {
-        var categories = ['Overall', 'TelkomAkses', 'Mandau', 'Persada'];
-        categories.forEach(function(cat) {
-            phaseData[cat].forEach(function(row) {
-                row.total = 0; row.b1 = 0; row.b2 = 0; row.b3 = 0; row.b4 = 0; row.avg = 0;
-            });
+    var categories = ['Overall', 'TelkomAkses', 'Mandau', 'Persada'];
+    var phaseData = {};
+
+    categories.forEach(function(cat) {
+        phaseData[cat] = phases.map(function(p) {
+            return { phase: p, total: 0, b1: 0, b2: 0, b3: 0, b4: 0, avg: 0, agingSum: 0 };
         });
+    });
 
+    if (tickets && tickets.length > 0) {
         tickets.forEach(function(t) {
-            var phaseRaw = String(t.phase || t.current_phase || t.state || '').toLowerCase();
+            var phaseRaw = String(t.operate_phase || t.phase || t.current_phase || t.state || '').toLowerCase();
             var phase = '1. Create PT';
             if (phaseRaw.indexOf('confirm') !== -1) phase = '6. Confirm PT';
             else if (phaseRaw.indexOf('handle analyze') !== -1) phase = '2. Handle Analyze PT';
@@ -531,31 +453,28 @@ function renderPhaseDashboard(tickets) {
 
             var aging = parseFloat(t.aging || t.aging_days || t.days || 0);
             
-            // Map partner
             var partner = 'TelkomAkses';
             var title = String(t.title || t.problem_name || '').toLowerCase();
             var desc = String(t.createptproblemdes || '').toLowerCase();
             var assign = String(t.createptassignto || '').toLowerCase();
+            
             if (title.indexOf('mandau') !== -1 || desc.indexOf('mandau') !== -1 || assign.indexOf('pm') !== -1) {
                 partner = 'Mandau';
             } else if (title.indexOf('persada') !== -1 || desc.indexOf('persada') !== -1 || assign.indexOf('pwx') !== -1) {
                 partner = 'Persada';
             }
 
-            var buckets = ['b1', 'b2', 'b3', 'b4'];
             var buck = 'b1';
             if (aging > 21) buck = 'b4';
             else if (aging > 15) buck = 'b3';
             else if (aging > 7) buck = 'b2';
 
-            // Increment row properties
             [partner, 'Overall'].forEach(function(targetCat) {
                 var row = phaseData[targetCat].find(function(r) { return r.phase === phase; });
                 if (row) {
                     row.total++;
                     row[buck]++;
-                    // Accumulate aging to calculate average later
-                    row.avg += aging;
+                    row.agingSum += aging;
                 }
             });
         });
@@ -563,11 +482,7 @@ function renderPhaseDashboard(tickets) {
         // Calculate averages
         categories.forEach(function(cat) {
             phaseData[cat].forEach(function(row) {
-                if (row.total > 0) {
-                    row.avg = row.avg / row.total;
-                } else {
-                    row.avg = 0;
-                }
+                row.avg = row.total > 0 ? (row.agingSum / row.total) : 0;
             });
         });
     }
@@ -719,33 +634,6 @@ function renderPhasePartner(containerId, phaseRows) {
     wrapper.innerHTML = html;
 }
 
-// Fallback data for Weekly Trend, Top Root Cause, and SLA Compliance
-var defaultWeeklyTrendData = {
-    weeks: ['W24', 'W25', 'W26', 'W27', 'W28'],
-    newPT: [142, 156, 186, 160, 171],
-    closedPT: [96, 112, 120, 134, 147],
-    pendingPT: [420, 464, 512, 538, 568],
-    overSla: [45, 52, 61, 71, 73],
-    slaAchievement: [92.1, 91.3, 90.8, 90.5, 91.4]
-};
-
-var defaultRootCauseDistribution = [
-    { name: 'Fiber Cut', value: 216, color: '#58a6ff' },
-    { name: 'Hardware', value: 142, color: '#f0883e' },
-    { name: 'Power', value: 118, color: '#3fb950' },
-    { name: 'Configuration', value: 96, color: '#bc8cff' },
-    { name: 'Software', value: 78, color: '#ff7b72' },
-    { name: 'Others', value: 62, color: '#8b949e' }
-];
-
-var defaultSlaComplianceData = [
-    { party: 'Persada', total: 95, within: 91, over: 4, ach: '95.8%' },
-    { party: 'Telkom Akses', total: 480, within: 426, over: 54, ach: '88.8%' },
-    { party: 'Mandau', total: 120, within: 115, over: 5, ach: '95.8%' },
-    { party: 'IJE', total: 88, within: 84, over: 4, ach: '95.5%' },
-    { party: 'Surge', total: 140, within: 132, over: 8, ach: '94.3%' }
-];
-
 function renderTrendsAndCompliance(tickets) {
     if (typeof echarts === 'undefined') {
         console.warn('ECharts not available yet. Retrying in 500ms...');
@@ -753,20 +641,41 @@ function renderTrendsAndCompliance(tickets) {
         return;
     }
 
-    var trendData = JSON.parse(JSON.stringify(defaultWeeklyTrendData));
-    var rootCauseData = JSON.parse(JSON.stringify(defaultRootCauseDistribution));
-    var complianceData = JSON.parse(JSON.stringify(defaultSlaComplianceData));
+    var rootCauseData = [
+        { name: 'Fiber Cut', value: 0, color: '#58a6ff' },
+        { name: 'Hardware', value: 0, color: '#f0883e' },
+        { name: 'Power', value: 0, color: '#3fb950' },
+        { name: 'Configuration', value: 0, color: '#bc8cff' },
+        { name: 'Software', value: 0, color: '#ff7b72' },
+        { name: 'Others', value: 0, color: '#8b949e' }
+    ];
 
-    // Dynamic aggregation if api tickets have root cause / sla / dates
-    if (tickets && tickets.length > 0 && tickets[0].severity) {
-        // Reset root cause
-        rootCauseData.forEach(function(rc) { rc.value = 0; });
+    var complianceData = [
+        { party: 'Persada', total: 0, within: 0, over: 0, ach: '0.0%' },
+        { party: 'Telkom Akses', total: 0, within: 0, over: 0, ach: '0.0%' },
+        { party: 'Mandau', total: 0, within: 0, over: 0, ach: '0.0%' },
+        { party: 'IJE', total: 0, within: 0, over: 0, ach: '0.0%' },
+        { party: 'Surge', total: 0, within: 0, over: 0, ach: '0.0%' }
+    ];
 
-        // Reset compliance
-        complianceData.forEach(function(c) { c.total = 0; c.within = 0; c.over = 0; });
+    var weeklyMap = {};
 
+    function getWeekLabel(dateStr) {
+        if (!dateStr) return 'W28';
+        var parts = dateStr.split(' ')[0].split('-');
+        if (parts.length < 3) return 'W28';
+        var yr = parseInt(parts[0]);
+        var mo = parseInt(parts[1]) - 1;
+        var dy = parseInt(parts[2]);
+        var d = new Date(yr, mo, dy);
+        var onejan = new Date(yr, 0, 1);
+        var weekNum = Math.ceil((((d - onejan) / 86400000) + onejan.getDay() + 1) / 7);
+        return 'W' + weekNum;
+    }
+
+    if (tickets && tickets.length > 0) {
         tickets.forEach(function(t) {
-            // Map Root Cause
+            // 1. Root Cause
             var rcRaw = String(t.root_cause || t.rootcause || t.cause || '').toLowerCase();
             var rcName = 'Others';
             if (rcRaw.indexOf('fiber') !== -1 || rcRaw.indexOf('cut') !== -1) rcName = 'Fiber Cut';
@@ -778,39 +687,80 @@ function renderTrendsAndCompliance(tickets) {
             var rcObj = rootCauseData.find(function(rc) { return rc.name === rcName; });
             if (rcObj) rcObj.value++;
 
-            // Map Partner SLA Compliance
+            // 2. SLA Compliance
             var partner = 'Surge';
             var title = String(t.title || t.problem_name || '').toLowerCase();
             var desc = String(t.createptproblemdes || '').toLowerCase();
             var assign = String(t.createptassignto || '').toLowerCase();
             
-            if (assign.indexOf('persada') !== -1 || title.indexOf('persada') !== -1) partner = 'Persada';
-            else if (assign.indexOf('telkom') !== -1 || assign.indexOf('akses') !== -1 || title.indexOf('akses') !== -1) partner = 'Telkom Akses';
-            else if (assign.indexOf('mandau') !== -1 || assign.indexOf('pm') !== -1 || title.indexOf('mandau') !== -1) partner = 'Mandau';
+            if (assign.indexOf('persada') !== -1 || title.indexOf('persada') !== -1 || desc.indexOf('persada') !== -1) partner = 'Persada';
+            else if (assign.indexOf('telkom') !== -1 || assign.indexOf('akses') !== -1 || title.indexOf('akses') !== -1 || desc.indexOf('telkom') !== -1) partner = 'Telkom Akses';
+            else if (assign.indexOf('mandau') !== -1 || assign.indexOf('pm') !== -1 || title.indexOf('mandau') !== -1 || desc.indexOf('mandau') !== -1) partner = 'Mandau';
             else if (assign.indexOf('ije') !== -1 || title.indexOf('ije') !== -1) partner = 'IJE';
 
             var compObj = complianceData.find(function(c) { return c.party === partner; });
             if (compObj) {
                 compObj.total++;
                 var isOver = t.over_sla || t.sla_over || t.is_over_sla;
-                if (isOver === true || String(isOver).toLowerCase() === 'true' || String(isOver) === '1') {
+                var overVal = (isOver === true || String(isOver).toLowerCase() === 'true' || String(isOver) === '1');
+                if (overVal) {
                     compObj.over++;
                 } else {
                     compObj.within++;
                 }
             }
+
+            // 3. Weekly Trend
+            var dateVal = t.createtime || t.createfirstoccurtime || t.operate_time;
+            var wLabel = getWeekLabel(dateVal);
+            if (!weeklyMap[wLabel]) {
+                weeklyMap[wLabel] = { newPT: 0, closedPT: 0, pendingPT: 0, overSla: 0, total: 0, withinSla: 0 };
+            }
+            var weekRow = weeklyMap[wLabel];
+            weekRow.total++;
+            weekRow.newPT++;
+            
+            var statusRaw = String(t.ticketstatus || t.status || '').toLowerCase();
+            if (statusRaw === 'closed' || statusRaw === 'completed' || statusRaw === 'false' || statusRaw === '0') {
+                weekRow.closedPT++;
+            } else {
+                weekRow.pendingPT++;
+            }
+
+            var isOverVal = (t.over_sla === true || String(t.over_sla).toLowerCase() === 'true' || String(t.over_sla) === '1');
+            if (isOverVal) {
+                weekRow.overSla++;
+            } else {
+                weekRow.withinSla++;
+            }
         });
 
-        // Recalculate SLA Achievements
         complianceData.forEach(function(c) {
             c.ach = c.total ? ((c.within / c.total) * 100).toFixed(1) + '%' : '0.0%';
         });
     }
 
-    // Render SLA Compliance Table
+    var weeksList = Object.keys(weeklyMap).sort();
+    var trendData = {
+        weeks: weeksList,
+        newPT: [],
+        closedPT: [],
+        pendingPT: [],
+        overSla: [],
+        slaAchievement: []
+    };
+
+    weeksList.forEach(function(w) {
+        var row = weeklyMap[w];
+        trendData.newPT.push(row.newPT);
+        trendData.closedPT.push(row.closedPT);
+        trendData.pendingPT.push(row.pendingPT);
+        trendData.overSla.push(row.overSla);
+        trendData.slaAchievement.push(row.total ? parseFloat(((row.withinSla / row.total) * 100).toFixed(1)) : 0);
+    });
+
     renderSlaComplianceTable('tableSlaCompliance', complianceData);
 
-    // Draw ECharts charts
     drawWeeklyTrendChart('chartWeeklyTrend', trendData);
     drawTopRootCauseChart('chartTopRootCause', rootCauseData);
 }
