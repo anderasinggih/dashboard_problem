@@ -1186,7 +1186,7 @@ function initDateFilterDOM() {
     
     container.innerHTML = 
         '<div class="custom-filter-card">' +
-        '  <div class="custom-filter-title">📅 Date Range Filter (Createtime)</div>' +
+        '  <div class="custom-filter-title">Date Range Filter (Createtime)</div>' +
         '  <div class="custom-filter-inputs">' +
         '    <div class="custom-filter-field">' +
         '      <label>Start Date</label>' +
