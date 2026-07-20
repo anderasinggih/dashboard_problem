@@ -1207,3 +1207,7 @@ function initDateFilterDOM() {
     
     container.innerHTML = '<div class="custom-filter-card"><div class="custom-filter-title">Date Range Filter (Createtime)</div><div class="custom-filter-inputs"><div class="custom-filter-field"><label>Start Date</label><input type="date" class="custom-filter-start-input"></div><div class="custom-filter-field"><label>End Date</label><input type="date" class="custom-filter-end-input"></div><div class="custom-filter-actions"><button onclick="applyDateFilter()" class="custom-btn custom-btn-primary custom-btn-apply-filter">Apply Filter</button><button onclick="resetDateFilter()" class="custom-btn custom-btn-secondary custom-btn-reset-filter">Reset</button></div></div></div>';
 }
+
+// Bind functions to window object explicitly to bypass GDE's private scope wrapper
+window.applyDateFilter = applyDateFilter;
+window.resetDateFilter = resetDateFilter;
