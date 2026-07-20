@@ -68,8 +68,8 @@
                     <input type="date" id="filterEndDate">
                 </div>
                 <div class="custom-filter-actions">
-                    <button onclick="applyDateFilter()" class="custom-btn custom-btn-primary">Apply Filter</button>
-                    <button onclick="resetDateFilter()" class="custom-btn custom-btn-secondary">Reset</button>
+                    <button id="btnApplyFilter" class="custom-btn custom-btn-primary">Apply Filter</button>
+                    <button id="btnResetFilter" class="custom-btn custom-btn-secondary">Reset</button>
                 </div>
             </div>
         </div>
@@ -470,10 +470,29 @@
                             tickets.push(ticket);
                         }
 
-                        // Emulate paging/limit filter
+                        // Emulate date filter and paging/limit filter
                         const limit = (options.data && options.data.limit) || 50;
                         const start = (options.data && options.data.start) || 0;
-                        const sliced = tickets.slice(start, start + limit);
+                        const startDate = (options.data && options.data.startDate);
+                        const endDate = (options.data && options.data.endDate);
+
+                        let filtered = tickets;
+                        if (startDate) {
+                            const startMs = new Date(startDate.replace(/-/g, '/')).getTime();
+                            filtered = filtered.filter(t => {
+                                if (!t.createtime) return false;
+                                return new Date(t.createtime.replace(/-/g, '/')).getTime() >= startMs;
+                            });
+                        }
+                        if (endDate) {
+                            const endMs = new Date(endDate.replace(/-/g, '/')).getTime();
+                            filtered = filtered.filter(t => {
+                                if (!t.createtime) return false;
+                                return new Date(t.createtime.replace(/-/g, '/')).getTime() <= endMs;
+                            });
+                        }
+
+                        const sliced = filtered.slice(start, start + limit);
 
                         options.success({
                             data: sliced

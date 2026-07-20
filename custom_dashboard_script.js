@@ -17,7 +17,7 @@ function calculateAgingDays(createTimeStr, closeTimeStr, lastUpdateTimeStr, oper
     return diffMs / (1000 * 60 * 60 * 24);
 }
 
-function loadProblemTickets() {
+function loadProblemTickets(startDate, endDate) {
     var container = document.querySelector('#ticketContainer');
     if (container) {
         container.innerHTML = '';
@@ -28,16 +28,20 @@ function loadProblemTickets() {
         container.appendChild(loadingDiv);
     }
 
+    var requestData = {
+        "start": 0,
+        "limit": 1000
+    };
+    if (startDate) requestData.startDate = startDate;
+    if (endDate) requestData.endDate = endDate;
+
     if (typeof MessageProcessor !== 'undefined') {
         MessageProcessor.process({
             serviceId: '/adc-service/rest/v1/services/dashboard_problem_ticket_test/dashboard_problem_ticket_test/dashboard__problem_ticket',
-            data: {
-                "start": 0,
-                "limit": 1000
-            },
+            data: requestData,
             success: function (res) {
                 console.log('Response OWS Success:', res);
-                parseAndRender(res);
+                parseAndRender(res, !!(startDate || endDate));
             },
             error: function (err) {
                 console.error('Response OWS Error:', err);
@@ -49,7 +53,7 @@ function loadProblemTickets() {
     }
 }
 
-function parseAndRender(res) {
+function parseAndRender(res, isFiltered) {
     var tickets = [];
     if (res && res.result && res.result._values) {
         tickets = res.result._values;
@@ -65,11 +69,11 @@ function parseAndRender(res) {
         tickets = res;
     }
 
-    // Save full dataset globally
-    window.allTicketsData = tickets;
-
-    // Set static cards once using ALL TIME data
-    updateAllTimeCards(tickets);
+    // Save dataset and update cards ONLY on all-time load
+    if (!isFiltered) {
+        window.allTicketsData = tickets;
+        updateAllTimeCards(tickets);
+    }
 
     // Render list & charts
     renderTicketsData(tickets);
@@ -1140,39 +1144,38 @@ function applyDateFilter() {
     var startInput = document.getElementById('filterStartDate').value;
     var endInput = document.getElementById('filterEndDate').value;
     
-    if (!window.allTicketsData || window.allTicketsData.length === 0) {
+    if (!startInput && !endInput) {
+        alert('Silakan pilih rentang tanggal terlebih dahulu.');
         return;
     }
 
-    var filtered = window.allTicketsData;
+    var startParam = startInput ? startInput + ' 00:00:00' : null;
+    var endParam = endInput ? endInput + ' 23:59:59' : null;
 
-    if (startInput) {
-        var startDate = new Date(startInput + 'T00:00:00');
-        filtered = filtered.filter(function (t) {
-            if (!t.createtime) return false;
-            var ticketDate = new Date(t.createtime.replace(/-/g, '/'));
-            return ticketDate >= startDate;
-        });
-    }
-
-    if (endInput) {
-        var endDate = new Date(endInput + 'T23:59:59');
-        filtered = filtered.filter(function (t) {
-            if (!t.createtime) return false;
-            var ticketDate = new Date(t.createtime.replace(/-/g, '/'));
-            return ticketDate <= endDate;
-        });
-    }
-
-    renderTicketsData(filtered);
+    loadProblemTickets(startParam, endParam);
 }
 
 function resetDateFilter() {
     document.getElementById('filterStartDate').value = '';
     document.getElementById('filterEndDate').value = '';
-    
-    if (window.allTicketsData) {
-        renderTicketsData(window.allTicketsData);
+    loadProblemTickets();
+}
+
+// Safe event listener registration
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initDateFilterEvents);
+} else {
+    initDateFilterEvents();
+}
+
+function initDateFilterEvents() {
+    var btnApply = document.getElementById('btnApplyFilter');
+    var btnReset = document.getElementById('btnResetFilter');
+    if (btnApply) {
+        btnApply.addEventListener('click', applyDateFilter);
+    }
+    if (btnReset) {
+        btnReset.addEventListener('click', resetDateFilter);
     }
 }
 
