@@ -1,3 +1,50 @@
+function getTicketPartner(item) {
+    var title = String(item.title || item.problem_name || '').toLowerCase();
+    var desc = String(item.createptproblemdes || '').toLowerCase();
+    var assign = String(item.createptassignto || '').toLowerCase();
+    var operator = String(item.currentoperator || '').toLowerCase();
+    var originator = String(item.originator || '').toLowerCase();
+    var respParty = String(item.problem_responsible_party || item.problemresponsibleparty || '').toLowerCase();
+
+    if (respParty.indexOf('telkom') !== -1 || respParty.indexOf('akses') !== -1) {
+        return 'Telkom Akses';
+    } else if (respParty.indexOf('mandau') !== -1) {
+        return 'Mandau';
+    } else if (respParty.indexOf('persada') !== -1) {
+        return 'Persada';
+    } else if (respParty.indexOf('ije') !== -1) {
+        return 'IJE';
+    }
+
+    if (title.indexOf('telkom') !== -1 || title.indexOf('akses') !== -1 || desc.indexOf('telkom') !== -1) {
+        return 'Telkom Akses';
+    } else if (title.indexOf('mandau') !== -1 || desc.indexOf('mandau') !== -1) {
+        return 'Mandau';
+    } else if (title.indexOf('persada') !== -1 || desc.indexOf('persada') !== -1) {
+        return 'Persada';
+    }
+
+    if (assign.indexOf('pwx') !== -1 || originator.indexOf('pwx') !== -1 || operator.indexOf('pwx') !== -1 || assign.indexOf('persada') !== -1) {
+        return 'Persada';
+    } else if (assign.indexOf('pm') !== -1 || operator.indexOf('pm') !== -1 || assign.indexOf('mandau') !== -1) {
+        return 'Mandau';
+    } else if (assign.indexOf('ije') !== -1) {
+        return 'IJE';
+    }
+
+    var rawAssign = item.createptassignto || item.currentoperator || item.originator || 'Surge';
+    var clean = rawAssign.replace('user:', '');
+    var cleanLower = clean.toLowerCase();
+    if (cleanLower === 'surge') return 'Surge';
+    
+    if (cleanLower.indexOf('telkom') !== -1 || cleanLower.indexOf('akses') !== -1) return 'Telkom Akses';
+    if (cleanLower.indexOf('mandau') !== -1) return 'Mandau';
+    if (cleanLower.indexOf('persada') !== -1) return 'Persada';
+    if (cleanLower.indexOf('ije') !== -1) return 'IJE';
+    
+    return clean;
+}
+
 function calculateAgingDays(createTimeStr, closeTimeStr, lastUpdateTimeStr, operateTimeStr, ticketstatus) {
     if (!createTimeStr) return 0;
     // Replace '-' with '/' for broad browser support of date parsing
@@ -109,33 +156,7 @@ function updateAllTimeCards(tickets) {
         var item = tickets[i];
         var statusLower = String(item.ticketstatus || item.status || '').toLowerCase();
         
-        var partner = 'Telkom Akses';
-        var assign = String(item.createptassignto || '').toLowerCase();
-        var operator = String(item.currentoperator || '').toLowerCase();
-        var originator = String(item.originator || '').toLowerCase();
-        var respParty = String(item.problem_responsible_party || item.problemresponsibleparty || '').toLowerCase();
-        var titleLower = String(item.title || item.problem_name || '').toLowerCase();
-        var descLower = String(item.createptproblemdes || '').toLowerCase();
-
-        if (respParty.indexOf('telkom') !== -1 || respParty.indexOf('akses') !== -1) {
-            partner = 'Telkom Akses';
-        } else if (respParty.indexOf('mandau') !== -1) {
-            partner = 'Mandau';
-        } else if (respParty.indexOf('persada') !== -1) {
-            partner = 'Persada';
-        } else if (respParty.indexOf('ije') !== -1) {
-            partner = 'IJE';
-        } else if (titleLower.indexOf('telkom') !== -1 || titleLower.indexOf('akses') !== -1 || descLower.indexOf('telkom') !== -1) {
-            partner = 'Telkom Akses';
-        } else if (titleLower.indexOf('mandau') !== -1 || descLower.indexOf('mandau') !== -1) {
-            partner = 'Mandau';
-        } else if (titleLower.indexOf('persada') !== -1 || descLower.indexOf('persada') !== -1) {
-            partner = 'Persada';
-        } else if (assign.indexOf('pwx') !== -1 || originator.indexOf('pwx') !== -1 || operator.indexOf('pwx') !== -1) {
-            partner = 'Persada';
-        } else if (assign.indexOf('pm') !== -1 || operator.indexOf('pm') !== -1) {
-            partner = 'Mandau';
-        }
+        var partner = getTicketPartner(item);
 
         if (statusLower === 'running' || statusLower === 'open' || statusLower === 'true' || statusLower === '1') {
             openCount++;
@@ -203,36 +224,7 @@ function renderTicketsData(tickets) {
         // Calculate aging days dynamically from timestamps if not pre-calculated in DB
         var agingVal = item.aging || item.aging_days || item.days || calculateAgingDays(item.createtime, item.closetime, item.lastupdatetime, item.operate_time, status);
 
-        var partner = 'Telkom Akses';
-        var assign = String(item.createptassignto || '').toLowerCase();
-        var operator = String(item.currentoperator || '').toLowerCase();
-        var originator = String(item.originator || '').toLowerCase();
-        var respParty = String(item.problem_responsible_party || item.problemresponsibleparty || '').toLowerCase();
-        var tLower = String(title || '').toLowerCase();
-        var desc = String(item.createptproblemdes || '').toLowerCase();
-
-        if (respParty.indexOf('telkom') !== -1 || respParty.indexOf('akses') !== -1) {
-            partner = 'Telkom Akses';
-        } else if (respParty.indexOf('mandau') !== -1) {
-            partner = 'Mandau';
-        } else if (respParty.indexOf('persada') !== -1) {
-            partner = 'Persada';
-        } else if (respParty.indexOf('ije') !== -1) {
-            partner = 'IJE';
-        } else if (tLower.indexOf('telkom') !== -1 || tLower.indexOf('akses') !== -1 || desc.indexOf('telkom') !== -1) {
-            partner = 'Telkom Akses';
-        } else if (tLower.indexOf('mandau') !== -1 || desc.indexOf('mandau') !== -1) {
-            partner = 'Mandau';
-        } else if (tLower.indexOf('persada') !== -1 || desc.indexOf('persada') !== -1) {
-            partner = 'Persada';
-        } else if (assign.indexOf('pwx') !== -1 || originator.indexOf('pwx') !== -1 || operator.indexOf('pwx') !== -1) {
-            partner = 'Persada';
-        } else if (assign.indexOf('pm') !== -1 || operator.indexOf('pm') !== -1) {
-            partner = 'Mandau';
-        } else {
-            var rawAssign = item.createptassignto || item.currentoperator || item.originator || 'Surge';
-            partner = rawAssign.replace('user:', '');
-        }
+        var partner = getTicketPartner(item);
 
         // Map Severity (including OWS createticketlevel UUID checks)
         var sevRaw = String(item.severity || item.createticketlevel || '').toLowerCase();
@@ -541,30 +533,15 @@ function renderPhaseDashboard(tickets) {
             var statusRaw = String(t.ticketstatus || t.status || '').toLowerCase();
             var aging = parseFloat(t.aging || t.aging_days || t.days || calculateAgingDays(t.createtime, t.closetime, t.lastupdatetime, t.operate_time, statusRaw));
 
-            var partner = 'TelkomAkses';
-            var title = String(t.title || t.problem_name || '').toLowerCase();
-            var desc = String(t.createptproblemdes || '').toLowerCase();
-            var assign = String(t.createptassignto || '').toLowerCase();
-            var respParty = String(t.problem_responsible_party || t.problemresponsibleparty || '').toLowerCase();
-
-            if (respParty.indexOf('telkom') !== -1 || respParty.indexOf('akses') !== -1) {
-                partner = 'TelkomAkses';
-            } else if (respParty.indexOf('mandau') !== -1) {
-                partner = 'Mandau';
-            } else if (respParty.indexOf('persada') !== -1) {
-                partner = 'Persada';
-            } else if (title.indexOf('mandau') !== -1 || desc.indexOf('mandau') !== -1 || assign.indexOf('pm') !== -1) {
-                partner = 'Mandau';
-            } else if (title.indexOf('persada') !== -1 || desc.indexOf('persada') !== -1 || assign.indexOf('pwx') !== -1) {
-                partner = 'Persada';
-            }
-
+            var partner = getTicketPartner(t).replace(/\s+/g, '');
+            
             var buck = 'b1';
             if (aging > 21) buck = 'b4';
             else if (aging > 15) buck = 'b3';
             else if (aging > 7) buck = 'b2';
 
             [partner, 'Overall'].forEach(function (targetCat) {
+                if (!phaseData[targetCat]) return;
                 var row = phaseData[targetCat].find(function (r) { return r.phase === phase; });
                 if (row) {
                     row.total++;
@@ -783,29 +760,7 @@ function renderTrendsAndCompliance(tickets) {
             if (rcObj) rcObj.value++;
 
             // 2. SLA Compliance
-            var partner = 'Surge';
-            var title = String(t.title || t.problem_name || '').toLowerCase();
-            var desc = String(t.createptproblemdes || '').toLowerCase();
-            var assign = String(t.createptassignto || '').toLowerCase();
-            var respParty = String(t.problem_responsible_party || t.problemresponsibleparty || '').toLowerCase();
-
-            if (respParty.indexOf('telkom') !== -1 || respParty.indexOf('akses') !== -1) {
-                partner = 'Telkom Akses';
-            } else if (respParty.indexOf('mandau') !== -1) {
-                partner = 'Mandau';
-            } else if (respParty.indexOf('persada') !== -1) {
-                partner = 'Persada';
-            } else if (respParty.indexOf('ije') !== -1) {
-                partner = 'IJE';
-            } else if (assign.indexOf('persada') !== -1 || title.indexOf('persada') !== -1 || desc.indexOf('persada') !== -1) {
-                partner = 'Persada';
-            } else if (assign.indexOf('telkom') !== -1 || assign.indexOf('akses') !== -1 || title.indexOf('akses') !== -1 || desc.indexOf('telkom') !== -1) {
-                partner = 'Telkom Akses';
-            } else if (assign.indexOf('mandau') !== -1 || assign.indexOf('pm') !== -1 || title.indexOf('mandau') !== -1 || desc.indexOf('mandau') !== -1) {
-                partner = 'Mandau';
-            } else if (assign.indexOf('ije') !== -1 || title.indexOf('ije') !== -1) {
-                partner = 'IJE';
-            }
+            var partner = getTicketPartner(t);
 
             var compObj = complianceData.find(function (c) { return c.party === partner; });
             if (compObj) {
