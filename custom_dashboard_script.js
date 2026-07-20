@@ -142,9 +142,48 @@ function parseAndRender(res, isFiltered, startDate, endDate, party) {
 
         // Render list & charts
         renderTicketsData(fullyFilteredTickets, dateFilteredTickets);
+        updatePanelFilterBadges(party);
     } catch (e) {
         alert('[parseAndRender ERROR]: ' + e.message + '\nStack: ' + e.stack);
         console.error('[CRITICAL] parseAndRender crashed:', e);
+    }
+}
+
+function updatePanelFilterBadges(party) {
+    var headers = document.querySelectorAll('.custom-panel-header span');
+    for (var i = 0; i < headers.length; i++) {
+        var el = headers[i];
+        var text = el.innerText || el.textContent || '';
+        
+        var isTarget = text.indexOf('1. SEVERITY OVERVIEW') !== -1 ||
+                       text.indexOf('3. WEEKLY TREND') !== -1 ||
+                       text.indexOf('4. TOP ROOT CAUSE') !== -1 ||
+                       text.indexOf('6. PROBLEM TICKET LIST') !== -1;
+                       
+        if (isTarget) {
+            var parent = el.parentNode;
+            var oldBadge = parent.querySelector('.custom-filter-header-badge');
+            if (oldBadge) {
+                parent.removeChild(oldBadge);
+            }
+            
+            if (party && party !== 'ALL') {
+                var badge = document.createElement('span');
+                badge.className = 'custom-filter-header-badge';
+                badge.innerText = party;
+                badge.style.display = 'inline-block';
+                badge.style.marginLeft = '10px';
+                badge.style.padding = '2px 8px';
+                badge.style.fontSize = '11px';
+                badge.style.fontWeight = '600';
+                badge.style.borderRadius = '4px';
+                badge.style.backgroundColor = 'rgba(88, 166, 255, 0.15)';
+                badge.style.color = '#58a6ff';
+                badge.style.border = '1px solid rgba(88, 166, 255, 0.3)';
+                badge.style.verticalAlign = 'middle';
+                parent.appendChild(badge);
+            }
+        }
     }
 }
 
