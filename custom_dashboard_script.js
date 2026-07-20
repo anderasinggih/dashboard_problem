@@ -317,16 +317,62 @@ function renderCurrentTicketsPage() {
     // Render Pagination Control UI below list table
     var totalPages = Math.ceil(tickets.length / pag.pageSize);
     
-    html += '<div style="display:flex; justify-content:space-between; align-items:center; margin-top:16px; padding:8px 0; border-top:1px solid #30363d;">';
-    html += '  <div style="font-size:13px; color:#8b949e;">Showing ' + (startIdx + 1) + '-' + endIdx + ' of ' + tickets.length + ' tickets</div>';
-    html += '  <div style="display:flex; align-items:center; gap:8px;">';
-    html += '    <button onclick="prevTicketsPage()" ' + (pag.currentPage === 1 ? 'disabled' : '') + ' class="custom-btn custom-btn-secondary" style="padding:6px 12px; font-size:12px; cursor:' + (pag.currentPage === 1 ? 'not-allowed' : 'pointer') + '; opacity:' + (pag.currentPage === 1 ? '0.5' : '1') + ';">Previous</button>';
-    html += '    <span style="font-size:13px; color:#c9d1d9; font-weight:600; min-width:80px; text-align:center;">Page ' + pag.currentPage + ' of ' + totalPages + '</span>';
-    html += '    <button onclick="nextTicketsPage()" ' + (pag.currentPage === totalPages ? 'disabled' : '') + ' class="custom-btn custom-btn-secondary" style="padding:6px 12px; font-size:12px; cursor:' + (pag.currentPage === totalPages ? 'not-allowed' : 'pointer') + '; opacity:' + (pag.currentPage === totalPages ? '0.5' : '1') + ';">Next</button>';
-    html += '  </div>';
-    html += '</div>';
+    var paginationHtml = '<div class="custom-pagination-wrapper">';
+    paginationHtml += '  <span class="custom-pagination-total">Total ' + tickets.length + '</span>';
+    
+    // Page Size Select
+    paginationHtml += '  <select onchange="changeTicketsPageSize(parseInt(this.value))" class="custom-pagesize-select">';
+    [10, 20, 50, 100].forEach(function (size) {
+        var selected = pag.pageSize === size ? 'selected' : '';
+        paginationHtml += '    <option value="' + size + '" ' + selected + '>' + size + '/page</option>';
+    });
+    paginationHtml += '  </select>';
+    
+    // Prev Button (<)
+    var prevDisabled = pag.currentPage === 1 ? 'disabled' : '';
+    paginationHtml += '  <button onclick="prevTicketsPage()" class="custom-page-num-btn ' + prevDisabled + '" ' + prevDisabled + '>&lt;</button>';
+    
+    // Page Numbers with Ellipsis
+    var pageNumbers = getPageNumbers(pag.currentPage, totalPages);
+    pageNumbers.forEach(function (p) {
+        if (p === '...') {
+            paginationHtml += '  <span class="custom-pagination-ellipsis">...</span>';
+        } else {
+            var activeClass = pag.currentPage === p ? 'active' : '';
+            paginationHtml += '  <button onclick="gotoTicketsPage(' + p + ')" class="custom-page-num-btn ' + activeClass + '">' + p + '</button>';
+        }
+    });
+    
+    // Next Button (>)
+    var nextDisabled = pag.currentPage === totalPages ? 'disabled' : '';
+    paginationHtml += '  <button onclick="nextTicketsPage()" class="custom-page-num-btn ' + nextDisabled + '" ' + nextDisabled + '>&gt;</button>';
+    
+    // Go to input
+    paginationHtml += '  <div class="custom-page-jump-wrapper">';
+    paginationHtml += '    <span>Go to</span>';
+    paginationHtml += '    <input type="number" min="1" max="' + totalPages + '" value="' + pag.currentPage + '" onkeydown="if(event.key===\'Enter\') gotoTicketsPage(parseInt(this.value))" class="custom-page-jump-input">';
+    paginationHtml += '  </div>';
+    
+    paginationHtml += '</div>';
 
+    html += paginationHtml;
     container.innerHTML = html;
+}
+
+function getPageNumbers(current, total) {
+    var pages = [];
+    if (total <= 7) {
+        for (var i = 1; i <= total; i++) pages.push(i);
+    } else {
+        if (current <= 4) {
+            pages = [1, 2, 3, 4, 5, '...', total];
+        } else if (current >= total - 3) {
+            pages = [1, '...', total - 4, total - 3, total - 2, total - 1, total];
+        } else {
+            pages = [1, '...', current - 1, current, current + 1, '...', total];
+        }
+    }
+    return pages;
 }
 
 function prevTicketsPage() {
@@ -342,6 +388,20 @@ function nextTicketsPage() {
         window.ticketsPagination.currentPage++;
         renderCurrentTicketsPage();
     }
+}
+
+function gotoTicketsPage(page) {
+    var totalPages = Math.ceil(window.ticketsPagination.tickets.length / window.ticketsPagination.pageSize);
+    if (page >= 1 && page <= totalPages) {
+        window.ticketsPagination.currentPage = page;
+        renderCurrentTicketsPage();
+    }
+}
+
+function changeTicketsPageSize(size) {
+    window.ticketsPagination.pageSize = size;
+    window.ticketsPagination.currentPage = 1; // Reset to page 1
+    renderCurrentTicketsPage();
 }
 
 function setCardValue(id, val) {
@@ -1323,3 +1383,5 @@ window.applyDateFilter = applyDateFilter;
 window.resetDateFilter = resetDateFilter;
 window.prevTicketsPage = prevTicketsPage;
 window.nextTicketsPage = nextTicketsPage;
+window.gotoTicketsPage = gotoTicketsPage;
+window.changeTicketsPageSize = changeTicketsPageSize;
