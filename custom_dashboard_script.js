@@ -203,7 +203,7 @@ function renderTicketsData(tickets) {
         var operator = String(item.currentoperator || '').toLowerCase();
         var originator = String(item.originator || '').toLowerCase();
         var respParty = String(item.problem_responsible_party || item.problemresponsibleparty || '').toLowerCase();
-        var tLower = title.toLowerCase();
+        var tLower = String(title || '').toLowerCase();
         var desc = String(item.createptproblemdes || '').toLowerCase();
 
         if (respParty.indexOf('telkom') !== -1 || respParty.indexOf('akses') !== -1) {
