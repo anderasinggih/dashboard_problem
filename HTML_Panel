@@ -8,7 +8,7 @@
   </div>
 
   <!-- Date Filter Container Placeholder (Injected via JS to bypass OWS Sanitizer crash) -->
-  <div id="customFilterContainer">&nbsp;</div>
+  <div id="customFilterContainer"></div>
 
   <!-- 1. STATISTIC CARDS -->
   <div class="custom-card-grid">
@@ -325,7 +325,7 @@
     <!-- 2. MAIN LIST PANEL (Problem Ticket List) -->
     <div class="custom-panel-card" style="margin-top: 24px;">
       <div class="custom-panel-header">
-        <span>Problem Ticket List</span>
+        <span>6. PROBLEM TICKET LIST</span>
       </div>
       <div class="custom-panel-body">
         <div id="ticketContainer">
