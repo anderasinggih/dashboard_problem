@@ -186,7 +186,8 @@
   transition: transform 0.2s, box-shadow 0.2s;
 }
 
-.custom-stat-card:hover, .custom-partner-card:hover {
+.custom-stat-card:hover,
+.custom-partner-card:hover {
   transform: translateY(-2px);
   box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.25);
 }
@@ -546,10 +547,21 @@
   color: #e4e4e7;
 }
 
-.custom-severity-card.custom-border-emergency { border-top: 4px solid #da3633; }
-.custom-severity-card.custom-border-critical { border-top: 4px solid #dd6b20; }
-.custom-severity-card.custom-border-major { border-top: 4px solid #d29922; }
-.custom-severity-card.custom-border-minor { border-top: 4px solid #238636; }
+.custom-severity-card.custom-border-emergency {
+  border-top: 4px solid #da3633;
+}
+
+.custom-severity-card.custom-border-critical {
+  border-top: 4px solid #dd6b20;
+}
+
+.custom-severity-card.custom-border-major {
+  border-top: 4px solid #d29922;
+}
+
+.custom-severity-card.custom-border-minor {
+  border-top: 4px solid #238636;
+}
 
 .custom-severity-title {
   font-size: 14px;
@@ -558,10 +570,21 @@
   padding: 12px 8px 4px 8px;
 }
 
-.custom-text-emergency { color: #da3633; }
-.custom-text-critical { color: #dd6b20; }
-.custom-text-major { color: #d29922; }
-.custom-text-minor { color: #238636; }
+.custom-text-emergency {
+  color: #da3633;
+}
+
+.custom-text-critical {
+  color: #dd6b20;
+}
+
+.custom-text-major {
+  color: #d29922;
+}
+
+.custom-text-minor {
+  color: #238636;
+}
 
 .custom-severity-chart-row {
   display: flex;
@@ -615,11 +638,25 @@
   vertical-align: middle;
 }
 
-.custom-legend-dot.custom-fiber-cut { background-color: #58a6ff; }
-.custom-legend-dot.custom-hardware { background-color: #f0883e; }
-.custom-legend-dot.custom-power { background-color: #3fb950; }
-.custom-legend-dot.custom-configuration { background-color: #bc8cff; }
-.custom-legend-dot.custom-others { background-color: #a1a1aa; }
+.custom-legend-dot.custom-fiber-cut {
+  background-color: #58a6ff;
+}
+
+.custom-legend-dot.custom-hardware {
+  background-color: #f0883e;
+}
+
+.custom-legend-dot.custom-power {
+  background-color: #3fb950;
+}
+
+.custom-legend-dot.custom-configuration {
+  background-color: #bc8cff;
+}
+
+.custom-legend-dot.custom-others {
+  background-color: #a1a1aa;
+}
 
 .custom-severity-table {
   width: 100%;
@@ -630,7 +667,8 @@
   background-color: #0d0d10;
 }
 
-.custom-severity-table th, .custom-severity-table td {
+.custom-severity-table th,
+.custom-severity-table td {
   text-align: center;
   padding: 8px 4px;
   font-size: 11px;
@@ -666,10 +704,29 @@
   text-transform: capitalize;
 }
 
-.custom-bg-emergency { background-color: #341212; color: #ff7b72; border-top: 1px solid #27272a; }
-.custom-bg-critical { background-color: #3c1f0d; color: #f0883e; border-top: 1px solid #27272a; }
-.custom-bg-major { background-color: #382a0f; color: #e3b341; border-top: 1px solid #27272a; }
-.custom-bg-minor { background-color: #132d15; color: #56d364; border-top: 1px solid #27272a; }
+.custom-bg-emergency {
+  background-color: #341212;
+  color: #ff7b72;
+  border-top: 1px solid #27272a;
+}
+
+.custom-bg-critical {
+  background-color: #3c1f0d;
+  color: #f0883e;
+  border-top: 1px solid #27272a;
+}
+
+.custom-bg-major {
+  background-color: #382a0f;
+  color: #e3b341;
+  border-top: 1px solid #27272a;
+}
+
+.custom-bg-minor {
+  background-color: #132d15;
+  color: #56d364;
+  border-top: 1px solid #27272a;
+}
 
 /* Phase Status by Responsibility Party Styles */
 .custom-phase-grid {
@@ -714,7 +771,8 @@
   color: #e4e4e7;
 }
 
-.custom-phase-table th, .custom-phase-table td {
+.custom-phase-table th,
+.custom-phase-table td {
   padding: 8px 4px;
   text-align: center;
   border-bottom: 1px solid #27272a;
@@ -776,10 +834,21 @@
   transition: width 0.3s ease;
 }
 
-.custom-bar-segment.custom-seg-0-7 { background-color: #58a6ff; }
-.custom-bar-segment.custom-seg-8-15 { background-color: #f0883e; }
-.custom-bar-segment.custom-seg-16-21 { background-color: #bc8cff; }
-.custom-bar-segment.custom-seg-sla { background-color: #ff7b72; }
+.custom-bar-segment.custom-seg-0-7 {
+  background-color: #58a6ff;
+}
+
+.custom-bar-segment.custom-seg-8-15 {
+  background-color: #f0883e;
+}
+
+.custom-bar-segment.custom-seg-16-21 {
+  background-color: #bc8cff;
+}
+
+.custom-bar-segment.custom-seg-sla {
+  background-color: #ff7b72;
+}
 
 /* Heatmap Grid Cell Styles */
 .custom-heatmap-cell {
@@ -787,10 +856,25 @@
   font-size: 11px;
 }
 
-.custom-heatmap-0-7 { background-color: #132d15 !important; color: #56d364 !important; }
-.custom-heatmap-8-15 { background-color: #382a0f !important; color: #e3b341 !important; }
-.custom-heatmap-16-21 { background-color: #3c1f0d !important; color: #f0883e !important; }
-.custom-heatmap-sla { background-color: #341212 !important; color: #ff7b72 !important; }
+.custom-heatmap-0-7 {
+  background-color: #132d15 !important;
+  color: #56d364 !important;
+}
+
+.custom-heatmap-8-15 {
+  background-color: #382a0f !important;
+  color: #e3b341 !important;
+}
+
+.custom-heatmap-16-21 {
+  background-color: #3c1f0d !important;
+  color: #f0883e !important;
+}
+
+.custom-heatmap-sla {
+  background-color: #341212 !important;
+  color: #ff7b72 !important;
+}
 
 /* Weekly Trend, Root Cause, and SLA Compliance Styles */
 .custom-trends-row {
@@ -822,7 +906,8 @@
   color: #e4e4e7;
 }
 
-.custom-compliance-table th, .custom-compliance-table td {
+.custom-compliance-table th,
+.custom-compliance-table td {
   padding: 10px 6px;
   text-align: center;
   border-bottom: 1px solid #27272a;
@@ -873,7 +958,8 @@
   text-align: left;
 }
 
-.custom-noc-table th, .custom-noc-table td {
+.custom-noc-table th,
+.custom-noc-table td {
   padding: 10px 12px;
   border-bottom: 1px solid #27272a;
   vertical-align: middle;
