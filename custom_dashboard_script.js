@@ -1161,8 +1161,34 @@ function resetDateFilter() {
     loadProblemTickets();
 }
 
+// Dynamic rendering of filter controls to bypass OWS/GDE HTML parser limitations
+function renderDateFilterBar() {
+    var placeholder = document.getElementById('dateFilterPlaceholder');
+    if (!placeholder) return;
+
+    placeholder.innerHTML = 
+        '<div class="custom-filter-card">' +
+        '  <div class="custom-filter-title">📅 Date Range Filter (Createtime)</div>' +
+        '  <div class="custom-filter-inputs">' +
+        '    <div class="custom-filter-field">' +
+        '      <label for="filterStartDate">Start Date</label>' +
+        '      <input type="date" id="filterStartDate">' +
+        '    </div>' +
+        '    <div class="custom-filter-field">' +
+        '      <label for="filterEndDate">End Date</label>' +
+        '      <input type="date" id="filterEndDate">' +
+        '    </div>' +
+        '    <div class="custom-filter-actions">' +
+        '      <button id="btnApplyFilter" class="custom-btn custom-btn-primary">Apply Filter</button>' +
+        '      <button id="btnResetFilter" class="custom-btn custom-btn-secondary">Reset</button>' +
+        '    </div>' +
+        '  </div>' +
+        '</div>';
+}
+
 // Safe event listener and loader registration for OWS (GDE) & Local Sandbox
 function initDashboard() {
+    renderDateFilterBar();
     initDateFilterEvents();
     loadProblemTickets();
 }
