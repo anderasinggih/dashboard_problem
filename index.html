@@ -1,0 +1,453 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Problem Management Dashboard - NOC Preview</title>
+    <!-- Load custom styles -->
+    <link rel="stylesheet" href="custom_dashboard_style.css">
+    <!-- Load ECharts from CDN for local rendering -->
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
+    <style>
+        body {
+            background-color: #0d1117;
+            margin: 0;
+            padding: 20px;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+        }
+        /* Style for Local File Loader Info Box */
+        .local-info-banner {
+            background: rgba(56, 139, 253, 0.15);
+            border: 1px solid rgba(56, 139, 253, 0.4);
+            color: #58a6ff;
+            padding: 12px 16px;
+            border-radius: 6px;
+            margin-bottom: 20px;
+            font-size: 13px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .local-info-banner strong {
+            color: #c9d1d9;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Local Preview Banner -->
+    <div class="local-info-banner">
+        <div>
+            ⚡ <strong>Local Sandbox Mode:</strong> Dashboard ini sedang membaca data real langsung dari file lokal <code>Sample_Problem Ticket_20260717141203 (2).tsv</code>.
+        </div>
+        <div style="font-size: 11px; opacity: 0.8;">
+            *Hanya aktif saat dijalankan di server lokal (http://localhost:8080)
+        </div>
+    </div>
+
+    <!-- Inject HTML Panel -->
+    <div class="custom-dashboard-wrapper">
+        <!-- Header Bar -->
+        <div class="custom-dashboard-header">
+            <div class="custom-header-info">
+                <h1 class="custom-header-title">PROBLEM MANAGEMENT DASHBOARD</h1>
+                <p class="custom-header-subtitle">Real-time enterprise monitoring & ticket tracking (NOC Environment)</p>
+            </div>
+        </div>
+
+        <!-- 1. STATISTIC CARDS -->
+        <div class="custom-card-grid">
+            <!-- Card: Total PT -->
+            <div class="custom-stat-card">
+                <div class="custom-stat-left">
+                    <div class="custom-icon-wrapper custom-icon-total">Σ</div>
+                </div>
+                <div class="custom-stat-right">
+                    <div class="custom-stat-title">TOTAL PT</div>
+                    <div class="custom-stat-number" id="statTotal">0</div>
+                </div>
+            </div>
+
+            <!-- Card: Open PT -->
+            <div class="custom-stat-card">
+                <div class="custom-stat-left">
+                    <div class="custom-icon-wrapper custom-icon-open">●</div>
+                </div>
+                <div class="custom-stat-right">
+                    <div class="custom-stat-title">OPEN PT</div>
+                    <div class="custom-stat-number custom-text-danger" id="statOpen">0</div>
+                </div>
+            </div>
+
+            <!-- Card: Pending PT -->
+            <div class="custom-stat-card">
+                <div class="custom-stat-left">
+                    <div class="custom-icon-wrapper custom-icon-pending">◷</div>
+                </div>
+                <div class="custom-stat-right">
+                    <div class="custom-stat-title">PENDING PT</div>
+                    <div class="custom-stat-number custom-text-warning" id="statInProgress">0</div>
+                </div>
+            </div>
+
+            <!-- Card: Closed PT -->
+            <div class="custom-stat-card">
+                <div class="custom-stat-left">
+                    <div class="custom-icon-wrapper custom-icon-closed">✓</div>
+                </div>
+                <div class="custom-stat-right">
+                    <div class="custom-stat-title">CLOSED PT</div>
+                    <div class="custom-stat-number custom-text-success" id="statClosed">0</div>
+                </div>
+            </div>
+
+            <!-- Partner Card: Telkom Akses -->
+            <div class="custom-partner-card">
+                <div class="custom-partner-logo">
+                    <span class="custom-logo-telkom-red">Telkom</span><span class="custom-logo-telkom-black">Akses</span>
+                </div>
+                <div class="custom-partner-metrics">
+                    <div class="custom-metric-col">
+                        <div class="custom-metric-label">Open PT</div>
+                        <div class="custom-metric-val" id="taOpen">0</div>
+                    </div>
+                    <div class="custom-metric-col">
+                        <div class="custom-metric-label">Pending PT</div>
+                        <div class="custom-metric-val" id="taPending">0</div>
+                    </div>
+                    <div class="custom-metric-col">
+                        <div class="custom-metric-label">Closed PT</div>
+                        <div class="custom-metric-val" id="taClosed">0</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Partner Card: Mandau -->
+            <div class="custom-partner-card">
+                <div class="custom-partner-logo">
+                    <span class="custom-logo-mandau">mandau</span>
+                </div>
+                <div class="custom-partner-metrics">
+                    <div class="custom-metric-col">
+                        <div class="custom-metric-label">Open PT</div>
+                        <div class="custom-metric-val" id="mOpen">0</div>
+                    </div>
+                    <div class="custom-metric-col">
+                        <div class="custom-metric-label">Pending PT</div>
+                        <div class="custom-metric-val" id="mPending">0</div>
+                    </div>
+                    <div class="custom-metric-col">
+                        <div class="custom-metric-label">Closed PT</div>
+                        <div class="custom-metric-val" id="mClosed">0</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Partner Card: Persada -->
+            <div class="custom-partner-card">
+                <div class="custom-partner-logo">
+                    <span class="custom-logo-persada">PERSADA</span>
+                </div>
+                <div class="custom-partner-metrics">
+                    <div class="custom-metric-col">
+                        <div class="custom-metric-label">Open PT</div>
+                        <div class="custom-metric-val" id="pOpen">0</div>
+                    </div>
+                    <div class="custom-metric-col">
+                        <div class="custom-metric-label">Pending PT</div>
+                        <div class="custom-metric-val" id="pPending">0</div>
+                    </div>
+                    <div class="custom-metric-col">
+                        <div class="custom-metric-label">Closed PT</div>
+                        <div class="custom-metric-val" id="pClosed">0</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 2. SEVERITY OVERVIEW (SLA BASED) -->
+        <div class="custom-panel-card" style="margin-top: 24px;">
+            <div class="custom-panel-header">
+                <span>1. SEVERITY OVERVIEW (SLA BASED)</span>
+            </div>
+            <div class="custom-panel-body" style="padding: 16px;">
+                <div class="custom-severity-grid">
+                    <!-- EMERGENCY CARD -->
+                    <div class="custom-severity-card custom-border-emergency">
+                        <div class="custom-severity-title custom-text-emergency">EMERGENCY (SLA : 7 Days)</div>
+                        <div class="custom-severity-chart-row">
+                            <div class="custom-chart-container" id="chartEmergency"></div>
+                            <div class="custom-legend-container" id="legendEmergency"></div>
+                        </div>
+                        <table class="custom-severity-table">
+                            <thead>
+                                <tr>
+                                    <th>Total PT</th>
+                                    <th>Pending PT</th>
+                                    <th>Over SLA</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td id="emergencyTotal">0</td>
+                                    <td id="emergencyPending">0</td>
+                                    <td id="emergencyOver" class="custom-text-danger">0</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                        <div class="custom-severity-footer custom-bg-emergency">SLA Time : 7 Days</div>
+                    </div>
+
+                    <!-- CRITICAL CARD -->
+                    <div class="custom-severity-card custom-border-critical">
+                        <div class="custom-severity-title custom-text-critical">CRITICAL (SLA : 15 Days)</div>
+                        <div class="custom-severity-chart-row">
+                            <div class="custom-chart-container" id="chartCritical"></div>
+                            <div class="custom-legend-container" id="legendCritical"></div>
+                        </div>
+                        <table class="custom-severity-table">
+                            <thead>
+                                <tr>
+                                    <th>Total PT</th>
+                                    <th>Pending PT</th>
+                                    <th>Over SLA</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td id="criticalTotal">0</td>
+                                    <td id="criticalPending">0</td>
+                                    <td id="criticalOver" class="custom-text-danger">0</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                        <div class="custom-severity-footer custom-bg-critical">SLA Time : 15 Days</div>
+                    </div>
+
+                    <!-- MAJOR CARD -->
+                    <div class="custom-severity-card custom-border-major">
+                        <div class="custom-severity-title custom-text-major">MAJOR (SLA : 21 Days)</div>
+                        <div class="custom-severity-chart-row">
+                            <div class="custom-chart-container" id="chartMajor"></div>
+                            <div class="custom-legend-container" id="legendMajor"></div>
+                        </div>
+                        <table class="custom-severity-table">
+                            <thead>
+                                <tr>
+                                    <th>Total PT</th>
+                                    <th>Pending PT</th>
+                                    <th>Over SLA</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td id="majorTotal">0</td>
+                                    <td id="majorPending">0</td>
+                                    <td id="majorOver" class="custom-text-danger">0</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                        <div class="custom-severity-footer custom-bg-major">SLA Time : 21 Days</div>
+                    </div>
+
+                    <!-- MINOR CARD -->
+                    <div class="custom-severity-card custom-border-minor">
+                        <div class="custom-severity-title custom-text-minor">MINOR (SLA : 30 Days)</div>
+                        <div class="custom-severity-chart-row">
+                            <div class="custom-chart-container" id="chartMinor"></div>
+                            <div class="custom-legend-container" id="legendMinor"></div>
+                        </div>
+                        <table class="custom-severity-table">
+                            <thead>
+                                <tr>
+                                    <th>Total PT</th>
+                                    <th>Pending PT</th>
+                                    <th>Over SLA</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td id="minorTotal">0</td>
+                                    <td id="minorPending">0</td>
+                                    <td id="minorOver" class="custom-text-danger">0</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                        <div class="custom-severity-footer custom-bg-minor">SLA Time : 30 Days</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 3. PHASE STATUS BY RESPONSIBILITY PARTY -->
+        <div class="custom-panel-card" style="margin-top: 24px;">
+            <div class="custom-panel-header">
+                <span>2. PHASE STATUS BY RESPONSIBILITY PARTY (Pending)</span>
+            </div>
+            <div class="custom-panel-body" style="padding: 16px; overflow-x: auto;">
+                <div class="custom-phase-grid">
+                    <!-- COLUMN 1: OVERALL SUMMARY -->
+                    <div class="custom-phase-col">
+                        <div class="custom-phase-col-header">
+                            <span class="custom-phase-col-title" style="font-weight: 700; color: #f0f6fc; font-size: 13px;">OVERALL SUMMARY</span>
+                        </div>
+                        <div class="custom-phase-table-wrapper" id="tablePhaseOverall">
+                            <div style="color: #8b949e; padding: 10px; font-size: 12px;">Memuat data summary...</div>
+                        </div>
+                    </div>
+
+                    <!-- COLUMN 2: TELKOM AKSES -->
+                    <div class="custom-phase-col">
+                        <div class="custom-phase-col-header">
+                            <span class="custom-logo-telkom-red" style="font-weight: 700; font-size: 14px;">Telkom</span><span class="custom-logo-telkom-black" style="font-weight: 700; font-size: 14px;">Akses</span>
+                        </div>
+                        <div class="custom-phase-table-wrapper" id="tablePhaseTelkom">
+                            <div style="color: #8b949e; padding: 10px; font-size: 12px;">Memuat data Telkom Akses...</div>
+                        </div>
+                    </div>
+
+                    <!-- COLUMN 3: MANDAU -->
+                    <div class="custom-phase-col">
+                        <div class="custom-phase-col-header">
+                            <span class="custom-logo-mandau" style="font-size: 14px; font-weight: 700;">mandau</span>
+                        </div>
+                        <div class="custom-phase-table-wrapper" id="tablePhaseMandau">
+                            <div style="color: #8b949e; padding: 10px; font-size: 12px;">Memuat data Mandau...</div>
+                        </div>
+                    </div>
+
+                    <!-- COLUMN 4: PERSADA -->
+                    <div class="custom-phase-col">
+                        <div class="custom-phase-col-header">
+                            <span class="custom-logo-persada" style="font-size: 14px; font-weight: 800;">PERSADA</span>
+                        </div>
+                        <div class="custom-phase-table-wrapper" id="tablePhasePersada">
+                            <div style="color: #8b949e; padding: 10px; font-size: 12px;">Memuat data Persada...</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 4. TRENDS & SLA COMPLIANCE PANEL ROW -->
+        <div class="custom-trends-row" style="margin-top: 24px;">
+            <!-- WEEKLY TREND -->
+            <div class="custom-panel-card custom-trend-card">
+                <div class="custom-panel-header">
+                    <span>5. WEEKLY TREND</span>
+                </div>
+                <div class="custom-panel-body" style="padding: 16px;">
+                    <div id="chartWeeklyTrend" style="width: 100%; height: 280px;"></div>
+                </div>
+            </div>
+
+            <!-- TOP ROOT CAUSE -->
+            <div class="custom-panel-card custom-rootcause-card">
+                <div class="custom-panel-header">
+                    <span>6. TOP ROOT CAUSE (ALL PT)</span>
+                </div>
+                <div class="custom-panel-body" style="padding: 16px;">
+                    <div id="chartTopRootCause" style="width: 100%; height: 280px;"></div>
+                </div>
+            </div>
+
+            <!-- SLA COMPLIANCE BY PARTY -->
+            <div class="custom-panel-card custom-compliance-card">
+                <div class="custom-panel-header">
+                    <span>4. SLA COMPLIANCE BY PARTY</span>
+                </div>
+                <div class="custom-panel-body" style="padding: 12px; overflow-x: auto;">
+                    <div id="tableSlaCompliance">
+                        <div style="color: #8b949e; padding: 10px; font-size: 12px;">Memuat data kepatuhan...</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 2. MAIN LIST PANEL (Problem Ticket List) -->
+        <div class="custom-panel-card" style="margin-top: 24px;">
+            <div class="custom-panel-header">
+                <span>Problem Ticket List</span>
+            </div>
+            <div class="custom-panel-body">
+                <div id="ticketContainer">
+                    <div style="color: #6c757d; padding: 10px;">Memuat data tiket...</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Local Sandbox Mock MessageProcessor for TSV parsing -->
+    <script>
+        window.MessageProcessor = {
+            process: function(options) {
+                fetch('Sample_Problem Ticket_20260717141203 (2).tsv')
+                    .then(response => response.text())
+                    .then(text => {
+                        const lines = text.split('\n');
+                        if (lines.length === 0) return options.success({ data: [] });
+                        
+                        const headers = lines[0].split('\t').map(h => h.trim());
+                        
+                        // Map TSV Headers to OWS JSON fields
+                        const headerMap = {
+                            'Ticket ID': 'orderid',
+                            'Title': 'title',
+                            'Ticket Status': 'ticketstatus',
+                            'Current Phase': 'current_phase',
+                            'operate_phase': 'operate_phase',
+                            'Problem Responsible Party': 'problem_responsible_party',
+                            'Ticket Level(Create PT)': 'createticketlevel',
+                            'Created At': 'createtime',
+                            'Closure Time': 'closetime',
+                            'Updated At': 'lastupdatetime',
+                            'operate_time': 'operate_time',
+                            'Description': 'createptproblemdes',
+                            'Root Cause': 'root_cause',
+                            'SLA Status': 'slastatus'
+                        };
+
+                        const tickets = [];
+                        for (let i = 1; i < lines.length; i++) {
+                            if (!lines[i].trim()) continue;
+                            const cols = lines[i].split('\t');
+                            const ticket = {};
+                            headers.forEach((header, index) => {
+                                const fieldName = headerMap[header] || header;
+                                ticket[fieldName] = cols[index] ? cols[index].trim() : '';
+                            });
+                            
+                            // Align properties
+                            ticket.active = true;
+                            tickets.push(ticket);
+                        }
+
+                        // Emulate paging/limit filter
+                        const limit = (options.data && options.data.limit) || 50;
+                        const start = (options.data && options.data.start) || 0;
+                        const sliced = tickets.slice(start, start + limit);
+
+                        options.success({
+                            data: sliced
+                        });
+                    })
+                    .catch(err => {
+                        console.error('Error reading local TSV:', err);
+                        if (options.error) options.error(err);
+                    });
+            }
+        };
+    </script>
+    
+    <!-- Load custom javascript script -->
+    <script src="custom_dashboard_script.js"></script>
+    <script>
+        // Trigger initial load on page ready
+        document.addEventListener('DOMContentLoaded', function() {
+            if (typeof loadProblemTickets === 'function') {
+                loadProblemTickets();
+            }
+        });
+    </script>
+</body>
+</html>
