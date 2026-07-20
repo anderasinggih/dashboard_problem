@@ -1167,6 +1167,7 @@ function resetDateFilter() {
 
 // Safe event listener and loader registration for OWS (GDE) & Local Sandbox
 function initDashboard() {
+    initDateFilterDOM();
     initDateFilterEvents();
     loadProblemTickets();
 }
@@ -1177,6 +1178,30 @@ if (typeof U !== 'undefined' && typeof U.ready === 'function') {
     document.addEventListener('DOMContentLoaded', initDashboard);
 } else {
     initDashboard();
+}
+
+function initDateFilterDOM() {
+    var container = document.getElementById('customFilterContainer');
+    if (!container) return;
+    
+    container.innerHTML = 
+        '<div class="custom-filter-card">' +
+        '  <div class="custom-filter-title">📅 Date Range Filter (Createtime)</div>' +
+        '  <div class="custom-filter-inputs">' +
+        '    <div class="custom-filter-field">' +
+        '      <label>Start Date</label>' +
+        '      <input type="date" class="custom-filter-start-input">' +
+        '    </div>' +
+        '    <div class="custom-filter-field">' +
+        '      <label>End Date</label>' +
+        '      <input type="date" class="custom-filter-end-input">' +
+        '    </div>' +
+        '    <div class="custom-filter-actions">' +
+        '      <button class="custom-btn custom-btn-primary custom-btn-apply-filter">Apply Filter</button>' +
+        '      <button class="custom-btn custom-btn-secondary custom-btn-reset-filter">Reset</button>' +
+        '    </div>' +
+        '  </div>' +
+        '</div>';
 }
 
 function initDateFilterEvents() {
