@@ -219,6 +219,7 @@ function renderCurrentTicketsPage() {
     var html = '<table class="custom-noc-table">';
     html += '<thead>';
     html += '<tr>';
+    html += '<th style="width: 50px; text-align: center;">No.</th>';
     html += '<th>Ticket ID</th>';
     html += '<th>Title / Description</th>';
     html += '<th>Assignee</th>';
@@ -300,7 +301,9 @@ function renderCurrentTicketsPage() {
             statusClass = 'custom-badge-closed';
         }
 
+        var displayNo = startIdx + i + 1;
         html += '<tr>';
+        html += '<td style="text-align: center; color: #8b949e; font-weight: 600;">' + displayNo + '</td>';
         html += '<td style="font-family: monospace; font-weight: bold; color: #58a6ff;">' + id + '</td>';
         html += '<td style="text-align: left; font-weight: 500;">' + title + '</td>';
         html += '<td>' + partner + '</td>';
