@@ -1,63 +1,3 @@
-var ticketsDataCache = null;
-
-function getThemeColors() {
-    var wrapper = document.querySelector('.custom-dashboard-wrapper');
-    var isLight = wrapper ? wrapper.classList.contains('custom-light-mode') : false;
-    return {
-        text: isLight ? '#24292f' : '#c9d1d9',
-        titleText: isLight ? '#24292f' : '#f0f6fc',
-        border: isLight ? '#eaeef2' : '#30363d',
-        axisLabel: isLight ? '#57606a' : '#8b949e',
-        splitLine: isLight ? '#eaeef2' : '#30363d',
-        tooltipBg: isLight ? '#ffffff' : '#161b22',
-        tooltipBorder: isLight ? '#d0d7de' : '#30363d'
-    };
-}
-
-function toggleTheme() {
-    var wrapper = document.querySelector('.custom-dashboard-wrapper');
-    if (wrapper) {
-        wrapper.classList.toggle('custom-light-mode');
-        var isLight = wrapper.classList.contains('custom-light-mode');
-        var currentTheme = isLight ? 'light' : 'dark';
-        localStorage.setItem('custom-dashboard-theme', currentTheme);
-        
-        var btn = document.querySelector('.custom-theme-toggle');
-        if (btn) {
-            btn.innerText = isLight ? 'Dark Mode' : 'Light Mode';
-        }
-        
-        // Re-render the charts to update their colors
-        if (ticketsDataCache) {
-            renderTicketsData(ticketsDataCache);
-        }
-    }
-}
-
-function initTheme() {
-    var wrapper = document.querySelector('.custom-dashboard-wrapper');
-    if (wrapper) {
-        var savedTheme = localStorage.getItem('custom-dashboard-theme');
-        var isLight = (savedTheme === 'light');
-        if (isLight) {
-            wrapper.classList.add('custom-light-mode');
-        } else {
-            wrapper.classList.remove('custom-light-mode');
-        }
-        var btn = document.querySelector('.custom-theme-toggle');
-        if (btn) {
-            btn.innerText = isLight ? 'Dark Mode' : 'Light Mode';
-        }
-    }
-}
-
-// Initialize theme on script run
-if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', initTheme);
-} else {
-    initTheme();
-}
-
 function calculateAgingDays(createTimeStr, closeTimeStr, lastUpdateTimeStr, operateTimeStr, ticketstatus) {
     if (!createTimeStr) return 0;
     // Replace '-' with '/' for broad browser support of date parsing
@@ -128,7 +68,6 @@ function parseAndRender(res) {
 }
 
 function renderTicketsData(tickets) {
-    ticketsDataCache = tickets;
     var container = document.querySelector('#ticketContainer');
     if (!container) return;
 
@@ -442,7 +381,6 @@ function renderDonutChart(containerId, data, totalVal, pctVal) {
     }
     
     var myChart = echarts.init(chartDom);
-    var tColors = getThemeColors();
     
     var chartData = [];
     var colors = [];
@@ -460,10 +398,7 @@ function renderDonutChart(containerId, data, totalVal, pctVal) {
         tooltip: {
             trigger: 'item',
             formatter: '{b}: {c} ({d}%)',
-            confine: true,
-            backgroundColor: tColors.tooltipBg,
-            borderColor: tColors.tooltipBorder,
-            textStyle: { color: tColors.text }
+            confine: true
         },
         series: [
             {
@@ -494,7 +429,7 @@ function renderDonutChart(containerId, data, totalVal, pctVal) {
                 style: {
                     text: String(totalVal),
                     textAlign: 'center',
-                    fill: tColors.titleText,
+                    fill: '#f0f6fc',
                     fontSize: 16,
                     fontWeight: 'bold'
                 }
@@ -506,7 +441,7 @@ function renderDonutChart(containerId, data, totalVal, pctVal) {
                 style: {
                     text: '(' + pctVal + ')',
                     textAlign: 'center',
-                    fill: tColors.axisLabel,
+                    fill: '#8b949e',
                     fontSize: 9
                 }
             }
@@ -881,7 +816,6 @@ function drawWeeklyTrendChart(containerId, data) {
     }
 
     var myChart = echarts.init(chartDom);
-    var tColors = getThemeColors();
 
     var option = {
         backgroundColor: 'transparent',
@@ -889,15 +823,12 @@ function drawWeeklyTrendChart(containerId, data) {
             trigger: 'axis',
             axisPointer: {
                 type: 'shadow'
-            },
-            backgroundColor: tColors.tooltipBg,
-            borderColor: tColors.tooltipBorder,
-            textStyle: { color: tColors.text }
+            }
         },
         legend: {
             data: ['New PT', 'Closed PT', 'Pending PT', 'Over SLA', 'SLA Achievement (%)'],
             textStyle: {
-                color: tColors.text,
+                color: '#c9d1d9',
                 fontSize: 10
             },
             bottom: '0%'
@@ -913,28 +844,28 @@ function drawWeeklyTrendChart(containerId, data) {
             {
                 type: 'category',
                 data: data.weeks,
-                axisLine: { lineStyle: { color: tColors.border } },
-                axisLabel: { color: tColors.axisLabel }
+                axisLine: { lineStyle: { color: '#30363d' } },
+                axisLabel: { color: '#8b949e' }
             }
         ],
         yAxis: [
             {
                 type: 'value',
                 name: 'PT (Total)',
-                nameTextStyle: { color: tColors.axisLabel },
-                axisLine: { lineStyle: { color: tColors.border } },
-                axisLabel: { color: tColors.axisLabel },
-                splitLine: { lineStyle: { color: tColors.splitLine } }
+                nameTextStyle: { color: '#8b949e' },
+                axisLine: { lineStyle: { color: '#30363d' } },
+                axisLabel: { color: '#8b949e' },
+                splitLine: { lineStyle: { color: '#30363d' } }
             },
             {
                 type: 'value',
                 name: 'SLA %',
-                nameTextStyle: { color: tColors.axisLabel },
+                nameTextStyle: { color: '#8b949e' },
                 min: 0,
                 max: 100,
-                axisLine: { lineStyle: { color: tColors.border } },
+                axisLine: { lineStyle: { color: '#30363d' } },
                 axisLabel: {
-                    color: tColors.axisLabel,
+                    color: '#8b949e',
                     formatter: '{value}%'
                 },
                 splitLine: { show: false }
@@ -1013,7 +944,6 @@ function drawTopRootCauseChart(containerId, data) {
     }
 
     var myChart = echarts.init(chartDom);
-    var tColors = getThemeColors();
 
     var sortedData = data.slice().reverse();
     var yAxisData = [];
@@ -1032,10 +962,7 @@ function drawTopRootCauseChart(containerId, data) {
         backgroundColor: 'transparent',
         tooltip: {
             trigger: 'axis',
-            axisPointer: { type: 'shadow' },
-            backgroundColor: tColors.tooltipBg,
-            borderColor: tColors.tooltipBorder,
-            textStyle: { color: tColors.text }
+            axisPointer: { type: 'shadow' }
         },
         grid: {
             top: '5%',
@@ -1046,15 +973,15 @@ function drawTopRootCauseChart(containerId, data) {
         },
         xAxis: {
             type: 'value',
-            axisLine: { lineStyle: { color: tColors.border } },
-            axisLabel: { color: tColors.axisLabel },
-            splitLine: { lineStyle: { color: tColors.splitLine } }
+            axisLine: { lineStyle: { color: '#30363d' } },
+            axisLabel: { color: '#8b949e' },
+            splitLine: { lineStyle: { color: '#30363d' } }
         },
         yAxis: {
             type: 'category',
             data: yAxisData,
-            axisLine: { lineStyle: { color: tColors.border } },
-            axisLabel: { color: tColors.text, fontSize: 10 }
+            axisLine: { lineStyle: { color: '#30363d' } },
+            axisLabel: { color: '#c9d1d9', fontSize: 10 }
         },
         series: [
             {
@@ -1074,7 +1001,7 @@ function drawTopRootCauseChart(containerId, data) {
                         var pct = totalSum ? Math.round((val / totalSum) * 1000) / 10 + '%' : '0%';
                         return val + ' (' + pct + ')';
                     },
-                    color: tColors.text,
+                    color: '#c9d1d9',
                     fontSize: 9
                 }
             }

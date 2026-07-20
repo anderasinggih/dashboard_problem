@@ -1,12 +1,11 @@
+<script
+  src="${staticContextPath}/${jslibPrefix}/${tenant_id}/CN_GSC_ID_Surge_Noc_Dashboard/Dashboard/echarts/0.0.1/echarts.min.js"></script>
 <div class="custom-dashboard-wrapper">
   <!-- Header Bar -->
   <div class="custom-dashboard-header">
     <div class="custom-header-info">
       <h1 class="custom-header-title">PROBLEM MANAGEMENT DASHBOARD</h1>
       <p class="custom-header-subtitle">Real-time enterprise monitoring & ticket tracking</p>
-    </div>
-    <div class="custom-header-right">
-      <button class="custom-theme-toggle" onclick="toggleTheme()">Light Mode</button>
     </div>
   </div>
 
@@ -15,7 +14,7 @@
     <!-- Card: Total PT -->
     <div class="custom-stat-card">
       <div class="custom-stat-left">
-        <div class="custom-icon-wrapper custom-icon-total">ALL</div>
+        <div class="custom-icon-wrapper custom-icon-total">Σ</div>
       </div>
       <div class="custom-stat-right">
         <div class="custom-stat-title">TOTAL PT</div>
@@ -26,7 +25,7 @@
     <!-- Card: Open PT -->
     <div class="custom-stat-card">
       <div class="custom-stat-left">
-        <div class="custom-icon-wrapper custom-icon-open">OPN</div>
+        <div class="custom-icon-wrapper custom-icon-open">●</div>
       </div>
       <div class="custom-stat-right">
         <div class="custom-stat-title">OPEN PT</div>
@@ -37,7 +36,7 @@
     <!-- Card: Pending PT -->
     <div class="custom-stat-card">
       <div class="custom-stat-left">
-        <div class="custom-icon-wrapper custom-icon-pending">PND</div>
+        <div class="custom-icon-wrapper custom-icon-pending">◷</div>
       </div>
       <div class="custom-stat-right">
         <div class="custom-stat-title">PENDING PT</div>
@@ -48,7 +47,7 @@
     <!-- Card: Closed PT -->
     <div class="custom-stat-card">
       <div class="custom-stat-left">
-        <div class="custom-icon-wrapper custom-icon-closed">CLS</div>
+        <div class="custom-icon-wrapper custom-icon-closed">✓</div>
       </div>
       <div class="custom-stat-right">
         <div class="custom-stat-title">CLOSED PT</div>
