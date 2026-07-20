@@ -281,8 +281,8 @@ function renderTicketsData(tickets) {
     // Render the Severity Overview charts and tables (Filtered)
     renderSeverityDashboard(tickets);
 
-    // Render the Phase Status tables (Always All-Time)
-    renderPhaseDashboard(window.allTicketsData || tickets);
+    // Render the Phase Status tables (Filtered)
+    renderPhaseDashboard(tickets);
 
     // Render Weekly Trend (Filtered) & Top Root Cause + SLA Compliance (Always All-Time)
     renderTrendsAndCompliance(tickets, window.allTicketsData || tickets);
@@ -757,7 +757,8 @@ function renderTrendsAndCompliance(filteredTickets, allTimeTickets) {
 
     function getWeekLabel(dateStr) {
         if (!dateStr) return 'W28';
-        var parts = dateStr.split(' ')[0].split('-');
+        var normalized = String(dateStr).replace(/\//g, '-');
+        var parts = normalized.split(' ')[0].split('-');
         if (parts.length < 3) return 'W28';
         var yr = parseInt(parts[0]);
         var mo = parseInt(parts[1]) - 1;
