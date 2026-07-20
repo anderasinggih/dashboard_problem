@@ -1184,24 +1184,7 @@ function initDateFilterDOM() {
     var container = document.getElementById('customFilterContainer');
     if (!container) return;
     
-    container.innerHTML = 
-        '<div class="custom-filter-card">' +
-        '  <div class="custom-filter-title">Date Range Filter (Createtime)</div>' +
-        '  <div class="custom-filter-inputs">' +
-        '    <div class="custom-filter-field">' +
-        '      <label>Start Date</label>' +
-        '      <input type="date" class="custom-filter-start-input">' +
-        '    </div>' +
-        '    <div class="custom-filter-field">' +
-        '      <label>End Date</label>' +
-        '      <input type="date" class="custom-filter-end-input">' +
-        '    </div>' +
-        '    <div class="custom-filter-actions">' +
-        '      <button class="custom-btn custom-btn-primary custom-btn-apply-filter">Apply Filter</button>' +
-        '      <button class="custom-btn custom-btn-secondary custom-btn-reset-filter">Reset</button>' +
-        '    </div>' +
-        '  </div>' +
-        '</div>';
+    container.innerHTML = '<div class="custom-filter-card"><div class="custom-filter-title">Date Range Filter (Createtime)</div><div class="custom-filter-inputs"><div class="custom-filter-field"><label>Start Date</label><input type="date" class="custom-filter-start-input"></div><div class="custom-filter-field"><label>End Date</label><input type="date" class="custom-filter-end-input"></div><div class="custom-filter-actions"><button class="custom-btn custom-btn-primary custom-btn-apply-filter">Apply Filter</button><button class="custom-btn custom-btn-secondary custom-btn-reset-filter">Reset</button></div></div></div>';
 }
 
 function initDateFilterEvents() {
