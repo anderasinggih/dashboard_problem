@@ -1383,13 +1383,13 @@ function resetDateFilter() {
 
 // Safe event listener and loader registration for OWS (GDE) & Local Sandbox
 function initDashboard() {
+    startLiveClock();
     var retryCount = 0;
     function tryInit() {
         var container = document.getElementById('customFilterContainer');
         if (container) {
             initDetailModalDOM();
             initDateFilterDOM();
-            initLiveClock();
             loadProblemTickets();
         } else if (retryCount < 100) { // Retry for up to 5 seconds
             retryCount++;
@@ -1397,37 +1397,34 @@ function initDashboard() {
         } else {
             console.warn('customFilterContainer placeholder not found in DOM after 5s. Loading tickets fallback.');
             initDetailModalDOM();
-            initLiveClock();
             loadProblemTickets();
         }
     }
     tryInit();
 }
 
-function initLiveClock() {
-    var subtitleEl = document.querySelector('.custom-header-subtitle');
-    if (!subtitleEl) return;
-    
+function startLiveClock() {
     function updateClock() {
-        var now = new Date();
-        var hours = String(now.getHours()).padStart(2, '0');
-        var minutes = String(now.getMinutes()).padStart(2, '0');
-        var seconds = String(now.getSeconds()).padStart(2, '0');
+        var el = document.getElementById('customLiveClock');
+        if (!el) return;
         
+        var d = new Date();
         var days = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
-        var dayName = days[now.getDay()];
-        
-        var date = now.getDate();
-        
         var months = [
             'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
             'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'
         ];
-        var monthName = months[now.getMonth()];
-        var year = now.getFullYear();
         
-        subtitleEl.innerHTML = '<span style="font-family: monospace; font-weight: 700; color: #58a6ff; font-size: 15px;">' + hours + ':' + minutes + ':' + seconds + '</span>' +
-                               ' | <span style="font-weight: 500; color: #a1a1aa;">' + dayName + ', ' + date + ' ' + monthName + ' ' + year + '</span>';
+        var dayName = days[d.getDay()];
+        var dateVal = d.getDate();
+        var monthName = months[d.getMonth()];
+        var yearVal = d.getFullYear();
+        
+        var hh = String(d.getHours()).padStart(2, '0');
+        var mm = String(d.getMinutes()).padStart(2, '0');
+        var ss = String(d.getSeconds()).padStart(2, '0');
+        
+        el.innerText = dayName + ', ' + dateVal + ' ' + monthName + ' ' + yearVal + ' | ' + hh + ':' + mm + ':' + ss;
     }
     
     updateClock();
