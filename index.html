@@ -377,19 +377,49 @@
         </div>
     </div>
 
-    <!-- Local Sandbox Mock MessageProcessor for TSV parsing -->
+    <!-- Local Sandbox Mock MessageProcessor for CSV parsing -->
     <script>
+        function parseCSV(text) {
+            let p = '', c = '', r = [];
+            let q = false;
+            let row = [''];
+            for (let i = 0; i < text.length; i++) {
+                c = text[i];
+                let next = text[i+1];
+                if (c === '"') {
+                    if (q && next === '"') { row[row.length - 1] += '"'; i++; }
+                    else { q = !q; }
+                } else if (c === ',') {
+                    if (q) { row[row.length - 1] += c; }
+                    else { row.push(''); }
+                } else if (c === '\r' || c === '\n') {
+                    if (q) { row[row.length - 1] += c; }
+                    else {
+                        if (c === '\r' && next === '\n') { i++; }
+                        r.push(row);
+                        row = [''];
+                    }
+                } else {
+                    row[row.length - 1] += c;
+                }
+            }
+            if (row.length > 1 || row[0] !== '') {
+                r.push(row);
+            }
+            return r;
+        }
+
         window.MessageProcessor = {
             process: function(options) {
-                fetch('Sample_Problem Ticket_20260717141203 (2).tsv')
+                fetch('tickets_data.csv')
                     .then(response => response.text())
                     .then(text => {
-                        const lines = text.split('\n');
-                        if (lines.length === 0) return options.success({ data: [] });
+                        const parsed = parseCSV(text);
+                        if (parsed.length === 0) return options.success({ data: [] });
                         
-                        const headers = lines[0].split('\t').map(h => h.trim());
+                        const headers = parsed[0].map(h => h.trim());
                         
-                        // Map TSV Headers to OWS JSON fields
+                        // Map CSV Headers to OWS JSON fields
                         const headerMap = {
                             'Ticket ID': 'orderid',
                             'Title': 'title',
@@ -408,16 +438,15 @@
                         };
 
                         const tickets = [];
-                        for (let i = 1; i < lines.length; i++) {
-                            if (!lines[i].trim()) continue;
-                            const cols = lines[i].split('\t');
+                        for (let i = 1; i < parsed.length; i++) {
+                            const cols = parsed[i];
+                            if (cols.length < headers.length) continue;
                             const ticket = {};
                             headers.forEach((header, index) => {
                                 const fieldName = headerMap[header] || header;
                                 ticket[fieldName] = cols[index] ? cols[index].trim() : '';
                             });
                             
-                            // Align properties
                             ticket.active = true;
                             tickets.push(ticket);
                         }
@@ -432,7 +461,7 @@
                         });
                     })
                     .catch(err => {
-                        console.error('Error reading local TSV:', err);
+                        console.error('Error reading local CSV:', err);
                         if (options.error) options.error(err);
                     });
             }
