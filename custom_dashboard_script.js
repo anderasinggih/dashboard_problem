@@ -1383,13 +1383,13 @@ function resetDateFilter() {
 
 // Safe event listener and loader registration for OWS (GDE) & Local Sandbox
 function initDashboard() {
-    startLiveClock();
     var retryCount = 0;
     function tryInit() {
         var container = document.getElementById('customFilterContainer');
         if (container) {
             initDetailModalDOM();
             initDateFilterDOM();
+            startLiveClock();
             loadProblemTickets();
         } else if (retryCount < 100) { // Retry for up to 5 seconds
             retryCount++;
@@ -1397,38 +1397,11 @@ function initDashboard() {
         } else {
             console.warn('customFilterContainer placeholder not found in DOM after 5s. Loading tickets fallback.');
             initDetailModalDOM();
+            startLiveClock();
             loadProblemTickets();
         }
     }
     tryInit();
-}
-
-function startLiveClock() {
-    function updateClock() {
-        var el = document.getElementById('customLiveClock');
-        if (!el) return;
-        
-        var d = new Date();
-        var days = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
-        var months = [
-            'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
-            'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'
-        ];
-        
-        var dayName = days[d.getDay()];
-        var dateVal = d.getDate();
-        var monthName = months[d.getMonth()];
-        var yearVal = d.getFullYear();
-        
-        var hh = String(d.getHours()).padStart(2, '0');
-        var mm = String(d.getMinutes()).padStart(2, '0');
-        var ss = String(d.getSeconds()).padStart(2, '0');
-        
-        el.innerText = dayName + ', ' + dateVal + ' ' + monthName + ' ' + yearVal + ' | ' + hh + ':' + mm + ':' + ss;
-    }
-    
-    updateClock();
-    setInterval(updateClock, 1000);
 }
 
 if (typeof U !== 'undefined' && typeof U.ready === 'function') {
@@ -1678,3 +1651,32 @@ window.gotoTicketsPage = gotoTicketsPage;
 window.changeTicketsPageSize = changeTicketsPageSize;
 window.showTicketDetailModal = showTicketDetailModal;
 window.closeTicketDetailModal = closeTicketDetailModal;
+
+function startLiveClock() {
+    function updateClock() {
+        var el = document.getElementById('liveTickerClock');
+        if (!el) return;
+        
+        var now = new Date();
+        var hrs = String(now.getHours()).padStart(2, '0');
+        var mins = String(now.getMinutes()).padStart(2, '0');
+        var secs = String(now.getSeconds()).padStart(2, '0');
+        
+        var days = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
+        var months = [
+            'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
+            'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'
+        ];
+        
+        var dayName = days[now.getDay()];
+        var dayNum = now.getDate();
+        var monthName = months[now.getMonth()];
+        var year = now.getFullYear();
+        
+        el.innerText = dayName + ', ' + dayNum + ' ' + monthName + ' ' + year + ' — ' + hrs + ':' + mins + ':' + secs;
+    }
+    
+    updateClock();
+    setInterval(updateClock, 1000);
+}
+window.startLiveClock = startLiveClock;
