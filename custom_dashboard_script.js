@@ -56,31 +56,36 @@ function loadProblemTickets(startDate, endDate) {
 }
 
 function parseAndRender(res, isFiltered) {
-    var tickets = [];
-    if (res && res.result && res.result._values) {
-        tickets = res.result._values;
-    } else if (res && res.result && res.result.results) {
-        tickets = res.result.results;
-    } else if (res && res.results) {
-        tickets = res.results;
-    } else if (res && res._values) {
-        tickets = res._values;
-    } else if (res && res.data) {
-        tickets = res.data;
-    } else if (Array.isArray(res)) {
-        tickets = res;
+    try {
+        var tickets = [];
+        if (res && res.result && res.result._values) {
+            tickets = res.result._values;
+        } else if (res && res.result && res.result.results) {
+            tickets = res.result.results;
+        } else if (res && res.results) {
+            tickets = res.results;
+        } else if (res && res._values) {
+            tickets = res._values;
+        } else if (res && res.data) {
+            tickets = res.data;
+        } else if (Array.isArray(res)) {
+            tickets = res;
+        }
+
+        console.log('[DEBUG] OWS Response parsed. Tickets Count:', tickets.length, 'isFiltered:', isFiltered);
+
+        // Save dataset and update cards ONLY on all-time load
+        if (!isFiltered) {
+            window.allTicketsData = tickets;
+            updateAllTimeCards(tickets);
+        }
+
+        // Render list & charts
+        renderTicketsData(tickets);
+    } catch (e) {
+        alert('[parseAndRender ERROR]: ' + e.message + '\nStack: ' + e.stack);
+        console.error('[CRITICAL] parseAndRender crashed:', e);
     }
-
-    console.log('[DEBUG] OWS Response parsed. Tickets Count:', tickets.length, 'isFiltered:', isFiltered);
-
-    // Save dataset and update cards ONLY on all-time load
-    if (!isFiltered) {
-        window.allTicketsData = tickets;
-        updateAllTimeCards(tickets);
-    }
-
-    // Render list & charts
-    renderTicketsData(tickets);
 }
 
 function updateAllTimeCards(tickets) {
