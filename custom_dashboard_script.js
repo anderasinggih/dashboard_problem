@@ -1407,7 +1407,16 @@ function initDetailModalDOM() {
         '.custom-detail-label { font-size: 12px; color: #8b949e; font-weight: 600; text-transform: uppercase; } ' +
         '.custom-detail-value { font-size: 14px; color: #c9d1d9; font-weight: 500; } ' +
         '.custom-detail-desc-block { border-top: 1px solid #30363d; padding-top: 16px; margin-top: 16px; } ' +
-        '.custom-page-jump-input::-webkit-outer-spin-button, .custom-page-jump-input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }';
+        '.custom-page-jump-input::-webkit-outer-spin-button, .custom-page-jump-input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }' +
+        '.custom-badge-severity { display: inline-block; padding: 2px 8px; border-radius: 4px; font-weight: 700; font-size: 9px; text-transform: uppercase; } ' +
+        '.custom-badge-sev-emergency { background-color: #341212 !important; color: #ff7b72 !important; border: 1px solid #da3633 !important; } ' +
+        '.custom-badge-sev-critical { background-color: #3c1f0d !important; color: #f0883e !important; border: 1px solid #d15704 !important; } ' +
+        '.custom-badge-sev-major { background-color: #382a0f !important; color: #e3b341 !important; border: 1px solid #b58900 !important; } ' +
+        '.custom-badge-sev-minor { background-color: #132d15 !important; color: #56d364 !important; border: 1px solid #238636 !important; } ' +
+        '.custom-badge-status { display: inline-block; padding: 3px 10px; border-radius: 12px; font-weight: 700; font-size: 10px; text-transform: uppercase; } ' +
+        '.custom-badge-open { background-color: #da3633 !important; color: #ffffff !important; } ' +
+        '.custom-badge-pending { background-color: #d15704 !important; color: #ffffff !important; } ' +
+        '.custom-badge-closed { background-color: #238636 !important; color: #ffffff !important; }';
     document.head.appendChild(dynamicStyle);
 
     var modalDiv = document.createElement('div');
