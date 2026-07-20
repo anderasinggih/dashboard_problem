@@ -182,112 +182,107 @@ function renderTicketsData(tickets) {
     container.innerHTML = '';
 
     if (!tickets || tickets.length === 0) {
-        var emptyDiv = document.createElement('div');
-        emptyDiv.style.color = '#6c757d';
-        emptyDiv.style.padding = '12px';
-        emptyDiv.textContent = 'Tidak ada data tiket ditemukan.';
-        container.appendChild(emptyDiv);
-        return;
-    }
-
-    var html = '<table class="custom-noc-table">';
-    html += '<thead>';
-    html += '<tr>';
-    html += '<th>Ticket ID</th>';
-    html += '<th>Title / Description</th>';
-    html += '<th>Assignee</th>';
-    html += '<th>Severity</th>';
-    html += '<th>Current Phase</th>';
-    html += '<th>Aging</th>';
-    html += '<th>Status</th>';
-    html += '</tr>';
-    html += '</thead>';
-    html += '<tbody>';
-
-    for (var i = 0; i < Math.min(30, tickets.length); i++) {
-        var item = tickets[i];
-        var status = item.ticketstatus || item.status || item.active_status || 'Open';
-        var title = item.title || item.problem_name || item.description || 'Tanpa Judul';
-        var id = item.orderid || item.id || item.code || 'TCK';
-        var phase = item.operate_phase || item.phase || item.current_phase || '-';
-
-        // Calculate aging days dynamically from timestamps if not pre-calculated in DB
-        var agingVal = item.aging || item.aging_days || item.days || calculateAgingDays(item.createtime, item.closetime, item.lastupdatetime, item.operate_time, status);
-
-        var partner = 'Telkom Akses';
-        var assign = String(item.createptassignto || '').toLowerCase();
-        var operator = String(item.currentoperator || '').toLowerCase();
-        var originator = String(item.originator || '').toLowerCase();
-        var respParty = String(item.problem_responsible_party || item.problemresponsibleparty || '').toLowerCase();
-        var tLower = String(title || '').toLowerCase();
-        var desc = String(item.createptproblemdes || '').toLowerCase();
-
-        if (respParty.indexOf('telkom') !== -1 || respParty.indexOf('akses') !== -1) {
-            partner = 'Telkom Akses';
-        } else if (respParty.indexOf('mandau') !== -1) {
-            partner = 'Mandau';
-        } else if (respParty.indexOf('persada') !== -1) {
-            partner = 'Persada';
-        } else if (respParty.indexOf('ije') !== -1) {
-            partner = 'IJE';
-        } else if (tLower.indexOf('telkom') !== -1 || tLower.indexOf('akses') !== -1 || desc.indexOf('telkom') !== -1) {
-            partner = 'Telkom Akses';
-        } else if (tLower.indexOf('mandau') !== -1 || desc.indexOf('mandau') !== -1) {
-            partner = 'Mandau';
-        } else if (tLower.indexOf('persada') !== -1 || desc.indexOf('persada') !== -1) {
-            partner = 'Persada';
-        } else if (assign.indexOf('pwx') !== -1 || originator.indexOf('pwx') !== -1 || operator.indexOf('pwx') !== -1) {
-            partner = 'Persada';
-        } else if (assign.indexOf('pm') !== -1 || operator.indexOf('pm') !== -1) {
-            partner = 'Mandau';
-        } else {
-            var rawAssign = item.createptassignto || item.currentoperator || item.originator || 'Surge';
-            partner = rawAssign.replace('user:', '');
-        }
-
-        // Map Severity (including OWS createticketlevel UUID checks)
-        var sevRaw = String(item.severity || item.createticketlevel || '').toLowerCase();
-        var sevLabel = 'Minor';
-        var sevClass = 'custom-badge-sev-minor';
-        if (sevRaw.indexOf('507') !== -1 || sevRaw.indexOf('emergency') !== -1 || sevRaw === '1') {
-            sevLabel = 'Emergency';
-            sevClass = 'custom-badge-sev-emergency';
-        } else if (sevRaw.indexOf('508') !== -1 || sevRaw.indexOf('critical') !== -1 || sevRaw === '2') {
-            sevLabel = 'Critical';
-            sevClass = 'custom-badge-sev-critical';
-        } else if (sevRaw.indexOf('50c') !== -1 || sevRaw.indexOf('major') !== -1 || sevRaw === '3') {
-            sevLabel = 'Major';
-            sevClass = 'custom-badge-sev-major';
-        } else if (sevRaw.indexOf('1029') !== -1 || sevRaw.indexOf('minor') !== -1 || sevRaw === '4') {
-            sevLabel = 'Minor';
-            sevClass = 'custom-badge-sev-minor';
-        }
-
-        // Map Status
-        var statusClass = 'custom-badge-open';
-        var statusLower = String(status).toLowerCase();
-        if (statusLower === 'running' || statusLower === 'open' || statusLower === 'true' || statusLower === '1') {
-            statusClass = 'custom-badge-open';
-        } else if (statusLower === 'in progress' || statusLower === 'pending') {
-            statusClass = 'custom-badge-pending';
-        } else if (statusLower === 'closed' || statusLower === 'completed' || statusLower === 'false' || statusLower === '0') {
-            statusClass = 'custom-badge-closed';
-        }
-
+        container.innerHTML = '<div style="color: #6c757d; padding: 12px;">No tickets found for the selected date range.</div>';
+    } else {
+        var html = '<table class="custom-noc-table">';
+        html += '<thead>';
         html += '<tr>';
-        html += '<td style="font-family: monospace; font-weight: bold; color: #58a6ff;">' + id + '</td>';
-        html += '<td style="text-align: left; font-weight: 500;">' + title + '</td>';
-        html += '<td>' + partner + '</td>';
-        html += '<td><span class="custom-badge-severity ' + sevClass + '">' + sevLabel + '</span></td>';
-        html += '<td>' + phase + '</td>';
-        html += '<td style="font-weight: 600;">' + parseFloat(agingVal).toFixed(1) + ' Days</td>';
-        html += '<td><span class="custom-badge-status ' + statusClass + '">' + status + '</span></td>';
+        html += '<th>Ticket ID</th>';
+        html += '<th>Title / Description</th>';
+        html += '<th>Assignee</th>';
+        html += '<th>Severity</th>';
+        html += '<th>Current Phase</th>';
+        html += '<th>Aging</th>';
+        html += '<th>Status</th>';
         html += '</tr>';
-    }
+        html += '</thead>';
+        html += '<tbody>';
 
-    html += '</tbody>';
-    html += '</table>';
-    container.innerHTML = html;
+        for (var i = 0; i < Math.min(30, tickets.length); i++) {
+            var item = tickets[i];
+            var status = item.ticketstatus || item.status || item.active_status || 'Open';
+            var title = item.title || item.problem_name || item.description || 'Tanpa Judul';
+            var id = item.orderid || item.id || item.code || 'TCK';
+            var phase = item.operate_phase || item.phase || item.current_phase || '-';
+
+            // Calculate aging days dynamically from timestamps if not pre-calculated in DB
+            var agingVal = item.aging || item.aging_days || item.days || calculateAgingDays(item.createtime, item.closetime, item.lastupdatetime, item.operate_time, status);
+
+            var partner = 'Telkom Akses';
+            var assign = String(item.createptassignto || '').toLowerCase();
+            var operator = String(item.currentoperator || '').toLowerCase();
+            var originator = String(item.originator || '').toLowerCase();
+            var respParty = String(item.problem_responsible_party || item.problemresponsibleparty || '').toLowerCase();
+            var tLower = String(title || '').toLowerCase();
+            var desc = String(item.createptproblemdes || '').toLowerCase();
+
+            if (respParty.indexOf('telkom') !== -1 || respParty.indexOf('akses') !== -1) {
+                partner = 'Telkom Akses';
+            } else if (respParty.indexOf('mandau') !== -1) {
+                partner = 'Mandau';
+            } else if (respParty.indexOf('persada') !== -1) {
+                partner = 'Persada';
+            } else if (respParty.indexOf('ije') !== -1) {
+                partner = 'IJE';
+            } else if (tLower.indexOf('telkom') !== -1 || tLower.indexOf('akses') !== -1 || desc.indexOf('telkom') !== -1) {
+                partner = 'Telkom Akses';
+            } else if (tLower.indexOf('mandau') !== -1 || desc.indexOf('mandau') !== -1) {
+                partner = 'Mandau';
+            } else if (tLower.indexOf('persada') !== -1 || desc.indexOf('persada') !== -1) {
+                partner = 'Persada';
+            } else if (assign.indexOf('pwx') !== -1 || originator.indexOf('pwx') !== -1 || operator.indexOf('pwx') !== -1) {
+                partner = 'Persada';
+            } else if (assign.indexOf('pm') !== -1 || operator.indexOf('pm') !== -1) {
+                partner = 'Mandau';
+            } else {
+                var rawAssign = item.createptassignto || item.currentoperator || item.originator || 'Surge';
+                partner = rawAssign.replace('user:', '');
+            }
+
+            // Map Severity (including OWS createticketlevel UUID checks)
+            var sevRaw = String(item.severity || item.createticketlevel || '').toLowerCase();
+            var sevLabel = 'Minor';
+            var sevClass = 'custom-badge-sev-minor';
+            if (sevRaw.indexOf('507') !== -1 || sevRaw.indexOf('emergency') !== -1 || sevRaw === '1') {
+                sevLabel = 'Emergency';
+                sevClass = 'custom-badge-sev-emergency';
+            } else if (sevRaw.indexOf('508') !== -1 || sevRaw.indexOf('critical') !== -1 || sevRaw === '2') {
+                sevLabel = 'Critical';
+                sevClass = 'custom-badge-sev-critical';
+            } else if (sevRaw.indexOf('50c') !== -1 || sevRaw.indexOf('major') !== -1 || sevRaw === '3') {
+                sevLabel = 'Major';
+                sevClass = 'custom-badge-sev-major';
+            } else if (sevRaw.indexOf('1029') !== -1 || sevRaw.indexOf('minor') !== -1 || sevRaw === '4') {
+                sevLabel = 'Minor';
+                sevClass = 'custom-badge-sev-minor';
+            }
+
+            // Map Status
+            var statusClass = 'custom-badge-open';
+            var statusLower = String(status).toLowerCase();
+            if (statusLower === 'running' || statusLower === 'open' || statusLower === 'true' || statusLower === '1') {
+                statusClass = 'custom-badge-open';
+            } else if (statusLower === 'in progress' || statusLower === 'pending') {
+                statusClass = 'custom-badge-pending';
+            } else if (statusLower === 'closed' || statusLower === 'completed' || statusLower === 'false' || statusLower === '0') {
+                statusClass = 'custom-badge-closed';
+            }
+
+            html += '<tr>';
+            html += '<td style="font-family: monospace; font-weight: bold; color: #58a6ff;">' + id + '</td>';
+            html += '<td style="text-align: left; font-weight: 500;">' + title + '</td>';
+            html += '<td>' + partner + '</td>';
+            html += '<td><span class="custom-badge-severity ' + sevClass + '">' + sevLabel + '</span></td>';
+            html += '<td>' + phase + '</td>';
+            html += '<td style="font-weight: 600;">' + parseFloat(agingVal).toFixed(1) + ' Days</td>';
+            html += '<td><span class="custom-badge-status ' + statusClass + '">' + status + '</span></td>';
+            html += '</tr>';
+        }
+
+        html += '</tbody>';
+        html += '</table>';
+        container.innerHTML = html;
+    }
 
     // Render the Severity Overview charts and tables (Filtered)
     renderSeverityDashboard(tickets);
