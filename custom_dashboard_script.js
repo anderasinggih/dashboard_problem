@@ -1141,8 +1141,10 @@ function renderSlaComplianceTable(containerId, rows) {
 }
 
 function applyDateFilter() {
-    var startInput = document.getElementById('filterStartDate').value;
-    var endInput = document.getElementById('filterEndDate').value;
+    var startEl = document.querySelector('.custom-filter-start-input');
+    var endEl = document.querySelector('.custom-filter-end-input');
+    var startInput = startEl ? startEl.value : '';
+    var endInput = endEl ? endEl.value : '';
     
     if (!startInput && !endInput) {
         alert('Silakan pilih rentang tanggal terlebih dahulu.');
@@ -1156,39 +1158,15 @@ function applyDateFilter() {
 }
 
 function resetDateFilter() {
-    document.getElementById('filterStartDate').value = '';
-    document.getElementById('filterEndDate').value = '';
+    var startEl = document.querySelector('.custom-filter-start-input');
+    var endEl = document.querySelector('.custom-filter-end-input');
+    if (startEl) startEl.value = '';
+    if (endEl) endEl.value = '';
     loadProblemTickets();
-}
-
-// Dynamic rendering of filter controls to bypass OWS/GDE HTML parser limitations
-function renderDateFilterBar() {
-    var placeholder = document.getElementById('dateFilterPlaceholder');
-    if (!placeholder) return;
-
-    placeholder.innerHTML = 
-        '<div class="custom-filter-card">' +
-        '  <div class="custom-filter-title">📅 Date Range Filter (Createtime)</div>' +
-        '  <div class="custom-filter-inputs">' +
-        '    <div class="custom-filter-field">' +
-        '      <label for="filterStartDate">Start Date</label>' +
-        '      <input type="date" id="filterStartDate">' +
-        '    </div>' +
-        '    <div class="custom-filter-field">' +
-        '      <label for="filterEndDate">End Date</label>' +
-        '      <input type="date" id="filterEndDate">' +
-        '    </div>' +
-        '    <div class="custom-filter-actions">' +
-        '      <button id="btnApplyFilter" class="custom-btn custom-btn-primary">Apply Filter</button>' +
-        '      <button id="btnResetFilter" class="custom-btn custom-btn-secondary">Reset</button>' +
-        '    </div>' +
-        '  </div>' +
-        '</div>';
 }
 
 // Safe event listener and loader registration for OWS (GDE) & Local Sandbox
 function initDashboard() {
-    renderDateFilterBar();
     initDateFilterEvents();
     loadProblemTickets();
 }
@@ -1202,8 +1180,8 @@ if (typeof U !== 'undefined' && typeof U.ready === 'function') {
 }
 
 function initDateFilterEvents() {
-    var btnApply = document.getElementById('btnApplyFilter');
-    var btnReset = document.getElementById('btnResetFilter');
+    var btnApply = document.querySelector('.custom-btn-apply-filter');
+    var btnReset = document.querySelector('.custom-btn-reset-filter');
     if (btnApply) {
         btnApply.addEventListener('click', applyDateFilter);
     }
