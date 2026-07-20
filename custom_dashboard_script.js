@@ -1654,7 +1654,7 @@ window.closeTicketDetailModal = closeTicketDetailModal;
 
 function startLiveClock() {
     function updateClock() {
-        var el = document.getElementById('liveTickerClock');
+        var el = document.querySelector('.custom-header-subtitle');
         if (!el) return;
         
         var now = new Date();
