@@ -3,7 +3,7 @@ function calculateAgingDays(createTimeStr, closeTimeStr, lastUpdateTimeStr, oper
     // Replace '-' with '/' for broad browser support of date parsing
     var start = new Date(createTimeStr.replace(/-/g, '/'));
     var end = new Date();
-    
+
     var statusLower = String(ticketstatus || '').toLowerCase();
     if (statusLower === 'completed' || statusLower === 'closed') {
         var endStr = closeTimeStr || lastUpdateTimeStr || operateTimeStr;
@@ -11,7 +11,7 @@ function calculateAgingDays(createTimeStr, closeTimeStr, lastUpdateTimeStr, oper
             end = new Date(endStr.replace(/-/g, '/'));
         }
     }
-    
+
     var diffMs = end - start;
     if (isNaN(diffMs) || diffMs < 0) return 0;
     return diffMs / (1000 * 60 * 60 * 24);
@@ -33,7 +33,7 @@ function loadProblemTickets() {
             serviceId: '/adc-service/rest/v1/services/dashboard_problem_ticket_test/dashboard_problem_ticket_test/dashboard__problem_ticket',
             data: {
                 "start": 0,
-                "limit": 50
+                "limit": 1000
             },
             success: function (res) {
                 console.log('Response OWS Success:', res);
@@ -84,7 +84,7 @@ function renderTicketsData(tickets) {
         setCardValue('statOpen', 0);
         setCardValue('statInProgress', 0);
         setCardValue('statClosed', 0);
-        
+
         setCardValue('taOpen', 0); setCardValue('taPending', 0); setCardValue('taClosed', 0);
         setCardValue('mOpen', 0); setCardValue('mPending', 0); setCardValue('mClosed', 0);
         setCardValue('pOpen', 0); setCardValue('pPending', 0); setCardValue('pClosed', 0);
@@ -116,7 +116,7 @@ function renderTicketsData(tickets) {
         var title = item.title || item.problem_name || item.description || 'Tanpa Judul';
         var id = item.orderid || item.id || item.code || 'TCK';
         var phase = item.operate_phase || item.phase || item.current_phase || '-';
-        
+
         // Calculate aging days dynamically from timestamps if not pre-calculated in DB
         var agingVal = item.aging || item.aging_days || item.days || calculateAgingDays(item.createtime, item.closetime, item.lastupdatetime, item.operate_time, status);
 
@@ -254,14 +254,14 @@ function showError(msg) {
 function renderSeverityDashboard(tickets) {
     if (typeof echarts === 'undefined') {
         console.warn('ECharts library is not loaded. Retrying in 500ms...');
-        setTimeout(function() { renderSeverityDashboard(tickets); }, 500);
+        setTimeout(function () { renderSeverityDashboard(tickets); }, 500);
         return;
     }
 
     var categories = ['Emergency', 'Critical', 'Major', 'Minor'];
     var severityData = {};
-    
-    categories.forEach(function(cat) {
+
+    categories.forEach(function (cat) {
         severityData[cat] = {
             total: 0,
             pending: 0,
@@ -278,7 +278,7 @@ function renderSeverityDashboard(tickets) {
     });
 
     if (tickets && tickets.length > 0) {
-        tickets.forEach(function(t) {
+        tickets.forEach(function (t) {
             var sevRaw = String(t.severity || t.createticketlevel || t.priority || '').toLowerCase();
             var sev = 'Minor';
             if (sevRaw.indexOf('507') !== -1 || sevRaw.indexOf('emergency') !== -1 || sevRaw === '1') sev = 'Emergency';
@@ -307,21 +307,21 @@ function renderSeverityDashboard(tickets) {
             else if (rcRaw.indexOf('config') !== -1) rcName = 'Configuration';
             else if (rcRaw.indexOf('software') !== -1 || rcRaw.indexOf('app') !== -1 || rcRaw.indexOf('sw') !== -1) rcName = 'Software';
 
-            var rcObj = severityData[sev].rootCauses.find(function(rc) { return rc.name === rcName; });
+            var rcObj = severityData[sev].rootCauses.find(function (rc) { return rc.name === rcName; });
             if (rcObj) {
                 rcObj.value++;
             } else {
-                var otherObj = severityData[sev].rootCauses.find(function(rc) { return rc.name === 'Others'; });
+                var otherObj = severityData[sev].rootCauses.find(function (rc) { return rc.name === 'Others'; });
                 if (otherObj) otherObj.value++;
             }
         });
 
         // Recalculate percentages
-        categories.forEach(function(cat) {
+        categories.forEach(function (cat) {
             var catTotal = severityData[cat].total;
             severityData[cat].pctOfTotal = tickets.length ? Math.round((catTotal / tickets.length) * 100) + '%' : '0%';
-            
-            severityData[cat].rootCauses.forEach(function(rc) {
+
+            severityData[cat].rootCauses.forEach(function (rc) {
                 rc.pct = catTotal ? Math.round((rc.value / catTotal) * 100) + '%' : '0%';
             });
         });
@@ -329,9 +329,9 @@ function renderSeverityDashboard(tickets) {
 
     // Render components for each severity card
     var types = ['Emergency', 'Critical', 'Major', 'Minor'];
-    types.forEach(function(type) {
+    types.forEach(function (type) {
         var data = severityData[type];
-        
+
         // Update stats table
         setCardValue(type.toLowerCase() + 'Total', data.total);
         setCardValue(type.toLowerCase() + 'Pending', data.pending);
@@ -348,7 +348,7 @@ function renderSeverityDashboard(tickets) {
 function renderLegend(containerId, rootCauses) {
     var legendDom = document.querySelector('#' + containerId);
     if (!legendDom) return;
-    
+
     var html = '<table class="custom-legend-table">';
     html += '<thead><tr style="border-bottom: 1px solid #f0f0f0;"><td style="font-weight:bold;color:#666;font-size:10px;">Root Cause</td><td style="font-weight:bold;color:#666;text-align:right;font-size:10px;">Qty</td><td style="font-weight:bold;color:#666;text-align:right;font-size:10px;">%</td></tr></thead>';
     html += '<tbody>';
@@ -360,7 +360,7 @@ function renderLegend(containerId, rootCauses) {
         else if (item.name === 'Power') dotClass = 'custom-power';
         else if (item.name === 'Configuration') dotClass = 'custom-configuration';
         else dotClass = 'custom-others';
-        
+
         html += '<tr>';
         html += '<td><span class="custom-legend-dot ' + dotClass + '"></span>' + item.name + '</td>';
         html += '<td class="custom-qty-col">' + item.value + '</td>';
@@ -374,14 +374,14 @@ function renderLegend(containerId, rootCauses) {
 function renderDonutChart(containerId, data, totalVal, pctVal) {
     var chartDom = document.querySelector('#' + containerId);
     if (!chartDom) return;
-    
+
     var existingInstance = echarts.getInstanceByDom(chartDom);
     if (existingInstance) {
         existingInstance.dispose();
     }
-    
+
     var myChart = echarts.init(chartDom);
-    
+
     var chartData = [];
     var colors = [];
     for (var i = 0; i < data.rootCauses.length; i++) {
@@ -392,7 +392,7 @@ function renderDonutChart(containerId, data, totalVal, pctVal) {
         });
         colors.push(item.color);
     }
-    
+
     var option = {
         color: colors,
         tooltip: {
@@ -447,10 +447,10 @@ function renderDonutChart(containerId, data, totalVal, pctVal) {
             }
         ]
     };
-    
+
     myChart.setOption(option);
-    
-    window.addEventListener('resize', function() {
+
+    window.addEventListener('resize', function () {
         myChart.resize();
     });
 }
@@ -468,14 +468,14 @@ function renderPhaseDashboard(tickets) {
     var categories = ['Overall', 'TelkomAkses', 'Mandau', 'Persada'];
     var phaseData = {};
 
-    categories.forEach(function(cat) {
-        phaseData[cat] = phases.map(function(p) {
+    categories.forEach(function (cat) {
+        phaseData[cat] = phases.map(function (p) {
             return { phase: p, total: 0, b1: 0, b2: 0, b3: 0, b4: 0, avg: 0, agingSum: 0 };
         });
     });
 
     if (tickets && tickets.length > 0) {
-        tickets.forEach(function(t) {
+        tickets.forEach(function (t) {
             var phaseRaw = String(t.operate_phase || t.phase || t.current_phase || t.state || '').toLowerCase();
             var phase = '1. Create PT';
             if (phaseRaw.indexOf('confirm') !== -1) phase = '6. Confirm PT';
@@ -486,13 +486,13 @@ function renderPhaseDashboard(tickets) {
 
             var statusRaw = String(t.ticketstatus || t.status || '').toLowerCase();
             var aging = parseFloat(t.aging || t.aging_days || t.days || calculateAgingDays(t.createtime, t.closetime, t.lastupdatetime, t.operate_time, statusRaw));
-            
+
             var partner = 'TelkomAkses';
             var title = String(t.title || t.problem_name || '').toLowerCase();
             var desc = String(t.createptproblemdes || '').toLowerCase();
             var assign = String(t.createptassignto || '').toLowerCase();
             var respParty = String(t.problem_responsible_party || t.problemresponsibleparty || '').toLowerCase();
-            
+
             if (respParty.indexOf('telkom') !== -1 || respParty.indexOf('akses') !== -1) {
                 partner = 'TelkomAkses';
             } else if (respParty.indexOf('mandau') !== -1) {
@@ -510,8 +510,8 @@ function renderPhaseDashboard(tickets) {
             else if (aging > 15) buck = 'b3';
             else if (aging > 7) buck = 'b2';
 
-            [partner, 'Overall'].forEach(function(targetCat) {
-                var row = phaseData[targetCat].find(function(r) { return r.phase === phase; });
+            [partner, 'Overall'].forEach(function (targetCat) {
+                var row = phaseData[targetCat].find(function (r) { return r.phase === phase; });
                 if (row) {
                     row.total++;
                     row[buck]++;
@@ -521,8 +521,8 @@ function renderPhaseDashboard(tickets) {
         });
 
         // Calculate averages
-        categories.forEach(function(cat) {
-            phaseData[cat].forEach(function(row) {
+        categories.forEach(function (cat) {
+            phaseData[cat].forEach(function (row) {
                 row.avg = row.total > 0 ? (row.agingSum / row.total) : 0;
             });
         });
@@ -554,7 +554,7 @@ function renderPhaseOverall(containerId, phaseRows) {
     html += '</thead>';
     html += '<tbody>';
 
-    phaseRows.forEach(function(row) {
+    phaseRows.forEach(function (row) {
         totalPT += row.total;
         totalB1 += row.b1;
         totalB2 += row.b2;
@@ -639,7 +639,7 @@ function renderPhasePartner(containerId, phaseRows) {
     html += '</thead>';
     html += '<tbody>';
 
-    phaseRows.forEach(function(row) {
+    phaseRows.forEach(function (row) {
         totalPT += row.total;
         totalB1 += row.b1;
         totalB2 += row.b2;
@@ -678,7 +678,7 @@ function renderPhasePartner(containerId, phaseRows) {
 function renderTrendsAndCompliance(tickets) {
     if (typeof echarts === 'undefined') {
         console.warn('ECharts not available yet. Retrying in 500ms...');
-        setTimeout(function() { renderTrendsAndCompliance(tickets); }, 500);
+        setTimeout(function () { renderTrendsAndCompliance(tickets); }, 500);
         return;
     }
 
@@ -715,7 +715,7 @@ function renderTrendsAndCompliance(tickets) {
     }
 
     if (tickets && tickets.length > 0) {
-        tickets.forEach(function(t) {
+        tickets.forEach(function (t) {
             // 1. Root Cause
             var rcRaw = String(t.root_cause || t.rootcause || t.cause || '').toLowerCase();
             var rcName = 'Others';
@@ -725,7 +725,7 @@ function renderTrendsAndCompliance(tickets) {
             else if (rcRaw.indexOf('config') !== -1) rcName = 'Configuration';
             else if (rcRaw.indexOf('software') !== -1 || rcRaw.indexOf('app') !== -1 || rcRaw.indexOf('sw') !== -1) rcName = 'Software';
 
-            var rcObj = rootCauseData.find(function(rc) { return rc.name === rcName; });
+            var rcObj = rootCauseData.find(function (rc) { return rc.name === rcName; });
             if (rcObj) rcObj.value++;
 
             // 2. SLA Compliance
@@ -733,13 +733,27 @@ function renderTrendsAndCompliance(tickets) {
             var title = String(t.title || t.problem_name || '').toLowerCase();
             var desc = String(t.createptproblemdes || '').toLowerCase();
             var assign = String(t.createptassignto || '').toLowerCase();
-            
-            if (assign.indexOf('persada') !== -1 || title.indexOf('persada') !== -1 || desc.indexOf('persada') !== -1) partner = 'Persada';
-            else if (assign.indexOf('telkom') !== -1 || assign.indexOf('akses') !== -1 || title.indexOf('akses') !== -1 || desc.indexOf('telkom') !== -1) partner = 'Telkom Akses';
-            else if (assign.indexOf('mandau') !== -1 || assign.indexOf('pm') !== -1 || title.indexOf('mandau') !== -1 || desc.indexOf('mandau') !== -1) partner = 'Mandau';
-            else if (assign.indexOf('ije') !== -1 || title.indexOf('ije') !== -1) partner = 'IJE';
+            var respParty = String(t.problem_responsible_party || t.problemresponsibleparty || '').toLowerCase();
 
-            var compObj = complianceData.find(function(c) { return c.party === partner; });
+            if (respParty.indexOf('telkom') !== -1 || respParty.indexOf('akses') !== -1) {
+                partner = 'Telkom Akses';
+            } else if (respParty.indexOf('mandau') !== -1) {
+                partner = 'Mandau';
+            } else if (respParty.indexOf('persada') !== -1) {
+                partner = 'Persada';
+            } else if (respParty.indexOf('ije') !== -1) {
+                partner = 'IJE';
+            } else if (assign.indexOf('persada') !== -1 || title.indexOf('persada') !== -1 || desc.indexOf('persada') !== -1) {
+                partner = 'Persada';
+            } else if (assign.indexOf('telkom') !== -1 || assign.indexOf('akses') !== -1 || title.indexOf('akses') !== -1 || desc.indexOf('telkom') !== -1) {
+                partner = 'Telkom Akses';
+            } else if (assign.indexOf('mandau') !== -1 || assign.indexOf('pm') !== -1 || title.indexOf('mandau') !== -1 || desc.indexOf('mandau') !== -1) {
+                partner = 'Mandau';
+            } else if (assign.indexOf('ije') !== -1 || title.indexOf('ije') !== -1) {
+                partner = 'IJE';
+            }
+
+            var compObj = complianceData.find(function (c) { return c.party === partner; });
             if (compObj) {
                 compObj.total++;
                 var isOver = t.over_sla || t.sla_over || t.is_over_sla;
@@ -760,7 +774,7 @@ function renderTrendsAndCompliance(tickets) {
             var weekRow = weeklyMap[wLabel];
             weekRow.total++;
             weekRow.newPT++;
-            
+
             var statusRaw = String(t.ticketstatus || t.status || '').toLowerCase();
             if (statusRaw === 'closed' || statusRaw === 'completed' || statusRaw === 'false' || statusRaw === '0') {
                 weekRow.closedPT++;
@@ -776,7 +790,7 @@ function renderTrendsAndCompliance(tickets) {
             }
         });
 
-        complianceData.forEach(function(c) {
+        complianceData.forEach(function (c) {
             c.ach = c.total ? ((c.within / c.total) * 100).toFixed(1) + '%' : '0.0%';
         });
     }
@@ -791,7 +805,7 @@ function renderTrendsAndCompliance(tickets) {
         slaAchievement: []
     };
 
-    weeksList.forEach(function(w) {
+    weeksList.forEach(function (w) {
         var row = weeklyMap[w];
         trendData.newPT.push(row.newPT);
         trendData.closedPT.push(row.closedPT);
@@ -931,7 +945,7 @@ function drawWeeklyTrendChart(containerId, data) {
     };
 
     myChart.setOption(option);
-    window.addEventListener('resize', function() { myChart.resize(); });
+    window.addEventListener('resize', function () { myChart.resize(); });
 }
 
 function drawTopRootCauseChart(containerId, data) {
@@ -950,13 +964,13 @@ function drawTopRootCauseChart(containerId, data) {
     var seriesData = [];
     var colors = [];
 
-    sortedData.forEach(function(item) {
+    sortedData.forEach(function (item) {
         yAxisData.push(item.name);
         seriesData.push(item.value);
         colors.push(item.color);
     });
 
-    var totalSum = seriesData.reduce(function(a, b) { return a + b; }, 0);
+    var totalSum = seriesData.reduce(function (a, b) { return a + b; }, 0);
 
     var option = {
         backgroundColor: 'transparent',
@@ -988,7 +1002,7 @@ function drawTopRootCauseChart(containerId, data) {
                 type: 'bar',
                 data: seriesData,
                 itemStyle: {
-                    color: function(params) {
+                    color: function (params) {
                         return colors[params.dataIndex];
                     },
                     borderRadius: [0, 4, 4, 0]
@@ -996,7 +1010,7 @@ function drawTopRootCauseChart(containerId, data) {
                 label: {
                     show: true,
                     position: 'right',
-                    formatter: function(params) {
+                    formatter: function (params) {
                         var val = params.value;
                         var pct = totalSum ? Math.round((val / totalSum) * 1000) / 10 + '%' : '0%';
                         return val + ' (' + pct + ')';
@@ -1009,7 +1023,7 @@ function drawTopRootCauseChart(containerId, data) {
     };
 
     myChart.setOption(option);
-    window.addEventListener('resize', function() { myChart.resize(); });
+    window.addEventListener('resize', function () { myChart.resize(); });
 }
 
 function renderSlaComplianceTable(containerId, rows) {
@@ -1032,7 +1046,7 @@ function renderSlaComplianceTable(containerId, rows) {
     html += '</thead>';
     html += '<tbody>';
 
-    rows.forEach(function(row) {
+    rows.forEach(function (row) {
         totalPT += row.total;
         totalWithin += row.within;
         totalOver += row.over;
