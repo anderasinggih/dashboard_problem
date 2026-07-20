@@ -1,5 +1,3 @@
-<script
-  src="${staticContextPath}/${jslibPrefix}/${tenant_id}/CN_GSC_ID_Surge_Noc_Dashboard/Dashboard/echarts/0.0.1/echarts.min.js"></script>
 <div class="custom-dashboard-wrapper">
   <!-- Header Bar -->
   <div class="custom-dashboard-header">
