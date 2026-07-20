@@ -1179,21 +1179,27 @@ function applyDateFilter() {
     
     console.log('[DEBUG] applyDateFilter clicked. startInput:', startInput, 'endInput:', endInput);
 
-    if (!startInput && !endInput) {
-        alert('Silakan pilih rentang tanggal terlebih dahulu.');
+    if (!startInput || !endInput) {
+        alert('Please select both Start Date and End Date.');
         return;
     }
 
-    var startParam = startInput ? startInput + ' 00:00:00' : null;
-    var endParam = endInput ? endInput + ' 23:59:59' : null;
+    var startDateObj = new Date(startInput);
+    var endDateObj = new Date(endInput);
+    
+    if (startDateObj > endDateObj) {
+        alert('Start Date cannot be later than End Date.');
+        return;
+    }
+
+    var startParam = startInput + ' 00:00:00';
+    var endParam = endInput + ' 23:59:59';
 
     console.log('[DEBUG] Formatted Params -> startParam:', startParam, 'endParam:', endParam);
 
     var activeEl = document.querySelector('.custom-filter-active-range');
     if (activeEl) {
-        var startTxt = startInput ? formatIndonesianDate(startInput) : 'Awal';
-        var endTxt = endInput ? formatIndonesianDate(endInput) : 'Akhir';
-        activeEl.innerText = 'Active: ' + startTxt + ' - ' + endTxt;
+        activeEl.innerText = 'Active: ' + formatIndonesianDate(startInput) + ' - ' + formatIndonesianDate(endInput);
     }
 
     loadProblemTickets(startParam, endParam);
