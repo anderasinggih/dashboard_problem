@@ -295,8 +295,8 @@ function renderTicketsData(tickets) {
     // Render the Phase Status tables (Filtered)
     renderPhaseDashboard(tickets);
 
-    // Render Weekly Trend (Filtered) & Top Root Cause + SLA Compliance (Always All-Time)
-    renderTrendsAndCompliance(tickets, window.allTicketsData || tickets);
+    // Render Weekly Trend, Top Root Cause, and SLA Compliance panels (Filtered)
+    renderTrendsAndCompliance(tickets, tickets);
 }
 
 function setCardValue(id, val) {
