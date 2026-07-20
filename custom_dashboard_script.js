@@ -1,5 +1,5 @@
 function calculateAgingDays(createTimeStr, closeTimeStr, lastUpdateTimeStr, operateTimeStr, ticketstatus) {
-    if (!createTimeStr) return 0;
+    if (!createTimeStr || typeof createTimeStr !== 'string') return 0;
     // Replace '-' with '/' for broad browser support of date parsing
     var start = new Date(createTimeStr.replace(/-/g, '/'));
     var end = new Date();
@@ -7,7 +7,7 @@ function calculateAgingDays(createTimeStr, closeTimeStr, lastUpdateTimeStr, oper
     var statusLower = String(ticketstatus || '').toLowerCase();
     if (statusLower === 'completed' || statusLower === 'closed') {
         var endStr = closeTimeStr || lastUpdateTimeStr || operateTimeStr;
-        if (endStr) {
+        if (endStr && typeof endStr === 'string') {
             end = new Date(endStr.replace(/-/g, '/'));
         }
     }
@@ -1386,11 +1386,24 @@ function initDateFilterDOM() {
 function initDetailModalDOM() {
     if (document.getElementById('customDetailModal')) return;
 
-    // Inject dynamic CSS rules to bypass ADC's strict static CSS compiler checks (media query, webkit styles, keyframe animations)
+    // Inject ALL modal CSS rules dynamically to bypass ADC's strict static CSS compiler checks
     var dynamicStyle = document.createElement('style');
     dynamicStyle.innerHTML = 
+        '.custom-modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; display: none; align-items: center; justify-content: center; z-index: 99999; } ' +
+        '.custom-modal-backdrop { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.75); backdrop-filter: blur(4px); } ' +
+        '.custom-modal-content { position: relative; background-color: #161b22; border: 1px solid #30363d; border-radius: 12px; width: 90%; max-width: 650px; max-height: 85vh; box-shadow: 0 12px 28px rgba(0, 0, 0, 0.5); display: flex; flex-direction: column; animation: modalFadeIn 0.2s ease-out; color: #c9d1d9; z-index: 100000; } ' +
         '@keyframes modalFadeIn { from { opacity: 0; transform: scale(0.96); } to { opacity: 1; transform: scale(1); } } ' +
+        '.custom-modal-header { padding: 16px 20px; border-bottom: 1px solid #30363d; display: flex; justify-content: space-between; align-items: center; } ' +
+        '.custom-modal-title { margin: 0; font-size: 16px; font-weight: 700; color: #f0f6fc; } ' +
+        '.custom-modal-close { font-size: 24px; color: #8b949e; cursor: pointer; transition: color 0.2s; line-height: 1; } ' +
+        '.custom-modal-close:hover { color: #f0f6fc; } ' +
+        '.custom-modal-body { padding: 20px; overflow-y: auto; font-size: 14px; line-height: 1.5; } ' +
+        '.custom-detail-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 20px; } ' +
         '@media (max-width: 500px) { .custom-detail-grid { grid-template-columns: 1fr !important; } } ' +
+        '.custom-detail-item { display: flex; flex-direction: column; gap: 4px; } ' +
+        '.custom-detail-label { font-size: 12px; color: #8b949e; font-weight: 600; text-transform: uppercase; } ' +
+        '.custom-detail-value { font-size: 14px; color: #c9d1d9; font-weight: 500; } ' +
+        '.custom-detail-desc-block { border-top: 1px solid #30363d; padding-top: 16px; margin-top: 16px; } ' +
         '.custom-page-jump-input::-webkit-outer-spin-button, .custom-page-jump-input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }';
     document.head.appendChild(dynamicStyle);
 
