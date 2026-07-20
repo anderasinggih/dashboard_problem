@@ -1389,6 +1389,7 @@ function initDashboard() {
         if (container) {
             initDetailModalDOM();
             initDateFilterDOM();
+            initLiveClock();
             loadProblemTickets();
         } else if (retryCount < 100) { // Retry for up to 5 seconds
             retryCount++;
@@ -1396,10 +1397,41 @@ function initDashboard() {
         } else {
             console.warn('customFilterContainer placeholder not found in DOM after 5s. Loading tickets fallback.');
             initDetailModalDOM();
+            initLiveClock();
             loadProblemTickets();
         }
     }
     tryInit();
+}
+
+function initLiveClock() {
+    var subtitleEl = document.querySelector('.custom-header-subtitle');
+    if (!subtitleEl) return;
+    
+    function updateClock() {
+        var now = new Date();
+        var hours = String(now.getHours()).padStart(2, '0');
+        var minutes = String(now.getMinutes()).padStart(2, '0');
+        var seconds = String(now.getSeconds()).padStart(2, '0');
+        
+        var days = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
+        var dayName = days[now.getDay()];
+        
+        var date = now.getDate();
+        
+        var months = [
+            'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
+            'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'
+        ];
+        var monthName = months[now.getMonth()];
+        var year = now.getFullYear();
+        
+        subtitleEl.innerHTML = '<span style="font-family: monospace; font-weight: 700; color: #58a6ff; font-size: 15px;">' + hours + ':' + minutes + ':' + seconds + '</span>' +
+                               ' | <span style="font-weight: 500; color: #a1a1aa;">' + dayName + ', ' + date + ' ' + monthName + ' ' + year + '</span>';
+    }
+    
+    updateClock();
+    setInterval(updateClock, 1000);
 }
 
 if (typeof U !== 'undefined' && typeof U.ready === 'function') {
