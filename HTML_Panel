@@ -289,7 +289,7 @@
       <!-- WEEKLY TREND -->
       <div class="custom-panel-card custom-trend-card">
         <div class="custom-panel-header">
-          <span>5. WEEKLY TREND</span>
+          <span>3. WEEKLY TREND</span>
         </div>
         <div class="custom-panel-body" style="padding: 16px;">
           <div id="chartWeeklyTrend" style="width: 100%; height: 280px;"></div>
@@ -299,7 +299,7 @@
       <!-- TOP ROOT CAUSE -->
       <div class="custom-panel-card custom-rootcause-card">
         <div class="custom-panel-header">
-          <span>6. TOP ROOT CAUSE (ALL PT)</span>
+          <span>4. TOP ROOT CAUSE (ALL PT)</span>
         </div>
         <div class="custom-panel-body" style="padding: 16px;">
           <div id="chartTopRootCause" style="width: 100%; height: 280px;"></div>
@@ -309,7 +309,7 @@
       <!-- SLA COMPLIANCE BY PARTY -->
       <div class="custom-panel-card custom-compliance-card">
         <div class="custom-panel-header">
-          <span>4. SLA COMPLIANCE BY PARTY</span>
+          <span>5. SLA COMPLIANCE BY PARTY</span>
         </div>
         <div class="custom-panel-body" style="padding: 12px; overflow-x: auto;">
           <div id="tableSlaCompliance">
