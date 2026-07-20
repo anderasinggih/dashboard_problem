@@ -1658,9 +1658,13 @@ function startLiveClock() {
         if (!el) return;
         
         var now = new Date();
-        var hrs = String(now.getHours()).padStart(2, '0');
-        var mins = String(now.getMinutes()).padStart(2, '0');
-        var secs = String(now.getSeconds()).padStart(2, '0');
+        var hrs = now.getHours();
+        var mins = now.getMinutes();
+        var secs = now.getSeconds();
+        
+        var hrsStr = hrs < 10 ? '0' + hrs : hrs;
+        var minsStr = mins < 10 ? '0' + mins : mins;
+        var secsStr = secs < 10 ? '0' + secs : secs;
         
         var days = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
         var months = [
@@ -1673,7 +1677,7 @@ function startLiveClock() {
         var monthName = months[now.getMonth()];
         var year = now.getFullYear();
         
-        el.innerText = dayName + ', ' + dayNum + ' ' + monthName + ' ' + year + ' — ' + hrs + ':' + mins + ':' + secs;
+        el.innerText = dayName + ', ' + dayNum + ' ' + monthName + ' ' + year + ' — ' + hrsStr + ':' + minsStr + ':' + secsStr;
     }
     
     updateClock();
