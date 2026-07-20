@@ -470,7 +470,7 @@
   font-size: 16px;
   border-bottom: 1px solid #27272a;
   color: #fafafa;
-  background-color: #1f242c;
+  background-color: #18181b;
 }
 
 .custom-panel-body {
@@ -641,7 +641,7 @@
   color: #a1a1aa;
   font-weight: 600;
   border-bottom: 1px solid #27272a;
-  background-color: #1f242c;
+  background-color: #18181b;
   text-transform: uppercase;
   font-size: 10px;
   letter-spacing: 0.5px;
@@ -693,7 +693,7 @@
 .custom-phase-col-header {
   padding: 12px;
   border-bottom: 1px solid #27272a;
-  background-color: #1f242c;
+  background-color: #18181b;
   text-align: center;
   display: flex;
   align-items: center;
@@ -724,7 +724,7 @@
 .custom-phase-table th {
   color: #a1a1aa;
   font-weight: 600;
-  background-color: #1f242c;
+  background-color: #18181b;
   font-size: 10px;
   text-transform: uppercase;
 }
@@ -751,7 +751,7 @@
   font-weight: 700;
   border-top: 2px solid #27272a;
   border-bottom: none;
-  background-color: #1f242c;
+  background-color: #18181b;
 }
 
 /* Custom Stacked Bar inside Table Cell */
@@ -832,7 +832,7 @@
 .custom-compliance-table th {
   color: #a1a1aa;
   font-weight: 600;
-  background-color: #1f242c;
+  background-color: #18181b;
   font-size: 10px;
   text-transform: uppercase;
 }
@@ -861,7 +861,7 @@
   font-weight: 700;
   border-top: 2px solid #27272a;
   border-bottom: none;
-  background-color: #1f242c;
+  background-color: #18181b;
 }
 
 /* NOC Grid Table & Badges Styles */
@@ -881,7 +881,7 @@
 
 .custom-noc-table th {
   color: #a1a1aa;
-  background-color: #1f242c;
+  background-color: #18181b;
   font-weight: 600;
   text-transform: uppercase;
   font-size: 10px;
