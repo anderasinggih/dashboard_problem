@@ -2,7 +2,7 @@ var ticketsDataCache = null;
 
 function getThemeColors() {
     var wrapper = document.querySelector('.custom-dashboard-wrapper');
-    var isLight = wrapper ? wrapper.classList.contains('light-mode') : false;
+    var isLight = wrapper ? wrapper.classList.contains('custom-light-mode') : false;
     return {
         text: isLight ? '#24292f' : '#c9d1d9',
         titleText: isLight ? '#24292f' : '#f0f6fc',
@@ -17,8 +17,8 @@ function getThemeColors() {
 function toggleTheme() {
     var wrapper = document.querySelector('.custom-dashboard-wrapper');
     if (wrapper) {
-        wrapper.classList.toggle('light-mode');
-        var currentTheme = wrapper.classList.contains('light-mode') ? 'light' : 'dark';
+        wrapper.classList.toggle('custom-light-mode');
+        var currentTheme = wrapper.classList.contains('custom-light-mode') ? 'light' : 'dark';
         localStorage.setItem('custom-dashboard-theme', currentTheme);
         
         // Re-render the charts to update their colors
@@ -33,9 +33,9 @@ function initTheme() {
     if (wrapper) {
         var savedTheme = localStorage.getItem('custom-dashboard-theme');
         if (savedTheme === 'light') {
-            wrapper.classList.add('light-mode');
+            wrapper.classList.add('custom-light-mode');
         } else {
-            wrapper.classList.remove('light-mode');
+            wrapper.classList.remove('custom-light-mode');
         }
     }
 }
