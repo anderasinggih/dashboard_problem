@@ -224,6 +224,7 @@ function renderCurrentTicketsPage() {
     html += '<th>Title / Description</th>';
     html += '<th>Assignee</th>';
     html += '<th>Severity</th>';
+    html += '<th>Root Cause</th>';
     html += '<th>Current Phase</th>';
     html += '<th>Aging</th>';
     html += '<th>Status</th>';
@@ -302,12 +303,14 @@ function renderCurrentTicketsPage() {
         }
 
         var displayNo = startIdx + i + 1;
+        var rc = item.root_cause || item.rootcause || item.cause || '-';
         html += '<tr onclick="showTicketDetailModal(\'' + id + '\')">';
         html += '<td style="text-align: center; color: #8b949e; font-weight: 600;">' + displayNo + '</td>';
         html += '<td style="font-family: monospace; font-weight: bold; color: #58a6ff;">' + id + '</td>';
         html += '<td style="text-align: left; font-weight: 500;">' + title + '</td>';
         html += '<td>' + partner + '</td>';
         html += '<td><span class="custom-badge-severity ' + sevClass + '">' + sevLabel + '</span></td>';
+        html += '<td style="font-weight: 600; text-transform: uppercase;">' + rc + '</td>';
         html += '<td>' + phase + '</td>';
         html += '<td style="font-weight: 600;">' + parseFloat(agingVal).toFixed(1) + ' Days</td>';
         html += '<td><span class="custom-badge-status ' + statusClass + '">' + status + '</span></td>';
