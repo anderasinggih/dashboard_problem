@@ -1417,7 +1417,7 @@ function initDateFilterDOM() {
     container.innerHTML = '<div class="custom-filter-card">' +
         '  <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; flex-wrap:wrap; gap:10px;">' +
         '    <div class="custom-filter-title" style="margin-bottom:0;">Date Range & Party Filter (Createtime)</div>' +
-        '    <div class="custom-filter-active-range" style="font-size:12px; font-weight:600; color:#58a6ff; background:rgba(88,166,255,0.1); padding:4px 10px; border-radius:15px; border:1px solid rgba(88,166,255,0.2);">Active: All Time | Party: All Party</div>' +
+        '    <div class="custom-filter-active-range" style="font-size:14px; font-weight:600; color:#58a6ff; background:rgba(88,166,255,0.1); padding:6px 14px; border-radius:15px; border:1px solid rgba(88,166,255,0.2);">Active: All Time | Party: All Party</div>' +
         '  </div>' +
         '  <div class="custom-filter-inputs">' +
         '    <div class="custom-filter-field">' +
