@@ -15,6 +15,70 @@
   border-bottom: 1px solid #30363d;
 }
 
+/* Date Filter Bar Styles */
+.custom-filter-card {
+  background-color: #161b22;
+  border: 1px solid #30363d;
+  border-radius: 10px;
+  padding: 16px;
+  margin-bottom: 24px;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.15);
+}
+
+.custom-filter-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: #f0f6fc;
+  margin-bottom: 12px;
+}
+
+.custom-filter-inputs {
+  display: flex;
+  gap: 24px;
+  align-items: flex-end;
+  flex-wrap: wrap;
+}
+
+.custom-filter-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.custom-filter-field label {
+  font-size: 12px;
+  color: #8b949e;
+  font-weight: 600;
+}
+
+.custom-filter-field input[type="date"] {
+  background-color: #0d1117;
+  border: 1px solid #30363d;
+  border-radius: 6px;
+  color: #c9d1d9;
+  padding: 8px 12px;
+  font-size: 13px;
+  outline: none;
+  width: 160px;
+  color-scheme: dark;
+}
+
+.custom-filter-actions {
+  display: flex;
+  gap: 12px;
+}
+
+.custom-btn-secondary {
+  background-color: #21262d;
+  color: #c9d1d9;
+  border-color: #30363d;
+}
+
+.custom-btn-secondary:hover {
+  background-color: #30363d;
+  border-color: #8b949e;
+}
+
 .custom-header-info {
   display: flex;
   flex-direction: column;

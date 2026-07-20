@@ -7,6 +7,25 @@
     </div>
   </div>
 
+  <!-- Date Filter Bar -->
+  <div class="custom-filter-card">
+    <div class="custom-filter-title">📅 Date Range Filter (Createtime)</div>
+    <div class="custom-filter-inputs">
+      <div class="custom-filter-field">
+        <label for="filterStartDate">Start Date</label>
+        <input type="date" id="filterStartDate">
+      </div>
+      <div class="custom-filter-field">
+        <label for="filterEndDate">End Date</label>
+        <input type="date" id="filterEndDate">
+      </div>
+      <div class="custom-filter-actions">
+        <button onclick="applyDateFilter()" class="custom-btn custom-btn-primary">Apply Filter</button>
+        <button onclick="resetDateFilter()" class="custom-btn custom-btn-secondary">Reset</button>
+      </div>
+    </div>
+  </div>
+
   <!-- 1. STATISTIC CARDS -->
   <div class="custom-card-grid">
     <!-- Card: Total PT -->

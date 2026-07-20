@@ -64,7 +64,91 @@ function parseAndRender(res) {
     } else if (Array.isArray(res)) {
         tickets = res;
     }
+
+    // Save full dataset globally
+    window.allTicketsData = tickets;
+
+    // Set static cards once using ALL TIME data
+    updateAllTimeCards(tickets);
+
+    // Render list & charts
     renderTicketsData(tickets);
+}
+
+function updateAllTimeCards(tickets) {
+    if (!tickets || tickets.length === 0) {
+        setCardValue('statTotal', 0);
+        setCardValue('statOpen', 0);
+        setCardValue('statInProgress', 0);
+        setCardValue('statClosed', 0);
+        setCardValue('taOpen', 0); setCardValue('taPending', 0); setCardValue('taClosed', 0);
+        setCardValue('mOpen', 0); setCardValue('mPending', 0); setCardValue('mClosed', 0);
+        setCardValue('pOpen', 0); setCardValue('pPending', 0); setCardValue('pClosed', 0);
+        return;
+    }
+
+    var openCount = 0, inProgressCount = 0, closedCount = 0;
+    var taOpen = 0, taPending = 0, taClosed = 0;
+    var mOpen = 0, mPending = 0, mClosed = 0;
+    var pOpen = 0, pPending = 0, pClosed = 0;
+
+    for (var i = 0; i < tickets.length; i++) {
+        var item = tickets[i];
+        var statusLower = String(item.ticketstatus || item.status || '').toLowerCase();
+        
+        var partner = 'Telkom Akses';
+        var assign = String(item.createptassignto || '').toLowerCase();
+        var operator = String(item.currentoperator || '').toLowerCase();
+        var originator = String(item.originator || '').toLowerCase();
+        var respParty = String(item.problem_responsible_party || item.problemresponsibleparty || '').toLowerCase();
+        var titleLower = String(item.title || item.problem_name || '').toLowerCase();
+        var descLower = String(item.createptproblemdes || '').toLowerCase();
+
+        if (respParty.indexOf('telkom') !== -1 || respParty.indexOf('akses') !== -1) {
+            partner = 'Telkom Akses';
+        } else if (respParty.indexOf('mandau') !== -1) {
+            partner = 'Mandau';
+        } else if (respParty.indexOf('persada') !== -1) {
+            partner = 'Persada';
+        } else if (respParty.indexOf('ije') !== -1) {
+            partner = 'IJE';
+        } else if (titleLower.indexOf('telkom') !== -1 || titleLower.indexOf('akses') !== -1 || descLower.indexOf('telkom') !== -1) {
+            partner = 'Telkom Akses';
+        } else if (titleLower.indexOf('mandau') !== -1 || descLower.indexOf('mandau') !== -1) {
+            partner = 'Mandau';
+        } else if (titleLower.indexOf('persada') !== -1 || descLower.indexOf('persada') !== -1) {
+            partner = 'Persada';
+        } else if (assign.indexOf('pwx') !== -1 || originator.indexOf('pwx') !== -1 || operator.indexOf('pwx') !== -1) {
+            partner = 'Persada';
+        } else if (assign.indexOf('pm') !== -1 || operator.indexOf('pm') !== -1) {
+            partner = 'Mandau';
+        }
+
+        if (statusLower === 'running' || statusLower === 'open' || statusLower === 'true' || statusLower === '1') {
+            openCount++;
+            if (partner === 'Telkom Akses') taOpen++;
+            else if (partner === 'Mandau') mOpen++;
+            else if (partner === 'Persada') pOpen++;
+        } else if (statusLower === 'in progress' || statusLower === 'pending') {
+            inProgressCount++;
+            if (partner === 'Telkom Akses') taPending++;
+            else if (partner === 'Mandau') mPending++;
+            else if (partner === 'Persada') pPending++;
+        } else if (statusLower === 'closed' || statusLower === 'completed' || statusLower === 'false' || statusLower === '0') {
+            closedCount++;
+            if (partner === 'Telkom Akses') taClosed++;
+            else if (partner === 'Mandau') mClosed++;
+            else if (partner === 'Persada') pClosed++;
+        }
+    }
+
+    setCardValue('statTotal', tickets.length);
+    setCardValue('statOpen', openCount);
+    setCardValue('statInProgress', inProgressCount);
+    setCardValue('statClosed', closedCount);
+    setCardValue('taOpen', taOpen); setCardValue('taPending', taPending); setCardValue('taClosed', taClosed);
+    setCardValue('mOpen', mOpen); setCardValue('mPending', mPending); setCardValue('mClosed', mClosed);
+    setCardValue('pOpen', pOpen); setCardValue('pPending', pPending); setCardValue('pClosed', pClosed);
 }
 
 function renderTicketsData(tickets) {
@@ -79,22 +163,8 @@ function renderTicketsData(tickets) {
         emptyDiv.style.padding = '12px';
         emptyDiv.textContent = 'Tidak ada data tiket ditemukan.';
         container.appendChild(emptyDiv);
-
-        setCardValue('statTotal', 0);
-        setCardValue('statOpen', 0);
-        setCardValue('statInProgress', 0);
-        setCardValue('statClosed', 0);
-
-        setCardValue('taOpen', 0); setCardValue('taPending', 0); setCardValue('taClosed', 0);
-        setCardValue('mOpen', 0); setCardValue('mPending', 0); setCardValue('mClosed', 0);
-        setCardValue('pOpen', 0); setCardValue('pPending', 0); setCardValue('pClosed', 0);
         return;
     }
-
-    var openCount = 0, inProgressCount = 0, closedCount = 0;
-    var taOpen = 0, taPending = 0, taClosed = 0;
-    var mOpen = 0, mPending = 0, mClosed = 0;
-    var pOpen = 0, pPending = 0, pClosed = 0;
 
     var html = '<table class="custom-noc-table">';
     html += '<thead>';
@@ -206,23 +276,6 @@ function renderTicketsData(tickets) {
     html += '</tbody>';
     html += '</table>';
     container.innerHTML = html;
-
-    setCardValue('statTotal', tickets.length);
-    setCardValue('statOpen', openCount);
-    setCardValue('statInProgress', inProgressCount);
-    setCardValue('statClosed', closedCount);
-
-    setCardValue('taOpen', taOpen);
-    setCardValue('taPending', taPending);
-    setCardValue('taClosed', taClosed);
-
-    setCardValue('mOpen', mOpen);
-    setCardValue('mPending', mPending);
-    setCardValue('mClosed', mClosed);
-
-    setCardValue('pOpen', pOpen);
-    setCardValue('pPending', pPending);
-    setCardValue('pClosed', pClosed);
 
     // Render the Severity Overview charts and tables
     renderSeverityDashboard(tickets);
@@ -1081,6 +1134,46 @@ function renderSlaComplianceTable(containerId, rows) {
 
     html += '</tbody></table>';
     wrapper.innerHTML = html;
+}
+
+function applyDateFilter() {
+    var startInput = document.getElementById('filterStartDate').value;
+    var endInput = document.getElementById('filterEndDate').value;
+    
+    if (!window.allTicketsData || window.allTicketsData.length === 0) {
+        return;
+    }
+
+    var filtered = window.allTicketsData;
+
+    if (startInput) {
+        var startDate = new Date(startInput + 'T00:00:00');
+        filtered = filtered.filter(function (t) {
+            if (!t.createtime) return false;
+            var ticketDate = new Date(t.createtime.replace(/-/g, '/'));
+            return ticketDate >= startDate;
+        });
+    }
+
+    if (endInput) {
+        var endDate = new Date(endInput + 'T23:59:59');
+        filtered = filtered.filter(function (t) {
+            if (!t.createtime) return false;
+            var ticketDate = new Date(t.createtime.replace(/-/g, '/'));
+            return ticketDate <= endDate;
+        });
+    }
+
+    renderTicketsData(filtered);
+}
+
+function resetDateFilter() {
+    document.getElementById('filterStartDate').value = '';
+    document.getElementById('filterEndDate').value = '';
+    
+    if (window.allTicketsData) {
+        renderTicketsData(window.allTicketsData);
+    }
 }
 
 loadProblemTickets();
