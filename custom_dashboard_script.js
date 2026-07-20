@@ -1469,6 +1469,8 @@ function showTicketDetailModal(ticketId) {
         sevClass = 'custom-badge-sev-major';
     }
 
+    var rc = ticket.root_cause || ticket.rootcause || ticket.cause || '-';
+
     var statusClass = 'custom-badge-open';
     var statusLower = String(status).toLowerCase();
     if (statusLower === 'running' || statusLower === 'open' || statusLower === 'true' || statusLower === '1') {
@@ -1498,6 +1500,11 @@ function showTicketDetailModal(ticketId) {
     html += '  <div class="custom-detail-item">';
     html += '    <span class="custom-detail-label">SEVERITY</span>';
     html += '    <span><span class="custom-badge-severity ' + sevClass + '">' + sevLabel + '</span></span>';
+    html += '  </div>';
+
+    html += '  <div class="custom-detail-item">';
+    html += '    <span class="custom-detail-label">ROOT CAUSE</span>';
+    html += '    <span class="custom-detail-value" style="font-weight:700; color:#ff7b72; text-transform:uppercase;">' + rc + '</span>';
     html += '  </div>';
 
     html += '  <div class="custom-detail-item">';
