@@ -302,7 +302,7 @@ function renderCurrentTicketsPage() {
         }
 
         var displayNo = startIdx + i + 1;
-        html += '<tr>';
+        html += '<tr onclick="showTicketDetailModal(\'' + id + '\')">';
         html += '<td style="text-align: center; color: #8b949e; font-weight: 600;">' + displayNo + '</td>';
         html += '<td style="font-family: monospace; font-weight: bold; color: #58a6ff;">' + id + '</td>';
         html += '<td style="text-align: left; font-weight: 500;">' + title + '</td>';
@@ -1334,6 +1334,7 @@ function initDashboard() {
     function tryInit() {
         var container = document.getElementById('customFilterContainer');
         if (container) {
+            initDetailModalDOM();
             initDateFilterDOM();
             loadProblemTickets();
         } else if (retryCount < 100) { // Retry for up to 5 seconds
@@ -1341,6 +1342,7 @@ function initDashboard() {
             setTimeout(tryInit, 50);
         } else {
             console.warn('customFilterContainer placeholder not found in DOM after 5s. Loading tickets fallback.');
+            initDetailModalDOM();
             loadProblemTickets();
         }
     }
@@ -1381,6 +1383,163 @@ function initDateFilterDOM() {
         '</div>';
 }
 
+function initDetailModalDOM() {
+    if (document.getElementById('customDetailModal')) return;
+    var modalDiv = document.createElement('div');
+    modalDiv.id = 'customDetailModal';
+    modalDiv.className = 'custom-modal';
+    modalDiv.style.display = 'none';
+    modalDiv.innerHTML = 
+        '<div class="custom-modal-backdrop" onclick="closeTicketDetailModal()"></div>' +
+        '<div class="custom-modal-content">' +
+        '  <div class="custom-modal-header">' +
+        '    <h3 class="custom-modal-title">Problem Ticket Details</h3>' +
+        '    <span class="custom-modal-close" onclick="closeTicketDetailModal()">&times;</span>' +
+        '  </div>' +
+        '  <div class="custom-modal-body" id="customModalBodyContent"></div>' +
+        '</div>';
+    document.body.appendChild(modalDiv);
+}
+
+function showTicketDetailModal(ticketId) {
+    var tickets = (window.ticketsPagination && window.ticketsPagination.tickets) || [];
+    var ticket = null;
+    for (var i = 0; i < tickets.length; i++) {
+        var idVal = tickets[i].orderid || tickets[i].id || tickets[i].code;
+        if (String(idVal) === String(ticketId)) {
+            ticket = tickets[i];
+            break;
+        }
+    }
+
+    if (!ticket) {
+        console.warn('Ticket details not found for ID:', ticketId);
+        return;
+    }
+
+    var bodyContent = document.getElementById('customModalBodyContent');
+    if (!bodyContent) return;
+
+    var status = ticket.ticketstatus || ticket.status || ticket.active_status || 'Open';
+    var title = ticket.title || ticket.problem_name || ticket.description || 'No Title';
+    var desc = ticket.createptproblemdes || ticket.problem_description || 'No Description';
+    var createTime = ticket.createtime || '-';
+    var lastUpdate = ticket.lastupdatetime || '-';
+    var closeTime = ticket.closetime || '-';
+    var phase = ticket.operate_phase || ticket.phase || ticket.current_phase || '-';
+    var assign = ticket.createptassignto || '-';
+    var operator = ticket.currentoperator || '-';
+    var originator = ticket.originator || '-';
+
+    var agingVal = ticket.aging || ticket.aging_days || ticket.days || calculateAgingDays(ticket.createtime, ticket.closetime, ticket.lastupdatetime, ticket.operate_time, status);
+
+    var sevRaw = String(ticket.severity || ticket.createticketlevel || '').toLowerCase();
+    var sevLabel = 'Minor';
+    var sevClass = 'custom-badge-sev-minor';
+    if (sevRaw.indexOf('507') !== -1 || sevRaw.indexOf('emergency') !== -1 || sevRaw === '1') {
+        sevLabel = 'Emergency';
+        sevClass = 'custom-badge-sev-emergency';
+    } else if (sevRaw.indexOf('508') !== -1 || sevRaw.indexOf('critical') !== -1 || sevRaw === '2') {
+        sevLabel = 'Critical';
+        sevClass = 'custom-badge-sev-critical';
+    } else if (sevRaw.indexOf('50c') !== -1 || sevRaw.indexOf('major') !== -1 || sevRaw === '3') {
+        sevLabel = 'Major';
+        sevClass = 'custom-badge-sev-major';
+    }
+
+    var statusClass = 'custom-badge-open';
+    var statusLower = String(status).toLowerCase();
+    if (statusLower === 'running' || statusLower === 'open' || statusLower === 'true' || statusLower === '1') {
+        statusClass = 'custom-badge-open';
+    } else if (statusLower === 'in progress' || statusLower === 'pending') {
+        statusClass = 'custom-badge-pending';
+    } else if (statusLower === 'closed' || statusLower === 'completed' || statusLower === 'false' || statusLower === '0') {
+        statusClass = 'custom-badge-closed';
+    }
+
+    var html = '<div style="margin-bottom:16px;">';
+    html += '  <h4 style="margin:0 0 6px 0; color:#f0f6fc; font-size:15px; font-weight:600;">' + title + '</h4>';
+    html += '</div>';
+
+    html += '<div class="custom-detail-grid">';
+    
+    html += '  <div class="custom-detail-item">';
+    html += '    <span class="custom-detail-label">TICKET ID</span>';
+    html += '    <span class="custom-detail-value" style="font-family:monospace; font-weight:bold; color:#58a6ff;">' + ticketId + '</span>';
+    html += '  </div>';
+
+    html += '  <div class="custom-detail-item">';
+    html += '    <span class="custom-detail-label">STATUS</span>';
+    html += '    <span><span class="custom-badge-status ' + statusClass + '">' + status + '</span></span>';
+    html += '  </div>';
+
+    html += '  <div class="custom-detail-item">';
+    html += '    <span class="custom-detail-label">SEVERITY</span>';
+    html += '    <span><span class="custom-badge-severity ' + sevClass + '">' + sevLabel + '</span></span>';
+    html += '  </div>';
+
+    html += '  <div class="custom-detail-item">';
+    html += '    <span class="custom-detail-label">AGING DAYS</span>';
+    html += '    <span class="custom-detail-value" style="font-weight:600; color:#56d364;">' + parseFloat(agingVal).toFixed(2) + ' Days</span>';
+    html += '  </div>';
+
+    html += '  <div class="custom-detail-item">';
+    html += '    <span class="custom-detail-label">CURRENT PHASE</span>';
+    html += '    <span class="custom-detail-value">' + phase + '</span>';
+    html += '  </div>';
+
+    html += '  <div class="custom-detail-item">';
+    html += '    <span class="custom-detail-label">ASSIGNEE GROUP / PARTNER</span>';
+    html += '    <span class="custom-detail-value">' + assign + '</span>';
+    html += '  </div>';
+
+    html += '  <div class="custom-detail-item">';
+    html += '    <span class="custom-detail-label">CURRENT OPERATOR</span>';
+    html += '    <span class="custom-detail-value">' + operator + '</span>';
+    html += '  </div>';
+
+    html += '  <div class="custom-detail-item">';
+    html += '    <span class="custom-detail-label">ORIGINATOR</span>';
+    html += '    <span class="custom-detail-value">' + originator + '</span>';
+    html += '  </div>';
+
+    html += '  <div class="custom-detail-item">';
+    html += '    <span class="custom-detail-label">CREATE TIME</span>';
+    html += '    <span class="custom-detail-value">' + createTime + '</span>';
+    html += '  </div>';
+
+    html += '  <div class="custom-detail-item">';
+    html += '    <span class="custom-detail-label">LAST UPDATE TIME</span>';
+    html += '    <span class="custom-detail-value">' + lastUpdate + '</span>';
+    html += '  </div>';
+
+    html += '  <div class="custom-detail-item">';
+    html += '    <span class="custom-detail-label">CLOSE TIME</span>';
+    html += '    <span class="custom-detail-value">' + closeTime + '</span>';
+    html += '  </div>';
+
+    html += '</div>'; // End Grid
+
+    html += '<div class="custom-detail-desc-block">';
+    html += '  <span class="custom-detail-label" style="display:block; margin-bottom:6px;">PROBLEM DESCRIPTION</span>';
+    html += '  <div style="background:#0d1117; border:1px solid #30363d; border-radius:6px; padding:12px; font-size:13px; color:#c9d1d9; white-space:pre-wrap; word-break:break-word; max-height:120px; overflow-y:auto;">' + desc + '</div>';
+    html += '</div>';
+
+    bodyContent.innerHTML = html;
+
+    var modal = document.getElementById('customDetailModal');
+    if (modal) {
+        modal.style.display = 'flex';
+    }
+}
+
+function closeTicketDetailModal() {
+    var modal = document.getElementById('customDetailModal');
+    if (modal) {
+        modal.style.display = 'none';
+    }
+}
+
 // Bind functions to window object explicitly to bypass GDE's private scope wrapper
 window.applyDateFilter = applyDateFilter;
 window.resetDateFilter = resetDateFilter;
@@ -1388,3 +1547,5 @@ window.prevTicketsPage = prevTicketsPage;
 window.nextTicketsPage = nextTicketsPage;
 window.gotoTicketsPage = gotoTicketsPage;
 window.changeTicketsPageSize = changeTicketsPageSize;
+window.showTicketDetailModal = showTicketDetailModal;
+window.closeTicketDetailModal = closeTicketDetailModal;
