@@ -1,3 +1,37 @@
+function getTicketPartner(item) {
+    if (!item) return 'Telkom Akses';
+    var title = item.title || item.problem_name || item.description || '';
+    var assign = String(item.createptassignto || '').toLowerCase();
+    var operator = String(item.currentoperator || '').toLowerCase();
+    var originator = String(item.originator || '').toLowerCase();
+    var respParty = String(item.problem_responsible_party || item.problemresponsibleparty || '').toLowerCase();
+    var tLower = String(title).toLowerCase();
+    var desc = String(item.createptproblemdes || '').toLowerCase();
+
+    if (respParty.indexOf('telkom') !== -1 || respParty.indexOf('akses') !== -1) {
+        return 'Telkom Akses';
+    } else if (respParty.indexOf('mandau') !== -1) {
+        return 'Mandau';
+    } else if (respParty.indexOf('persada') !== -1) {
+        return 'Persada';
+    } else if (respParty.indexOf('ije') !== -1) {
+        return 'IJE';
+    } else if (tLower.indexOf('telkom') !== -1 || tLower.indexOf('akses') !== -1 || desc.indexOf('telkom') !== -1) {
+        return 'Telkom Akses';
+    } else if (tLower.indexOf('mandau') !== -1 || desc.indexOf('mandau') !== -1) {
+        return 'Mandau';
+    } else if (tLower.indexOf('persada') !== -1 || desc.indexOf('persada') !== -1) {
+        return 'Persada';
+    } else if (assign.indexOf('pwx') !== -1 || originator.indexOf('pwx') !== -1 || operator.indexOf('pwx') !== -1) {
+        return 'Persada';
+    } else if (assign.indexOf('pm') !== -1 || operator.indexOf('pm') !== -1) {
+        return 'Mandau';
+    } else {
+        var rawAssign = item.createptassignto || item.currentoperator || item.originator || 'Surge';
+        return rawAssign.replace('user:', '');
+    }
+}
+
 function calculateAgingDays(createTimeStr, closeTimeStr, lastUpdateTimeStr, operateTimeStr, ticketstatus) {
     if (!createTimeStr || typeof createTimeStr !== 'string') return 0;
     // Replace '-' with '/' for broad browser support of date parsing
@@ -17,7 +51,7 @@ function calculateAgingDays(createTimeStr, closeTimeStr, lastUpdateTimeStr, oper
     return diffMs / (1000 * 60 * 60 * 24);
 }
 
-function loadProblemTickets(startDate, endDate) {
+function loadProblemTickets(startDate, endDate, party) {
     var container = document.querySelector('#ticketContainer');
     if (container) {
         container.innerHTML = '';
@@ -32,7 +66,8 @@ function loadProblemTickets(startDate, endDate) {
         "start": 0,
         "limit": 1000,
         "startDate": startDate || "2000-01-01 00:00:00",
-        "endDate": endDate || "2099-12-31 23:59:59"
+        "endDate": endDate || "2099-12-31 23:59:59",
+        "party": party || "ALL"
     };
 
     console.log('[DEBUG] Calling OWS Service with payload:', JSON.stringify(requestData));
@@ -43,7 +78,7 @@ function loadProblemTickets(startDate, endDate) {
             data: requestData,
             success: function (res) {
                 console.log('Response OWS Success:', res);
-                parseAndRender(res, !!(startDate || endDate), startDate, endDate);
+                parseAndRender(res, !!(startDate || endDate || (party && party !== 'ALL')), startDate, endDate, party);
             },
             error: function (err) {
                 console.error('Response OWS Error:', err);
@@ -55,44 +90,58 @@ function loadProblemTickets(startDate, endDate) {
     }
 }
 
-function parseAndRender(res, isFiltered, startDate, endDate) {
+function parseAndRender(res, isFiltered, startDate, endDate, party) {
     try {
-        var tickets = [];
+        var rawTickets = [];
         if (res && res.result && res.result._values) {
-            tickets = res.result._values;
+            rawTickets = res.result._values;
         } else if (res && res.result && res.result.results) {
-            tickets = res.result.results;
+            rawTickets = res.result.results;
         } else if (res && res.results) {
-            tickets = res.results;
+            rawTickets = res.results;
         } else if (res && res._values) {
-            tickets = res._values;
+            rawTickets = res._values;
         } else if (res && res.data) {
-            tickets = res.data;
+            rawTickets = res.data;
         } else if (Array.isArray(res)) {
-            tickets = res;
+            rawTickets = res;
         }
 
-        if (isFiltered && tickets && tickets.length > 0) {
+        var dateFilteredTickets = rawTickets;
+        if (rawTickets && rawTickets.length > 0) {
             // Client-side date filter fallback to ensure dashboard updates correctly even if OWS backend has type mismatch issues
-            var startMs = startDate ? new Date(startDate.replace(/-/g, '/')).getTime() : 0;
-            var endMs = endDate ? new Date(endDate.replace(/-/g, '/')).getTime() : Infinity;
-            tickets = tickets.filter(function (t) {
-                if (!t.createtime) return false;
-                var tMs = new Date(t.createtime.replace(/-/g, '/')).getTime();
-                return tMs >= startMs && tMs <= endMs;
-            });
+            if (startDate || endDate) {
+                var startMs = startDate ? new Date(startDate.replace(/-/g, '/')).getTime() : 0;
+                var endMs = endDate ? new Date(endDate.replace(/-/g, '/')).getTime() : Infinity;
+                dateFilteredTickets = rawTickets.filter(function (t) {
+                    if (!t.createtime) return false;
+                    var tMs = new Date(t.createtime.replace(/-/g, '/')).getTime();
+                    return tMs >= startMs && tMs <= endMs;
+                });
+            }
         }
 
-        console.log('[DEBUG] OWS Response parsed. Tickets Count:', tickets.length, 'isFiltered:', isFiltered);
+        var fullyFilteredTickets = dateFilteredTickets;
+        if (dateFilteredTickets && dateFilteredTickets.length > 0) {
+            // Client-side party filter fallback
+            if (party && party !== 'ALL') {
+                fullyFilteredTickets = dateFilteredTickets.filter(function (t) {
+                    var ticketPartner = getTicketPartner(t);
+                    return ticketPartner.toLowerCase() === party.toLowerCase();
+                });
+            }
+        }
+
+        console.log('[DEBUG] OWS Response parsed. Raw Count:', rawTickets.length, 'DateFiltered:', dateFilteredTickets.length, 'FullyFiltered:', fullyFilteredTickets.length);
 
         // Save dataset and update cards ONLY on all-time load
         if (!isFiltered) {
-            window.allTicketsData = tickets;
-            updateAllTimeCards(tickets);
+            window.allTicketsData = rawTickets;
+            updateAllTimeCards(rawTickets);
         }
 
         // Render list & charts
-        renderTicketsData(tickets);
+        renderTicketsData(fullyFilteredTickets, dateFilteredTickets);
     } catch (e) {
         alert('[parseAndRender ERROR]: ' + e.message + '\nStack: ' + e.stack);
         console.error('[CRITICAL] parseAndRender crashed:', e);
@@ -182,7 +231,7 @@ window.ticketsPagination = {
     pageSize: 10
 };
 
-function renderTicketsData(tickets) {
+function renderTicketsData(tickets, dateFilteredTickets) {
     // Cache tickets and reset page index
     window.ticketsPagination.tickets = tickets || [];
     window.ticketsPagination.currentPage = 1;
@@ -190,14 +239,14 @@ function renderTicketsData(tickets) {
     // Render current active page in list table
     renderCurrentTicketsPage();
 
-    // Render the Severity Overview charts and tables (Filtered)
+    // Render the Severity Overview charts and tables (Filtered by Date + Party)
     renderSeverityDashboard(tickets);
 
-    // Render the Phase Status tables (Filtered)
-    renderPhaseDashboard(tickets);
+    // Render the Phase Status tables (Filtered by Date ONLY)
+    renderPhaseDashboard(dateFilteredTickets || window.allTicketsData || tickets);
 
-    // Render Weekly Trend, Top Root Cause, and SLA Compliance panels (Filtered)
-    renderTrendsAndCompliance(tickets, tickets);
+    // Render Weekly Trend (fully filtered), Top Root Cause (fully filtered), and SLA Compliance (date filtered only)
+    renderTrendsAndCompliance(tickets, tickets, dateFilteredTickets || window.allTicketsData || tickets);
 }
 
 function renderCurrentTicketsPage() {
@@ -242,36 +291,7 @@ function renderCurrentTicketsPage() {
         // Calculate aging days dynamically from timestamps if not pre-calculated in DB
         var agingVal = item.aging || item.aging_days || item.days || calculateAgingDays(item.createtime, item.closetime, item.lastupdatetime, item.operate_time, status);
 
-        var partner = 'Telkom Akses';
-        var assign = String(item.createptassignto || '').toLowerCase();
-        var operator = String(item.currentoperator || '').toLowerCase();
-        var originator = String(item.originator || '').toLowerCase();
-        var respParty = String(item.problem_responsible_party || item.problemresponsibleparty || '').toLowerCase();
-        var tLower = String(title || '').toLowerCase();
-        var desc = String(item.createptproblemdes || '').toLowerCase();
-
-        if (respParty.indexOf('telkom') !== -1 || respParty.indexOf('akses') !== -1) {
-            partner = 'Telkom Akses';
-        } else if (respParty.indexOf('mandau') !== -1) {
-            partner = 'Mandau';
-        } else if (respParty.indexOf('persada') !== -1) {
-            partner = 'Persada';
-        } else if (respParty.indexOf('ije') !== -1) {
-            partner = 'IJE';
-        } else if (tLower.indexOf('telkom') !== -1 || tLower.indexOf('akses') !== -1 || desc.indexOf('telkom') !== -1) {
-            partner = 'Telkom Akses';
-        } else if (tLower.indexOf('mandau') !== -1 || desc.indexOf('mandau') !== -1) {
-            partner = 'Mandau';
-        } else if (tLower.indexOf('persada') !== -1 || desc.indexOf('persada') !== -1) {
-            partner = 'Persada';
-        } else if (assign.indexOf('pwx') !== -1 || originator.indexOf('pwx') !== -1 || operator.indexOf('pwx') !== -1) {
-            partner = 'Persada';
-        } else if (assign.indexOf('pm') !== -1 || operator.indexOf('pm') !== -1) {
-            partner = 'Mandau';
-        } else {
-            var rawAssign = item.createptassignto || item.currentoperator || item.originator || 'Surge';
-            partner = rawAssign.replace('user:', '');
-        }
+        var partner = getTicketPartner(item);
 
         // Map Severity (including OWS createticketlevel UUID checks)
         var sevRaw = String(item.severity || item.createticketlevel || '').toLowerCase();
@@ -851,10 +871,10 @@ function renderPhasePartner(containerId, phaseRows) {
     wrapper.innerHTML = html;
 }
 
-function renderTrendsAndCompliance(filteredTickets, allTimeTickets) {
+function renderTrendsAndCompliance(weeklyTrendTickets, rootCauseTickets, complianceTickets) {
     if (typeof echarts === 'undefined') {
         console.warn('ECharts not available yet. Retrying in 500ms...');
-        setTimeout(function () { renderTrendsAndCompliance(filteredTickets, allTimeTickets); }, 500);
+        setTimeout(function () { renderTrendsAndCompliance(weeklyTrendTickets, rootCauseTickets, complianceTickets); }, 500);
         return;
     }
 
@@ -890,11 +910,10 @@ function renderTrendsAndCompliance(filteredTickets, allTimeTickets) {
         return 'W' + weekNum;
     }
 
-    // 1 & 2. Top Root Cause & SLA Compliance (Always use All-Time dataset)
-    var allTickets = allTimeTickets || filteredTickets;
-    if (allTickets && allTickets.length > 0) {
-        allTickets.forEach(function (t) {
-            // Root Cause
+    // 1. Top Root Cause (using rootCauseTickets - fully filtered by date + party)
+    var rcTickets = rootCauseTickets || [];
+    if (rcTickets.length > 0) {
+        rcTickets.forEach(function (t) {
             var rcRaw = String(t.root_cause || t.rootcause || t.cause || '').toLowerCase();
             var rcName = 'Others';
             if (rcRaw.indexOf('fiber') !== -1 || rcRaw.indexOf('cut') !== -1) rcName = 'Fiber Cut';
@@ -905,32 +924,14 @@ function renderTrendsAndCompliance(filteredTickets, allTimeTickets) {
 
             var rcObj = rootCauseData.find(function (rc) { return rc.name === rcName; });
             if (rcObj) rcObj.value++;
+        });
+    }
 
-            // SLA Compliance
-            var partner = 'Surge';
-            var title = String(t.title || t.problem_name || '').toLowerCase();
-            var desc = String(t.createptproblemdes || '').toLowerCase();
-            var assign = String(t.createptassignto || '').toLowerCase();
-            var respParty = String(t.problem_responsible_party || t.problemresponsibleparty || '').toLowerCase();
-
-            if (respParty.indexOf('telkom') !== -1 || respParty.indexOf('akses') !== -1) {
-                partner = 'Telkom Akses';
-            } else if (respParty.indexOf('mandau') !== -1) {
-                partner = 'Mandau';
-            } else if (respParty.indexOf('persada') !== -1) {
-                partner = 'Persada';
-            } else if (respParty.indexOf('ije') !== -1) {
-                partner = 'IJE';
-            } else if (assign.indexOf('persada') !== -1 || title.indexOf('persada') !== -1 || desc.indexOf('persada') !== -1) {
-                partner = 'Persada';
-            } else if (assign.indexOf('telkom') !== -1 || assign.indexOf('akses') !== -1 || title.indexOf('akses') !== -1 || desc.indexOf('telkom') !== -1) {
-                partner = 'Telkom Akses';
-            } else if (assign.indexOf('mandau') !== -1 || assign.indexOf('pm') !== -1 || title.indexOf('mandau') !== -1 || desc.indexOf('mandau') !== -1) {
-                partner = 'Mandau';
-            } else if (assign.indexOf('ije') !== -1 || title.indexOf('ije') !== -1) {
-                partner = 'IJE';
-            }
-
+    // 2. SLA Compliance (using complianceTickets - date-filtered only)
+    var compTickets = complianceTickets || [];
+    if (compTickets.length > 0) {
+        compTickets.forEach(function (t) {
+            var partner = getTicketPartner(t);
             var compObj = complianceData.find(function (c) { return c.party === partner; });
             if (compObj) {
                 compObj.total++;
@@ -949,9 +950,10 @@ function renderTrendsAndCompliance(filteredTickets, allTimeTickets) {
         });
     }
 
-    // 3. Weekly Trend (Use Filtered dataset)
-    if (filteredTickets && filteredTickets.length > 0) {
-        filteredTickets.forEach(function (t) {
+    // 3. Weekly Trend (using weeklyTrendTickets - fully filtered by date + party)
+    var trendTickets = weeklyTrendTickets || [];
+    if (trendTickets.length > 0) {
+        trendTickets.forEach(function (t) {
             var dateVal = t.createtime || t.createfirstoccurtime || t.operate_time;
             var wLabel = getWeekLabel(dateVal);
             if (!weeklyMap[wLabel]) {
@@ -1285,10 +1287,12 @@ function formatIndonesianDate(dateStr) {
 function applyDateFilter() {
     var startEl = document.querySelector('.custom-filter-start-input');
     var endEl = document.querySelector('.custom-filter-end-input');
+    var partyEl = document.querySelector('.custom-filter-party-input');
     var startInput = startEl ? startEl.value : '';
     var endInput = endEl ? endEl.value : '';
+    var partyInput = partyEl ? partyEl.value : 'ALL';
     
-    console.log('[DEBUG] applyDateFilter clicked. startInput:', startInput, 'endInput:', endInput);
+    console.log('[DEBUG] applyDateFilter clicked. startInput:', startInput, 'endInput:', endInput, 'partyInput:', partyInput);
 
     if (!startInput || !endInput) {
         alert('Please select both Start Date and End Date.');
@@ -1306,29 +1310,32 @@ function applyDateFilter() {
     var startParam = startInput + ' 00:00:00';
     var endParam = endInput + ' 23:59:59';
 
-    console.log('[DEBUG] Formatted Params -> startParam:', startParam, 'endParam:', endParam);
+    console.log('[DEBUG] Formatted Params -> startParam:', startParam, 'endParam:', endParam, 'party:', partyInput);
 
     var activeEl = document.querySelector('.custom-filter-active-range');
     if (activeEl) {
-        activeEl.innerText = 'Active: ' + formatIndonesianDate(startInput) + ' - ' + formatIndonesianDate(endInput);
+        var partyText = (partyInput === 'ALL') ? 'All Party' : partyInput;
+        activeEl.innerText = 'Active: ' + formatIndonesianDate(startInput) + ' - ' + formatIndonesianDate(endInput) + ' | Party: ' + partyText;
     }
 
-    loadProblemTickets(startParam, endParam);
+    loadProblemTickets(startParam, endParam, partyInput);
 }
 
 function resetDateFilter() {
     console.log('[DEBUG] resetDateFilter clicked.');
     var startEl = document.querySelector('.custom-filter-start-input');
     var endEl = document.querySelector('.custom-filter-end-input');
+    var partyEl = document.querySelector('.custom-filter-party-input');
     if (startEl) startEl.value = '';
     if (endEl) endEl.value = '';
+    if (partyEl) partyEl.value = 'ALL';
 
     var activeEl = document.querySelector('.custom-filter-active-range');
     if (activeEl) {
-        activeEl.innerText = 'Active: All Time';
+        activeEl.innerText = 'Active: All Time | Party: All Party';
     }
 
-    loadProblemTickets();
+    loadProblemTickets(null, null, 'ALL');
 }
 
 // Safe event listener and loader registration for OWS (GDE) & Local Sandbox
@@ -1366,8 +1373,8 @@ function initDateFilterDOM() {
     
     container.innerHTML = '<div class="custom-filter-card">' +
         '  <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; flex-wrap:wrap; gap:10px;">' +
-        '    <div class="custom-filter-title" style="margin-bottom:0;">Date Range Filter (Createtime)</div>' +
-        '    <div class="custom-filter-active-range" style="font-size:12px; font-weight:600; color:#58a6ff; background:rgba(88,166,255,0.1); padding:4px 10px; border-radius:15px; border:1px solid rgba(88,166,255,0.2);">Active: All Time</div>' +
+        '    <div class="custom-filter-title" style="margin-bottom:0;">Date Range & Party Filter (Createtime)</div>' +
+        '    <div class="custom-filter-active-range" style="font-size:12px; font-weight:600; color:#58a6ff; background:rgba(88,166,255,0.1); padding:4px 10px; border-radius:15px; border:1px solid rgba(88,166,255,0.2);">Active: All Time | Party: All Party</div>' +
         '  </div>' +
         '  <div class="custom-filter-inputs">' +
         '    <div class="custom-filter-field">' +
@@ -1377,6 +1384,15 @@ function initDateFilterDOM() {
         '    <div class="custom-filter-field">' +
         '      <label>End Date</label>' +
         '      <input type="date" class="custom-filter-end-input">' +
+        '    </div>' +
+        '    <div class="custom-filter-field">' +
+        '      <label>Party</label>' +
+        '      <select class="custom-filter-party-input" style="background-color: #09090b; border: 1px solid #27272a; border-radius: 6px; color: #e4e4e7; padding: 8px 12px; font-size: 13px; outline: none; width: 160px; color-scheme: dark;">' +
+        '        <option value="ALL">All Party</option>' +
+        '        <option value="Telkom Akses">Telkom Akses</option>' +
+        '        <option value="Mandau">Mandau</option>' +
+        '        <option value="Persada">Persada</option>' +
+        '      </select>' +
         '    </div>' +
         '    <div class="custom-filter-actions">' +
         '      <button onclick="applyDateFilter()" class="custom-btn custom-btn-primary custom-btn-apply-filter">Apply Filter</button>' +
