@@ -1154,6 +1154,23 @@ function renderSlaComplianceTable(containerId, rows) {
     wrapper.innerHTML = html;
 }
 
+function formatIndonesianDate(dateStr) {
+    if (!dateStr) return '';
+    var parts = dateStr.split('-');
+    if (parts.length < 3) return dateStr;
+    
+    var year = parts[0];
+    var monthIndex = parseInt(parts[1], 10) - 1;
+    var day = parseInt(parts[2], 10);
+    
+    var months = [
+        'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
+        'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'
+    ];
+    
+    return day + ' ' + months[monthIndex] + ' ' + year;
+}
+
 function applyDateFilter() {
     var startEl = document.querySelector('.custom-filter-start-input');
     var endEl = document.querySelector('.custom-filter-end-input');
@@ -1172,6 +1189,13 @@ function applyDateFilter() {
 
     console.log('[DEBUG] Formatted Params -> startParam:', startParam, 'endParam:', endParam);
 
+    var activeEl = document.querySelector('.custom-filter-active-range');
+    if (activeEl) {
+        var startTxt = startInput ? formatIndonesianDate(startInput) : 'Awal';
+        var endTxt = endInput ? formatIndonesianDate(endInput) : 'Akhir';
+        activeEl.innerText = 'Active: ' + startTxt + ' - ' + endTxt;
+    }
+
     loadProblemTickets(startParam, endParam);
 }
 
@@ -1181,6 +1205,12 @@ function resetDateFilter() {
     var endEl = document.querySelector('.custom-filter-end-input');
     if (startEl) startEl.value = '';
     if (endEl) endEl.value = '';
+
+    var activeEl = document.querySelector('.custom-filter-active-range');
+    if (activeEl) {
+        activeEl.innerText = 'Active: All Time';
+    }
+
     loadProblemTickets();
 }
 
@@ -1215,7 +1245,26 @@ function initDateFilterDOM() {
     var container = document.getElementById('customFilterContainer');
     if (!container) return;
     
-    container.innerHTML = '<div class="custom-filter-card"><div class="custom-filter-title">Date Range Filter (Createtime)</div><div class="custom-filter-inputs"><div class="custom-filter-field"><label>Start Date</label><input type="date" class="custom-filter-start-input"></div><div class="custom-filter-field"><label>End Date</label><input type="date" class="custom-filter-end-input"></div><div class="custom-filter-actions"><button onclick="applyDateFilter()" class="custom-btn custom-btn-primary custom-btn-apply-filter">Apply Filter</button><button onclick="resetDateFilter()" class="custom-btn custom-btn-secondary custom-btn-reset-filter">Reset</button></div></div></div>';
+    container.innerHTML = '<div class="custom-filter-card">' +
+        '  <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; flex-wrap:wrap; gap:10px;">' +
+        '    <div class="custom-filter-title" style="margin-bottom:0;">Date Range Filter (Createtime)</div>' +
+        '    <div class="custom-filter-active-range" style="font-size:12px; font-weight:600; color:#58a6ff; background:rgba(88,166,255,0.1); padding:4px 10px; border-radius:15px; border:1px solid rgba(88,166,255,0.2);">Active: All Time</div>' +
+        '  </div>' +
+        '  <div class="custom-filter-inputs">' +
+        '    <div class="custom-filter-field">' +
+        '      <label>Start Date</label>' +
+        '      <input type="date" class="custom-filter-start-input">' +
+        '    </div>' +
+        '    <div class="custom-filter-field">' +
+        '      <label>End Date</label>' +
+        '      <input type="date" class="custom-filter-end-input">' +
+        '    </div>' +
+        '    <div class="custom-filter-actions">' +
+        '      <button onclick="applyDateFilter()" class="custom-btn custom-btn-primary custom-btn-apply-filter">Apply Filter</button>' +
+        '      <button onclick="resetDateFilter()" class="custom-btn custom-btn-secondary custom-btn-reset-filter">Reset</button>' +
+        '    </div>' +
+        '  </div>' +
+        '</div>';
 }
 
 // Bind functions to window object explicitly to bypass GDE's private scope wrapper
