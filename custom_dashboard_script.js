@@ -1294,28 +1294,32 @@ function applyDateFilter() {
     
     console.log('[DEBUG] applyDateFilter clicked. startInput:', startInput, 'endInput:', endInput, 'partyInput:', partyInput);
 
-    if (!startInput || !endInput) {
-        alert('Please select both Start Date and End Date.');
+    if ((startInput && !endInput) || (!startInput && endInput)) {
+        alert('Please select both Start Date and End Date to filter by date range.');
         return;
     }
 
-    var startDateObj = new Date(startInput);
-    var endDateObj = new Date(endInput);
-    
-    if (startDateObj > endDateObj) {
-        alert('Start Date cannot be later than End Date.');
-        return;
+    var startParam = null;
+    var endParam = null;
+    if (startInput && endInput) {
+        var startDateObj = new Date(startInput);
+        var endDateObj = new Date(endInput);
+        
+        if (startDateObj > endDateObj) {
+            alert('Start Date cannot be later than End Date.');
+            return;
+        }
+        startParam = startInput + ' 00:00:00';
+        endParam = endInput + ' 23:59:59';
     }
-
-    var startParam = startInput + ' 00:00:00';
-    var endParam = endInput + ' 23:59:59';
 
     console.log('[DEBUG] Formatted Params -> startParam:', startParam, 'endParam:', endParam, 'party:', partyInput);
 
     var activeEl = document.querySelector('.custom-filter-active-range');
     if (activeEl) {
+        var dateText = (startInput && endInput) ? (formatIndonesianDate(startInput) + ' - ' + formatIndonesianDate(endInput)) : 'All Time';
         var partyText = (partyInput === 'ALL') ? 'All Party' : partyInput;
-        activeEl.innerText = 'Active: ' + formatIndonesianDate(startInput) + ' - ' + formatIndonesianDate(endInput) + ' | Party: ' + partyText;
+        activeEl.innerText = 'Active: ' + dateText + ' | Party: ' + partyText;
     }
 
     loadProblemTickets(startParam, endParam, partyInput);
