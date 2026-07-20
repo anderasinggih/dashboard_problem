@@ -1167,9 +1167,22 @@ function resetDateFilter() {
 
 // Safe event listener and loader registration for OWS (GDE) & Local Sandbox
 function initDashboard() {
-    initDateFilterDOM();
-    initDateFilterEvents();
-    loadProblemTickets();
+    var retryCount = 0;
+    function tryInit() {
+        var container = document.getElementById('customFilterContainer');
+        if (container) {
+            initDateFilterDOM();
+            initDateFilterEvents();
+            loadProblemTickets();
+        } else if (retryCount < 100) { // Retry for up to 5 seconds
+            retryCount++;
+            setTimeout(tryInit, 50);
+        } else {
+            console.warn('customFilterContainer placeholder not found in DOM after 5s. Loading tickets fallback.');
+            loadProblemTickets();
+        }
+    }
+    tryInit();
 }
 
 if (typeof U !== 'undefined' && typeof U.ready === 'function') {
