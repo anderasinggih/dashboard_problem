@@ -257,22 +257,10 @@ function renderTicketsData(tickets) {
         var statusLower = String(status).toLowerCase();
         if (statusLower === 'running' || statusLower === 'open' || statusLower === 'true' || statusLower === '1') {
             statusClass = 'custom-badge-open';
-            openCount++;
-            if (partner === 'Telkom Akses') taOpen++;
-            else if (partner === 'Mandau') mOpen++;
-            else if (partner === 'Persada') pOpen++;
         } else if (statusLower === 'in progress' || statusLower === 'pending') {
             statusClass = 'custom-badge-pending';
-            inProgressCount++;
-            if (partner === 'Telkom Akses') taPending++;
-            else if (partner === 'Mandau') mPending++;
-            else if (partner === 'Persada') pPending++;
         } else if (statusLower === 'closed' || statusLower === 'completed' || statusLower === 'false' || statusLower === '0') {
             statusClass = 'custom-badge-closed';
-            closedCount++;
-            if (partner === 'Telkom Akses') taClosed++;
-            else if (partner === 'Mandau') mClosed++;
-            else if (partner === 'Persada') pClosed++;
         }
 
         html += '<tr>';
