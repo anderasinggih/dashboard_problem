@@ -6,10 +6,7 @@
       <p class="custom-header-subtitle">Real-time enterprise monitoring & ticket tracking</p>
     </div>
     <div class="custom-header-right">
-      <button class="custom-theme-toggle" onclick="toggleTheme()">
-        <span class="custom-theme-icon-sun">Light Mode</span>
-        <span class="custom-theme-icon-moon">Dark Mode</span>
-      </button>
+      <button class="custom-theme-toggle" onclick="toggleTheme()">Light Mode</button>
     </div>
   </div>
 

@@ -18,8 +18,14 @@ function toggleTheme() {
     var wrapper = document.querySelector('.custom-dashboard-wrapper');
     if (wrapper) {
         wrapper.classList.toggle('custom-light-mode');
-        var currentTheme = wrapper.classList.contains('custom-light-mode') ? 'light' : 'dark';
+        var isLight = wrapper.classList.contains('custom-light-mode');
+        var currentTheme = isLight ? 'light' : 'dark';
         localStorage.setItem('custom-dashboard-theme', currentTheme);
+        
+        var btn = document.querySelector('.custom-theme-toggle');
+        if (btn) {
+            btn.innerText = isLight ? 'Dark Mode' : 'Light Mode';
+        }
         
         // Re-render the charts to update their colors
         if (ticketsDataCache) {
@@ -32,10 +38,15 @@ function initTheme() {
     var wrapper = document.querySelector('.custom-dashboard-wrapper');
     if (wrapper) {
         var savedTheme = localStorage.getItem('custom-dashboard-theme');
-        if (savedTheme === 'light') {
+        var isLight = (savedTheme === 'light');
+        if (isLight) {
             wrapper.classList.add('custom-light-mode');
         } else {
             wrapper.classList.remove('custom-light-mode');
+        }
+        var btn = document.querySelector('.custom-theme-toggle');
+        if (btn) {
+            btn.innerText = isLight ? 'Dark Mode' : 'Light Mode';
         }
     }
 }
