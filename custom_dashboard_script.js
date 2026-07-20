@@ -37,7 +37,7 @@ function loadProblemTickets(startDate, endDate) {
 
     if (typeof MessageProcessor !== 'undefined') {
         MessageProcessor.process({
-            serviceId: '/adc-service/rest/v1/services/dashboard_problem_ticket_test/dashboard_problem_ticket_test/dashboard__problem_ticket',
+            serviceId: '/adc-service/rest/v1/services/dashboard_problem_ticket_test/dashboard_problem_ticket_test/problem_ticket_tt_problem_ticket_get_list',
             data: requestData,
             success: function (res) {
                 console.log('Response OWS Success:', res);
@@ -1161,11 +1161,23 @@ function resetDateFilter() {
     loadProblemTickets();
 }
 
-// Safe event listener registration
-if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', initDateFilterEvents);
+// Safe event listener and data loading initialization using GDE's U.ready
+if (typeof U !== 'undefined' && typeof U.ready === 'function') {
+    U.ready(function () {
+        initDateFilterEvents();
+        loadProblemTickets();
+    });
 } else {
-    initDateFilterEvents();
+    // Fallback for local sandbox preview
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', function () {
+            initDateFilterEvents();
+            loadProblemTickets();
+        });
+    } else {
+        initDateFilterEvents();
+        loadProblemTickets();
+    }
 }
 
 function initDateFilterEvents() {
@@ -1178,5 +1190,3 @@ function initDateFilterEvents() {
         btnReset.addEventListener('click', resetDateFilter);
     }
 }
-
-loadProblemTickets();
