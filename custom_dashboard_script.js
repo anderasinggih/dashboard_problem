@@ -30,10 +30,10 @@ function loadProblemTickets(startDate, endDate) {
 
     var requestData = {
         "start": 0,
-        "limit": 1000
+        "limit": 1000,
+        "startDate": startDate || "2000-01-01 00:00:00",
+        "endDate": endDate || "2099-12-31 23:59:59"
     };
-    if (startDate) requestData.startDate = startDate;
-    if (endDate) requestData.endDate = endDate;
 
     console.log('[DEBUG] Calling OWS Service with payload:', JSON.stringify(requestData));
 
