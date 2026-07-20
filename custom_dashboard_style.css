@@ -1,3 +1,14 @@
+/* Hide scrollbars globally inside the dashboard to preserve the Shadcn dark aesthetic */
+.custom-dashboard-wrapper ::-webkit-scrollbar {
+  width: 0px;
+  height: 0px;
+  background: transparent;
+}
+.custom-dashboard-wrapper * {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
 .custom-dashboard-wrapper {
   padding: 24px;
   background-color: #09090b;

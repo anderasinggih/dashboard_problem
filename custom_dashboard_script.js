@@ -1477,7 +1477,9 @@ function initDetailModalDOM() {
         '.custom-badge-status { display: inline-block; padding: 3px 10px; border-radius: 12px; font-weight: 700; font-size: 10px; text-transform: uppercase; } ' +
         '.custom-badge-open { background-color: #da3633 !important; color: #ffffff !important; } ' +
         '.custom-badge-pending { background-color: #d15704 !important; color: #ffffff !important; } ' +
-        '.custom-badge-closed { background-color: #238636 !important; color: #ffffff !important; }';
+        '.custom-badge-closed { background-color: #238636 !important; color: #ffffff !important; } ' +
+        '.custom-modal-body::-webkit-scrollbar { display: none !important; } ' +
+        '.custom-modal-body { -ms-overflow-style: none !important; scrollbar-width: none !important; }';
     document.head.appendChild(dynamicStyle);
 
     var modalDiv = document.createElement('div');
