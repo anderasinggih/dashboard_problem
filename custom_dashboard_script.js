@@ -74,36 +74,14 @@ function parseAndRender(res, isFiltered) {
 
         console.log('[DEBUG] OWS Response parsed. Tickets Count:', tickets.length, 'isFiltered:', isFiltered);
 
-        var renderList = tickets;
-        if (isFiltered) {
-            var startEl = document.querySelector('.custom-filter-start-input');
-            var endEl = document.querySelector('.custom-filter-end-input');
-            var startVal = startEl ? startEl.value : '';
-            var endVal = endEl ? endEl.value : '';
-            
-            if (startVal || endVal) {
-                var startMs = startVal ? new Date(startVal.replace(/-/g, '/') + ' 00:00:00').getTime() : 0;
-                var endMs = endVal ? new Date(endVal.replace(/-/g, '/') + ' 23:59:59').getTime() : Infinity;
-                
-                renderList = tickets.filter(function (t) {
-                    if (!t.createtime) return false;
-                    // Standardize string comparison
-                    var cleanDate = t.createtime.replace(/-/g, '/');
-                    var ticketMs = new Date(cleanDate).getTime();
-                    return ticketMs >= startMs && ticketMs <= endMs;
-                });
-            }
-            console.log('[DEBUG] Client-side filtered list count:', renderList.length);
-        }
-
         // Save dataset and update cards ONLY on all-time load
         if (!isFiltered) {
             window.allTicketsData = tickets;
             updateAllTimeCards(tickets);
         }
 
-        // Render list & charts using the filtered renderList
-        renderTicketsData(renderList);
+        // Render list & charts
+        renderTicketsData(tickets);
     } catch (e) {
         alert('[parseAndRender ERROR]: ' + e.message + '\nStack: ' + e.stack);
         console.error('[CRITICAL] parseAndRender crashed:', e);
@@ -215,7 +193,7 @@ function renderTicketsData(tickets) {
     html += '</thead>';
     html += '<tbody>';
 
-    for (var i = 0; i < tickets.length; i++) {
+    for (var i = 0; i < Math.min(30, tickets.length); i++) {
         var item = tickets[i];
         var status = item.ticketstatus || item.status || item.active_status || 'Open';
         var title = item.title || item.problem_name || item.description || 'Tanpa Judul';
@@ -300,14 +278,14 @@ function renderTicketsData(tickets) {
     html += '</table>';
     container.innerHTML = html;
 
-    // Render the Severity Overview charts and tables
+    // Render the Severity Overview charts and tables (Filtered)
     renderSeverityDashboard(tickets);
 
-    // Render the Phase Status tables
-    renderPhaseDashboard(tickets);
+    // Render the Phase Status tables (Always All-Time)
+    renderPhaseDashboard(window.allTicketsData || tickets);
 
-    // Render Weekly Trend, Top Root Cause, and SLA Compliance panels
-    renderTrendsAndCompliance(tickets);
+    // Render Weekly Trend (Filtered) & Top Root Cause + SLA Compliance (Always All-Time)
+    renderTrendsAndCompliance(tickets, window.allTicketsData || tickets);
 }
 
 function setCardValue(id, val) {
@@ -751,10 +729,10 @@ function renderPhasePartner(containerId, phaseRows) {
     wrapper.innerHTML = html;
 }
 
-function renderTrendsAndCompliance(tickets) {
+function renderTrendsAndCompliance(filteredTickets, allTimeTickets) {
     if (typeof echarts === 'undefined') {
         console.warn('ECharts not available yet. Retrying in 500ms...');
-        setTimeout(function () { renderTrendsAndCompliance(tickets); }, 500);
+        setTimeout(function () { renderTrendsAndCompliance(filteredTickets, allTimeTickets); }, 500);
         return;
     }
 
@@ -790,9 +768,11 @@ function renderTrendsAndCompliance(tickets) {
         return 'W' + weekNum;
     }
 
-    if (tickets && tickets.length > 0) {
-        tickets.forEach(function (t) {
-            // 1. Root Cause
+    // 1 & 2. Top Root Cause & SLA Compliance (Always use All-Time dataset)
+    var allTickets = allTimeTickets || filteredTickets;
+    if (allTickets && allTickets.length > 0) {
+        allTickets.forEach(function (t) {
+            // Root Cause
             var rcRaw = String(t.root_cause || t.rootcause || t.cause || '').toLowerCase();
             var rcName = 'Others';
             if (rcRaw.indexOf('fiber') !== -1 || rcRaw.indexOf('cut') !== -1) rcName = 'Fiber Cut';
@@ -804,7 +784,7 @@ function renderTrendsAndCompliance(tickets) {
             var rcObj = rootCauseData.find(function (rc) { return rc.name === rcName; });
             if (rcObj) rcObj.value++;
 
-            // 2. SLA Compliance
+            // SLA Compliance
             var partner = 'Surge';
             var title = String(t.title || t.problem_name || '').toLowerCase();
             var desc = String(t.createptproblemdes || '').toLowerCase();
@@ -840,8 +820,16 @@ function renderTrendsAndCompliance(tickets) {
                     compObj.within++;
                 }
             }
+        });
 
-            // 3. Weekly Trend
+        complianceData.forEach(function (c) {
+            c.ach = c.total ? ((c.within / c.total) * 100).toFixed(1) + '%' : '0.0%';
+        });
+    }
+
+    // 3. Weekly Trend (Use Filtered dataset)
+    if (filteredTickets && filteredTickets.length > 0) {
+        filteredTickets.forEach(function (t) {
             var dateVal = t.createtime || t.createfirstoccurtime || t.operate_time;
             var wLabel = getWeekLabel(dateVal);
             if (!weeklyMap[wLabel]) {
@@ -864,10 +852,6 @@ function renderTrendsAndCompliance(tickets) {
             } else {
                 weekRow.withinSla++;
             }
-        });
-
-        complianceData.forEach(function (c) {
-            c.ach = c.total ? ((c.within / c.total) * 100).toFixed(1) + '%' : '0.0%';
         });
     }
 
