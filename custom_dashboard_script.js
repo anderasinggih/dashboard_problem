@@ -43,7 +43,7 @@ function loadProblemTickets(startDate, endDate) {
             data: requestData,
             success: function (res) {
                 console.log('Response OWS Success:', res);
-                parseAndRender(res, !!(startDate || endDate));
+                parseAndRender(res, !!(startDate || endDate), startDate, endDate);
             },
             error: function (err) {
                 console.error('Response OWS Error:', err);
@@ -55,7 +55,7 @@ function loadProblemTickets(startDate, endDate) {
     }
 }
 
-function parseAndRender(res, isFiltered) {
+function parseAndRender(res, isFiltered, startDate, endDate) {
     try {
         var tickets = [];
         if (res && res.result && res.result._values) {
@@ -70,6 +70,17 @@ function parseAndRender(res, isFiltered) {
             tickets = res.data;
         } else if (Array.isArray(res)) {
             tickets = res;
+        }
+
+        if (isFiltered && tickets && tickets.length > 0) {
+            // Client-side date filter fallback to ensure dashboard updates correctly even if OWS backend has type mismatch issues
+            var startMs = startDate ? new Date(startDate.replace(/-/g, '/')).getTime() : 0;
+            var endMs = endDate ? new Date(endDate.replace(/-/g, '/')).getTime() : Infinity;
+            tickets = tickets.filter(function (t) {
+                if (!t.createtime) return false;
+                var tMs = new Date(t.createtime.replace(/-/g, '/')).getTime();
+                return tMs >= startMs && tMs <= endMs;
+            });
         }
 
         console.log('[DEBUG] OWS Response parsed. Tickets Count:', tickets.length, 'isFiltered:', isFiltered);
@@ -757,8 +768,7 @@ function renderTrendsAndCompliance(filteredTickets, allTimeTickets) {
 
     function getWeekLabel(dateStr) {
         if (!dateStr) return 'W28';
-        var normalized = String(dateStr).replace(/\//g, '-');
-        var parts = normalized.split(' ')[0].split('-');
+        var parts = dateStr.split(' ')[0].split('-');
         if (parts.length < 3) return 'W28';
         var yr = parseInt(parts[0]);
         var mo = parseInt(parts[1]) - 1;
