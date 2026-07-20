@@ -35,6 +35,8 @@ function loadProblemTickets(startDate, endDate) {
     if (startDate) requestData.startDate = startDate;
     if (endDate) requestData.endDate = endDate;
 
+    console.log('[DEBUG] Calling OWS Service with payload:', JSON.stringify(requestData));
+
     if (typeof MessageProcessor !== 'undefined') {
         MessageProcessor.process({
             serviceId: '/adc-service/rest/v1/services/dashboard_problem_ticket_test/dashboard_problem_ticket_test/dashboard__problem_ticket',
@@ -68,6 +70,8 @@ function parseAndRender(res, isFiltered) {
     } else if (Array.isArray(res)) {
         tickets = res;
     }
+
+    console.log('[DEBUG] OWS Response parsed. Tickets Count:', tickets.length, 'isFiltered:', isFiltered);
 
     // Save dataset and update cards ONLY on all-time load
     if (!isFiltered) {
@@ -1146,6 +1150,8 @@ function applyDateFilter() {
     var startInput = startEl ? startEl.value : '';
     var endInput = endEl ? endEl.value : '';
     
+    console.log('[DEBUG] applyDateFilter clicked. startInput:', startInput, 'endInput:', endInput);
+
     if (!startInput && !endInput) {
         alert('Silakan pilih rentang tanggal terlebih dahulu.');
         return;
@@ -1154,10 +1160,13 @@ function applyDateFilter() {
     var startParam = startInput ? startInput + ' 00:00:00' : null;
     var endParam = endInput ? endInput + ' 23:59:59' : null;
 
+    console.log('[DEBUG] Formatted Params -> startParam:', startParam, 'endParam:', endParam);
+
     loadProblemTickets(startParam, endParam);
 }
 
 function resetDateFilter() {
+    console.log('[DEBUG] resetDateFilter clicked.');
     var startEl = document.querySelector('.custom-filter-start-input');
     var endEl = document.querySelector('.custom-filter-end-input');
     if (startEl) startEl.value = '';
