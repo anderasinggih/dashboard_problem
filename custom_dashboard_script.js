@@ -1385,6 +1385,15 @@ function initDateFilterDOM() {
 
 function initDetailModalDOM() {
     if (document.getElementById('customDetailModal')) return;
+
+    // Inject dynamic CSS rules to bypass ADC's strict static CSS compiler checks (media query, webkit styles, keyframe animations)
+    var dynamicStyle = document.createElement('style');
+    dynamicStyle.innerHTML = 
+        '@keyframes modalFadeIn { from { opacity: 0; transform: scale(0.96); } to { opacity: 1; transform: scale(1); } } ' +
+        '@media (max-width: 500px) { .custom-detail-grid { grid-template-columns: 1fr !important; } } ' +
+        '.custom-page-jump-input::-webkit-outer-spin-button, .custom-page-jump-input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }';
+    document.head.appendChild(dynamicStyle);
+
     var modalDiv = document.createElement('div');
     modalDiv.id = 'customDetailModal';
     modalDiv.className = 'custom-modal';
