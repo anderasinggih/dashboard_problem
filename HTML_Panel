@@ -7,8 +7,8 @@
     </div>
     <div class="custom-header-right">
       <button class="custom-theme-toggle" onclick="toggleTheme()">
-        <span class="custom-theme-icon-sun">☀️ Light Mode</span>
-        <span class="custom-theme-icon-moon">🌙 Dark Mode</span>
+        <span class="custom-theme-icon-sun">Light Mode</span>
+        <span class="custom-theme-icon-moon">Dark Mode</span>
       </button>
     </div>
   </div>
@@ -18,7 +18,7 @@
     <!-- Card: Total PT -->
     <div class="custom-stat-card">
       <div class="custom-stat-left">
-        <div class="custom-icon-wrapper custom-icon-total">Σ</div>
+        <div class="custom-icon-wrapper custom-icon-total">ALL</div>
       </div>
       <div class="custom-stat-right">
         <div class="custom-stat-title">TOTAL PT</div>
@@ -29,7 +29,7 @@
     <!-- Card: Open PT -->
     <div class="custom-stat-card">
       <div class="custom-stat-left">
-        <div class="custom-icon-wrapper custom-icon-open">●</div>
+        <div class="custom-icon-wrapper custom-icon-open">OPN</div>
       </div>
       <div class="custom-stat-right">
         <div class="custom-stat-title">OPEN PT</div>
@@ -40,7 +40,7 @@
     <!-- Card: Pending PT -->
     <div class="custom-stat-card">
       <div class="custom-stat-left">
-        <div class="custom-icon-wrapper custom-icon-pending">◷</div>
+        <div class="custom-icon-wrapper custom-icon-pending">PND</div>
       </div>
       <div class="custom-stat-right">
         <div class="custom-stat-title">PENDING PT</div>
@@ -51,7 +51,7 @@
     <!-- Card: Closed PT -->
     <div class="custom-stat-card">
       <div class="custom-stat-left">
-        <div class="custom-icon-wrapper custom-icon-closed">✓</div>
+        <div class="custom-icon-wrapper custom-icon-closed">CLS</div>
       </div>
       <div class="custom-stat-right">
         <div class="custom-stat-title">CLOSED PT</div>
