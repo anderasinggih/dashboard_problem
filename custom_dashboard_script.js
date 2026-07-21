@@ -1796,19 +1796,17 @@ function handleTicketSearch(query) {
     } else {
         var q = query.trim().toLowerCase();
         window.ticketsPagination.tickets = rawList.filter(function (t) {
-            var ticketId = String(t.ticketid || t.problem_id || t.problem_no || t.id || '').toLowerCase();
-            var title = String(t.title || t.problem_name || '').toLowerCase();
-            var operator = String(t.currentoperator || t.operator || '').toLowerCase();
-            var group = String(t.currentoperatorgroup || t.operatorgroup || t.group || '').toLowerCase();
-            var creator = String(t.createptassignto || t.creator || '').toLowerCase();
-            var desc = String(t.createptproblemdes || '').toLowerCase();
-            
-            return ticketId.indexOf(q) !== -1 ||
-                   title.indexOf(q) !== -1 ||
-                   operator.indexOf(q) !== -1 ||
-                   group.indexOf(q) !== -1 ||
-                   creator.indexOf(q) !== -1 ||
-                   desc.indexOf(q) !== -1;
+            for (var key in t) {
+                if (t.hasOwnProperty(key)) {
+                    var val = t[key];
+                    if (val !== null && val !== undefined) {
+                        if (String(val).toLowerCase().indexOf(q) !== -1) {
+                            return true;
+                        }
+                    }
+                }
+            }
+            return false;
         });
     }
     window.ticketsPagination.currentPage = 1;
