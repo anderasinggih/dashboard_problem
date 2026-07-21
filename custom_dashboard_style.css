@@ -820,7 +820,8 @@
   height: 16px;
   border-radius: 3px;
   overflow: hidden;
-  width: 100%;
+  width: 60%;
+  margin: 0 auto;
   background-color: #18181b;
 }
 
