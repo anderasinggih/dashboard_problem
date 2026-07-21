@@ -1,9 +1,9 @@
 function getTicketPartner(item) {
     if (!item) return 'Blanks';
-    
+
     var rawParty = item.problem_responsible_party || item.problemresponsibleparty || item['Problem Responsible Party'] || '';
     rawParty = rawParty.trim();
-    
+
     // Fallback jika kolom utama kosong (OWS API response tidak populate)
     if (!rawParty) {
         var title = String(item.title || item.problem_name || item.description || '').toLowerCase();
@@ -11,7 +11,7 @@ function getTicketPartner(item) {
         var assign = String(item.createptassignto || '').toLowerCase();
         var operator = String(item.currentoperator || '').toLowerCase();
         var originator = String(item.originator || '').toLowerCase();
-        
+
         if (title.indexOf('telkom') !== -1 || title.indexOf('akses') !== -1 || desc.indexOf('telkom') !== -1) {
             return 'Telkom Akses';
         } else if (title.indexOf('mandau') !== -1 || desc.indexOf('mandau') !== -1 || assign.indexOf('pm') !== -1 || operator.indexOf('pm') !== -1) {
@@ -23,7 +23,7 @@ function getTicketPartner(item) {
         }
         return 'Blanks';
     }
-    
+
     var lower = rawParty.toLowerCase();
     if (lower.indexOf('telkom') !== -1 || lower.indexOf('akses') !== -1) {
         return 'Telkom Akses';
@@ -78,7 +78,7 @@ function loadProblemTickets(startDate, endDate, party) {
 
     var requestData = {
         "start": 0,
-        "limit": 1000,
+        "limit": 1500,
         "startDate": startDate || "2000-01-01 00:00:00",
         "endDate": endDate || "2099-12-31 23:59:59",
         "party": party || "ALL"
@@ -265,6 +265,15 @@ window.ticketsPagination = {
 };
 
 function renderTicketsData(tickets, dateFilteredTickets) {
+    // Simpan data asli hasil filter tanggal+party untuk pencarian
+    window.activeFilteredTickets = tickets || [];
+
+    // Reset search input jika elemennya ada
+    var searchInput = document.getElementById('customTicketSearchInput');
+    if (searchInput) {
+        searchInput.value = '';
+    }
+
     // Cache tickets and reset page index
     window.ticketsPagination.tickets = tickets || [];
     window.ticketsPagination.currentPage = 1;
@@ -1112,15 +1121,38 @@ function drawWeeklyTrendChart(containerId, data) {
                 color: '#c9d1d9',
                 fontSize: 10
             },
-            bottom: '0%'
+            top: '2%'
         },
         grid: {
             top: '12%',
             left: '3%',
             right: '4%',
-            bottom: '12%',
+            bottom: '15%',
             containLabel: true
         },
+        dataZoom: [
+            {
+                type: 'slider',
+                show: true,
+                startValue: Math.max(0, data.weeks.length - 12),
+                endValue: data.weeks.length - 1,
+                height: 18,
+                bottom: 25,
+                borderColor: 'transparent',
+                backgroundColor: 'rgba(47, 47, 54, 0.4)',
+                fillerColor: 'rgba(88, 166, 255, 0.2)',
+                handleColor: '#58a6ff',
+                handleSize: '100%',
+                textStyle: {
+                    color: '#8b949e'
+                }
+            },
+            {
+                type: 'inside',
+                startValue: Math.max(0, data.weeks.length - 12),
+                endValue: data.weeks.length - 1
+            }
+        ],
         xAxis: [
             {
                 type: 'category',
@@ -1756,3 +1788,30 @@ window.isTicketAccepted = isTicketAccepted;
 window.isTicketClosed = isTicketClosed;
 window.getConfirmSubmitTime = getConfirmSubmitTime;
 window.startLiveClock = startLiveClock;
+
+function handleTicketSearch(query) {
+    var rawList = window.activeFilteredTickets || [];
+    if (!query || !query.trim()) {
+        window.ticketsPagination.tickets = rawList;
+    } else {
+        var q = query.trim().toLowerCase();
+        window.ticketsPagination.tickets = rawList.filter(function (t) {
+            var ticketId = String(t.ticketid || t.problem_id || t.problem_no || t.id || '').toLowerCase();
+            var title = String(t.title || t.problem_name || '').toLowerCase();
+            var operator = String(t.currentoperator || t.operator || '').toLowerCase();
+            var group = String(t.currentoperatorgroup || t.operatorgroup || t.group || '').toLowerCase();
+            var creator = String(t.createptassignto || t.creator || '').toLowerCase();
+            var desc = String(t.createptproblemdes || '').toLowerCase();
+            
+            return ticketId.indexOf(q) !== -1 ||
+                   title.indexOf(q) !== -1 ||
+                   operator.indexOf(q) !== -1 ||
+                   group.indexOf(q) !== -1 ||
+                   creator.indexOf(q) !== -1 ||
+                   desc.indexOf(q) !== -1;
+        });
+    }
+    window.ticketsPagination.currentPage = 1;
+    renderCurrentTicketsPage();
+}
+window.handleTicketSearch = handleTicketSearch;
