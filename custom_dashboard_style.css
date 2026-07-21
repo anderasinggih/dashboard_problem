@@ -478,6 +478,7 @@
 .custom-panel-body {
   padding: 8px;
   background-color: #0d0d10;
+  overflow-x: auto;
 }
 
 /* Original List Item Styles */
