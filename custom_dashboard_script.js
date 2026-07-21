@@ -937,15 +937,19 @@ function renderTrendsAndCompliance(weeklyTrendTickets, rootCauseTickets, complia
 
     function getWeekLabel(dateStr) {
         if (!dateStr) return 'W28';
-        var parts = dateStr.split(' ')[0].split('-');
+        var cleanDateStr = dateStr.replace(/\//g, '-');
+        var parts = cleanDateStr.split(' ')[0].split('-');
         if (parts.length < 3) return 'W28';
-        var yr = parseInt(parts[0]);
-        var mo = parseInt(parts[1]) - 1;
-        var dy = parseInt(parts[2]);
+        var yr = parseInt(parts[0], 10);
+        var mo = parseInt(parts[1], 10) - 1;
+        var dy = parseInt(parts[2], 10);
         var d = new Date(yr, mo, dy);
-        var onejan = new Date(yr, 0, 1);
-        var weekNum = Math.ceil((((d - onejan) / 86400000) + onejan.getDay() + 1) / 7);
-        return 'W' + weekNum;
+        if (isNaN(d.getTime())) return 'W28';
+        var dayNum = d.getDay() || 7;
+        d.setDate(d.getDate() + 4 - dayNum);
+        var yearStart = new Date(d.getFullYear(), 0, 1);
+        var weekNo = Math.ceil((((d - yearStart) / 86400000) + 1) / 7);
+        return 'W' + weekNo;
     }
 
     // 1. Top Root Cause (using rootCauseTickets - fully filtered by date + party)
@@ -1036,7 +1040,8 @@ function renderTrendsAndCompliance(weeklyTrendTickets, rootCauseTickets, complia
             for (var i = 0; i < tickets.length; i++) {
                 var dStr = tickets[i].createtime || tickets[i].operate_time;
                 if (dStr) {
-                    var yr = parseInt(dStr.split(' ')[0].split('-')[0], 10);
+                    var cleanDStr = dStr.replace(/\//g, '-');
+                    var yr = parseInt(cleanDStr.split(' ')[0].split('-')[0], 10);
                     if (!isNaN(yr)) {
                         year = yr;
                         break;
@@ -1044,11 +1049,11 @@ function renderTrendsAndCompliance(weeklyTrendTickets, rootCauseTickets, complia
                 }
             }
         }
-        var jan1 = new Date(year, 0, 1);
-        var jan1Day = jan1.getDay();
-        var daysOffset = (num - 1) * 7 - jan1Day;
-        var startOfWeek = new Date(year, 0, 1 + daysOffset);
-        var endOfWeek = new Date(year, 0, 1 + daysOffset + 6);
+        var jan4 = new Date(year, 0, 4);
+        var jan4Day = jan4.getDay() || 7;
+        var mondayOfW1 = new Date(jan4.getTime() - (jan4Day - 1) * 86400000);
+        var startOfWeek = new Date(mondayOfW1.getTime() + (num - 1) * 7 * 86400000);
+        var endOfWeek = new Date(startOfWeek.getTime() + 6 * 86400000);
         var monthsShort = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
         return String(startOfWeek.getDate()) + ' ' + monthsShort[startOfWeek.getMonth()] + ' - ' + String(endOfWeek.getDate()) + ' ' + monthsShort[endOfWeek.getMonth()] + ' ' + endOfWeek.getFullYear();
     }
