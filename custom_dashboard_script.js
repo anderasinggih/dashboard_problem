@@ -991,10 +991,12 @@ function renderTrendsAndCompliance(weeklyTrendTickets, rootCauseTickets, complia
             var createDate = t.createtime || t.createfirstoccurtime || t.operate_time;
             if (createDate) {
                 var createWeek = getWeekLabel(createDate);
-                if (!weeklyMap[createWeek]) {
-                    weeklyMap[createWeek] = { newPT: 0, closedPT: 0, pendingPT: 0, overSla: 0, total: 0, withinSla: 0 };
+                if (createWeek) {
+                    if (!weeklyMap[createWeek]) {
+                        weeklyMap[createWeek] = { newPT: 0, closedPT: 0, pendingPT: 0, overSla: 0, total: 0, withinSla: 0 };
+                    }
+                    weeklyMap[createWeek].newPT++;
                 }
-                weeklyMap[createWeek].newPT++;
             }
 
             // 2. Count as Closed/Pending/SLA in the week of resolution (for closed) or creation (for pending)
@@ -1002,23 +1004,25 @@ function renderTrendsAndCompliance(weeklyTrendTickets, rootCauseTickets, complia
             var targetDate = isClosed ? getConfirmSubmitTime(t) : (t.createtime || t.createfirstoccurtime || t.operate_time);
             if (targetDate) {
                 var targetWeek = getWeekLabel(targetDate);
-                if (!weeklyMap[targetWeek]) {
-                    weeklyMap[targetWeek] = { newPT: 0, closedPT: 0, pendingPT: 0, overSla: 0, total: 0, withinSla: 0 };
-                }
-                var weekRow = weeklyMap[targetWeek];
-                weekRow.total++;
+                if (targetWeek) {
+                    if (!weeklyMap[targetWeek]) {
+                        weeklyMap[targetWeek] = { newPT: 0, closedPT: 0, pendingPT: 0, overSla: 0, total: 0, withinSla: 0 };
+                    }
+                    var weekRow = weeklyMap[targetWeek];
+                    weekRow.total++;
 
-                if (isClosed) {
-                    weekRow.closedPT++;
-                } else {
-                    weekRow.pendingPT++;
-                }
+                    if (isClosed) {
+                        weekRow.closedPT++;
+                    } else {
+                        weekRow.pendingPT++;
+                    }
 
-                var isOverVal = (t.over_sla === true || String(t.over_sla).toLowerCase() === 'true' || String(t.over_sla) === '1');
-                if (isOverVal) {
-                    weekRow.overSla++;
-                } else {
-                    weekRow.withinSla++;
+                    var isOverVal = (t.over_sla === true || String(t.over_sla).toLowerCase() === 'true' || String(t.over_sla) === '1');
+                    if (isOverVal) {
+                        weekRow.overSla++;
+                    } else {
+                        weekRow.withinSla++;
+                    }
                 }
             }
         });
