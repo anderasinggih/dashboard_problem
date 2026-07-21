@@ -1,34 +1,33 @@
 function getTicketPartner(item) {
-    if (!item) return 'Telkom Akses';
-    var title = item.title || item.problem_name || item.description || '';
-    var assign = String(item.createptassignto || '').toLowerCase();
-    var operator = String(item.currentoperator || '').toLowerCase();
-    var originator = String(item.originator || '').toLowerCase();
-    var respParty = String(item.problem_responsible_party || item.problemresponsibleparty || '').toLowerCase();
-    var tLower = String(title).toLowerCase();
-    var desc = String(item.createptproblemdes || '').toLowerCase();
-
-    if (respParty.indexOf('telkom') !== -1 || respParty.indexOf('akses') !== -1) {
+    if (!item) return 'Blanks';
+    
+    // Membaca murni dari kolom pasti OWS: Problem Responsible Party
+    var rawParty = item.problem_responsible_party || item.problemresponsibleparty || item['Problem Responsible Party'] || '';
+    rawParty = rawParty.trim();
+    
+    if (!rawParty) {
+        return 'Blanks';
+    }
+    
+    var lower = rawParty.toLowerCase();
+    if (lower.indexOf('telkom') !== -1 || lower.indexOf('akses') !== -1) {
         return 'Telkom Akses';
-    } else if (respParty.indexOf('mandau') !== -1) {
+    } else if (lower.indexOf('mandau') !== -1) {
         return 'Mandau';
-    } else if (respParty.indexOf('persada') !== -1) {
+    } else if (lower.indexOf('persada') !== -1) {
         return 'Persada';
-    } else if (respParty.indexOf('ije') !== -1) {
-        return 'IJE';
-    } else if (tLower.indexOf('telkom') !== -1 || tLower.indexOf('akses') !== -1 || desc.indexOf('telkom') !== -1) {
-        return 'Telkom Akses';
-    } else if (tLower.indexOf('mandau') !== -1 || desc.indexOf('mandau') !== -1) {
-        return 'Mandau';
-    } else if (tLower.indexOf('persada') !== -1 || desc.indexOf('persada') !== -1) {
-        return 'Persada';
-    } else if (assign.indexOf('pwx') !== -1 || originator.indexOf('pwx') !== -1 || operator.indexOf('pwx') !== -1) {
-        return 'Persada';
-    } else if (assign.indexOf('pm') !== -1 || operator.indexOf('pm') !== -1) {
-        return 'Mandau';
+    } else if (lower.indexOf('famika') !== -1) {
+        return 'Famika';
+    } else if (lower.indexOf('fiberhome') !== -1) {
+        return 'Fiberhome';
+    } else if (lower.indexOf('huawei') !== -1) {
+        return 'Huawei';
+    } else if (lower.indexOf('kopindosat') !== -1) {
+        return 'Kopindosat';
+    } else if (lower.indexOf('nokia') !== -1) {
+        return 'Nokia';
     } else {
-        var rawAssign = item.createptassignto || item.currentoperator || item.originator || 'Surge';
-        return rawAssign.replace('user:', '');
+        return 'Others';
     }
 }
 
@@ -106,7 +105,7 @@ function parseAndRender(res, isFiltered, startDate, endDate, party) {
         } else if (Array.isArray(res)) {
             rawTickets = res;
         }
-
+        //filterr
         var dateFilteredTickets = rawTickets;
         if (rawTickets && rawTickets.length > 0) {
             // Client-side date filter fallback to ensure dashboard updates correctly even if OWS backend has type mismatch issues
@@ -154,19 +153,19 @@ function updatePanelFilterBadges(party) {
     for (var i = 0; i < headers.length; i++) {
         var el = headers[i];
         var text = el.innerText || el.textContent || '';
-        
+
         var isTarget = text.indexOf('1. SEVERITY OVERVIEW') !== -1 ||
-                       text.indexOf('3. WEEKLY TREND') !== -1 ||
-                       text.indexOf('4. TOP ROOT CAUSE') !== -1 ||
-                       text.indexOf('6. PROBLEM TICKET LIST') !== -1;
-                       
+            text.indexOf('3. WEEKLY TREND') !== -1 ||
+            text.indexOf('4. TOP ROOT CAUSE') !== -1 ||
+            text.indexOf('6. PROBLEM TICKET LIST') !== -1;
+
         if (isTarget) {
             var parent = el.parentNode;
             var oldBadge = parent.querySelector('.custom-filter-header-badge');
             if (oldBadge) {
                 parent.removeChild(oldBadge);
             }
-            
+
             if (party && party !== 'ALL') {
                 var badge = document.createElement('span');
                 badge.className = 'custom-filter-header-badge';
@@ -207,34 +206,8 @@ function updateAllTimeCards(tickets) {
     for (var i = 0; i < tickets.length; i++) {
         var item = tickets[i];
         var statusLower = String(item.ticketstatus || item.status || '').toLowerCase();
-        
-        var partner = 'Telkom Akses';
-        var assign = String(item.createptassignto || '').toLowerCase();
-        var operator = String(item.currentoperator || '').toLowerCase();
-        var originator = String(item.originator || '').toLowerCase();
-        var respParty = String(item.problem_responsible_party || item.problemresponsibleparty || '').toLowerCase();
-        var titleLower = String(item.title || item.problem_name || '').toLowerCase();
-        var descLower = String(item.createptproblemdes || '').toLowerCase();
 
-        if (respParty.indexOf('telkom') !== -1 || respParty.indexOf('akses') !== -1) {
-            partner = 'Telkom Akses';
-        } else if (respParty.indexOf('mandau') !== -1) {
-            partner = 'Mandau';
-        } else if (respParty.indexOf('persada') !== -1) {
-            partner = 'Persada';
-        } else if (respParty.indexOf('ije') !== -1) {
-            partner = 'IJE';
-        } else if (titleLower.indexOf('telkom') !== -1 || titleLower.indexOf('akses') !== -1 || descLower.indexOf('telkom') !== -1) {
-            partner = 'Telkom Akses';
-        } else if (titleLower.indexOf('mandau') !== -1 || descLower.indexOf('mandau') !== -1) {
-            partner = 'Mandau';
-        } else if (titleLower.indexOf('persada') !== -1 || descLower.indexOf('persada') !== -1) {
-            partner = 'Persada';
-        } else if (assign.indexOf('pwx') !== -1 || originator.indexOf('pwx') !== -1 || operator.indexOf('pwx') !== -1) {
-            partner = 'Persada';
-        } else if (assign.indexOf('pm') !== -1 || operator.indexOf('pm') !== -1) {
-            partner = 'Mandau';
-        }
+        var partner = getTicketPartner(item);
 
         if (statusLower === 'running' || statusLower === 'open' || statusLower === 'true' || statusLower === '1') {
             openCount++;
@@ -274,7 +247,7 @@ function renderTicketsData(tickets, dateFilteredTickets) {
     // Cache tickets and reset page index
     window.ticketsPagination.tickets = tickets || [];
     window.ticketsPagination.currentPage = 1;
-    
+
     // Render current active page in list table
     renderCurrentTicketsPage();
 
@@ -294,7 +267,7 @@ function renderCurrentTicketsPage() {
 
     var pag = window.ticketsPagination;
     var tickets = pag.tickets || [];
-    
+
     if (tickets.length === 0) {
         container.innerHTML = '<div style="color: #6c757d; padding: 12px;">No tickets found for the selected date range.</div>';
         return;
@@ -381,10 +354,10 @@ function renderCurrentTicketsPage() {
 
     // Render Pagination Control UI below list table
     var totalPages = Math.ceil(tickets.length / pag.pageSize);
-    
+
     var paginationHtml = '<div class="custom-pagination-wrapper">';
     paginationHtml += '  <span class="custom-pagination-total">Total ' + tickets.length + '</span>';
-    
+
     // Page Size Select
     paginationHtml += '  <select onchange="changeTicketsPageSize(parseInt(this.value))" class="custom-pagesize-select">';
     [10, 20, 50, 100].forEach(function (size) {
@@ -392,11 +365,11 @@ function renderCurrentTicketsPage() {
         paginationHtml += '    <option value="' + size + '" ' + selected + '>' + size + '/page</option>';
     });
     paginationHtml += '  </select>';
-    
+
     // Prev Button (<)
     var prevDisabled = pag.currentPage === 1 ? 'disabled' : '';
     paginationHtml += '  <button onclick="prevTicketsPage()" class="custom-page-num-btn ' + prevDisabled + '" ' + prevDisabled + '>&lt;</button>';
-    
+
     // Page Numbers with Ellipsis
     var pageNumbers = getPageNumbers(pag.currentPage, totalPages);
     pageNumbers.forEach(function (p) {
@@ -407,17 +380,17 @@ function renderCurrentTicketsPage() {
             paginationHtml += '  <button onclick="gotoTicketsPage(' + p + ')" class="custom-page-num-btn ' + activeClass + '">' + p + '</button>';
         }
     });
-    
+
     // Next Button (>)
     var nextDisabled = pag.currentPage === totalPages ? 'disabled' : '';
     paginationHtml += '  <button onclick="nextTicketsPage()" class="custom-page-num-btn ' + nextDisabled + '" ' + nextDisabled + '>&gt;</button>';
-    
+
     // Go to input
     paginationHtml += '  <div class="custom-page-jump-wrapper">';
     paginationHtml += '    <span>Go to</span>';
     paginationHtml += '    <input type="number" min="1" max="' + totalPages + '" value="' + pag.currentPage + '" onkeydown="if(event.key===\'Enter\') gotoTicketsPage(parseInt(this.value))" class="custom-page-jump-input">';
     paginationHtml += '  </div>';
-    
+
     paginationHtml += '</div>';
 
     html += paginationHtml;
@@ -722,23 +695,7 @@ function renderPhaseDashboard(tickets) {
             var statusRaw = String(t.ticketstatus || t.status || '').toLowerCase();
             var aging = parseFloat(t.aging || t.aging_days || t.days || calculateAgingDays(t.createtime, t.closetime, t.lastupdatetime, t.operate_time, statusRaw));
 
-            var partner = 'TelkomAkses';
-            var title = String(t.title || t.problem_name || '').toLowerCase();
-            var desc = String(t.createptproblemdes || '').toLowerCase();
-            var assign = String(t.createptassignto || '').toLowerCase();
-            var respParty = String(t.problem_responsible_party || t.problemresponsibleparty || '').toLowerCase();
-
-            if (respParty.indexOf('telkom') !== -1 || respParty.indexOf('akses') !== -1) {
-                partner = 'TelkomAkses';
-            } else if (respParty.indexOf('mandau') !== -1) {
-                partner = 'Mandau';
-            } else if (respParty.indexOf('persada') !== -1) {
-                partner = 'Persada';
-            } else if (title.indexOf('mandau') !== -1 || desc.indexOf('mandau') !== -1 || assign.indexOf('pm') !== -1) {
-                partner = 'Mandau';
-            } else if (title.indexOf('persada') !== -1 || desc.indexOf('persada') !== -1 || assign.indexOf('pwx') !== -1) {
-                partner = 'Persada';
-            }
+            var partner = getTicketPartner(t).replace(' ', ''); // Returns 'TelkomAkses', 'Mandau', 'Persada', 'Huawei', etc.
 
             var buck = 'b1';
             if (aging > 21) buck = 'b4';
@@ -746,6 +703,9 @@ function renderPhaseDashboard(tickets) {
             else if (aging > 7) buck = 'b2';
 
             [partner, 'Overall'].forEach(function (targetCat) {
+                if (targetCat !== 'Overall' && targetCat !== 'TelkomAkses' && targetCat !== 'Mandau' && targetCat !== 'Persada') {
+                    return;
+                }
                 var row = phaseData[targetCat].find(function (r) { return r.phase === phase; });
                 if (row) {
                     row.total++;
@@ -1015,7 +975,7 @@ function renderTrendsAndCompliance(weeklyTrendTickets, rootCauseTickets, complia
                 }
                 var weekRow = weeklyMap[targetWeek];
                 weekRow.total++;
-                
+
                 if (isClosed) {
                     weekRow.closedPT++;
                 } else {
@@ -1371,16 +1331,16 @@ function formatIndonesianDate(dateStr) {
     if (!dateStr) return '';
     var parts = dateStr.split('-');
     if (parts.length < 3) return dateStr;
-    
+
     var year = parts[0];
     var monthIndex = parseInt(parts[1], 10) - 1;
     var day = parseInt(parts[2], 10);
-    
+
     var months = [
         'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
         'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'
     ];
-    
+
     return day + ' ' + months[monthIndex] + ' ' + year;
 }
 
@@ -1391,7 +1351,7 @@ function applyDateFilter() {
     var startInput = startEl ? startEl.value : '';
     var endInput = endEl ? endEl.value : '';
     var partyInput = partyEl ? partyEl.value : 'ALL';
-    
+
     console.log('[DEBUG] applyDateFilter clicked. startInput:', startInput, 'endInput:', endInput, 'partyInput:', partyInput);
 
     if ((startInput && !endInput) || (!startInput && endInput)) {
@@ -1404,7 +1364,7 @@ function applyDateFilter() {
     if (startInput && endInput) {
         var startDateObj = new Date(startInput);
         var endDateObj = new Date(endInput);
-        
+
         if (startDateObj > endDateObj) {
             alert('Start Date cannot be later than End Date.');
             return;
@@ -1476,7 +1436,7 @@ if (typeof U !== 'undefined' && typeof U.ready === 'function') {
 function initDateFilterDOM() {
     var container = document.getElementById('customFilterContainer');
     if (!container) return;
-    
+
     container.innerHTML = '<div class="custom-filter-card">' +
         '  <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; flex-wrap:wrap; gap:10px;">' +
         '    <div class="custom-filter-title" style="margin-bottom:0;">Date Range & Party Filter (Createtime)</div>' +
@@ -1513,7 +1473,7 @@ function initDetailModalDOM() {
 
     // Inject ALL modal CSS rules dynamically to bypass ADC's strict static CSS compiler checks
     var dynamicStyle = document.createElement('style');
-    dynamicStyle.innerHTML = 
+    dynamicStyle.innerHTML =
         '.custom-modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; display: none; align-items: center; justify-content: center; z-index: 99999; } ' +
         '.custom-modal-backdrop { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.75); backdrop-filter: blur(4px); } ' +
         '.custom-modal-content { position: relative; background-color: #0d0d10; border: 1px solid #27272a; border-radius: 12px; width: 90%; max-width: 650px; max-height: 85vh; box-shadow: 0 12px 28px rgba(0, 0, 0, 0.5); display: flex; flex-direction: column; animation: modalFadeIn 0.2s ease-out; color: #e4e4e7; z-index: 100000; } ' +
@@ -1545,7 +1505,7 @@ function initDetailModalDOM() {
     modalDiv.id = 'customDetailModal';
     modalDiv.className = 'custom-modal';
     modalDiv.style.display = 'none';
-    modalDiv.innerHTML = 
+    modalDiv.innerHTML =
         '<div class="custom-modal-backdrop" onclick="closeTicketDetailModal()"></div>' +
         '<div class="custom-modal-content">' +
         '  <div class="custom-modal-header">' +
@@ -1620,7 +1580,7 @@ function showTicketDetailModal(ticketId) {
     html += '</div>';
 
     html += '<div class="custom-detail-grid">';
-    
+
     html += '  <div class="custom-detail-item">';
     html += '    <span class="custom-detail-label">TICKET ID</span>';
     html += '    <span class="custom-detail-value" style="font-family:monospace; font-weight:bold; color:#58a6ff;">' + ticketId + '</span>';
@@ -1717,30 +1677,30 @@ function startLiveClock() {
     function updateClock() {
         var el = document.querySelector('.custom-dashboard-wrapper .custom-header-subtitle') || document.getElementById('liveTickerClock');
         if (!el) return;
-        
+
         var now = new Date();
         var hrs = now.getHours();
         var mins = now.getMinutes();
         var secs = now.getSeconds();
-        
+
         var hrsStr = hrs < 10 ? '0' + hrs : hrs;
         var minsStr = mins < 10 ? '0' + mins : mins;
         var secsStr = secs < 10 ? '0' + secs : secs;
-        
+
         var days = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
         var months = [
             'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
             'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'
         ];
-        
+
         var dayName = days[now.getDay()];
         var dayNum = now.getDate();
         var monthName = months[now.getMonth()];
         var year = now.getFullYear();
-        
+
         el.innerText = dayName + ', ' + dayNum + ' ' + monthName + ' ' + year + ' — ' + hrsStr + ':' + minsStr + ':' + secsStr;
     }
-    
+
     updateClock();
     setInterval(updateClock, 1000);
 }
