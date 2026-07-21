@@ -634,7 +634,8 @@ function renderDonutChart(containerId, data, totalVal, pctVal) {
         colors.push(item.color);
     }
 
-    var isLight = document.body.classList.contains('light-theme');
+    var wrapper = document.querySelector('.custom-dashboard-wrapper');
+    var isLight = wrapper ? wrapper.classList.contains('light-theme') : false;
     var centerTextColor = isLight ? '#24292f' : '#f0f6fc';
     var centerSubColor = isLight ? '#57606a' : '#8b949e';
 
@@ -1104,7 +1105,8 @@ function drawWeeklyTrendChart(containerId, data) {
 
     var myChart = echarts.init(chartDom);
 
-    var isLight = document.body.classList.contains('light-theme');
+    var wrapper = document.querySelector('.custom-dashboard-wrapper');
+    var isLight = wrapper ? wrapper.classList.contains('light-theme') : false;
     var axisColor = isLight ? '#d0d7de' : '#30363d';
     var textColor = isLight ? '#24292f' : '#c9d1d9';
     var labelColor = isLight ? '#57606a' : '#8b949e';
@@ -1288,7 +1290,8 @@ function drawTopRootCauseChart(containerId, data) {
 
     var totalSum = seriesData.reduce(function (a, b) { return a + b; }, 0);
 
-    var isLight = document.body.classList.contains('light-theme');
+    var wrapper = document.querySelector('.custom-dashboard-wrapper');
+    var isLight = wrapper ? wrapper.classList.contains('light-theme') : false;
     var axisColor = isLight ? '#d0d7de' : '#30363d';
     var textColor = isLight ? '#24292f' : '#c9d1d9';
     var labelColor = isLight ? '#57606a' : '#8b949e';
@@ -1851,13 +1854,14 @@ function updateThemeUI(isLight) {
 }
 
 function toggleTheme() {
-    var body = document.body;
-    var isLight = body.classList.contains('light-theme');
+    var wrapper = document.querySelector('.custom-dashboard-wrapper');
+    if (!wrapper) return;
+    var isLight = wrapper.classList.contains('light-theme');
     if (isLight) {
-        body.classList.remove('light-theme');
+        wrapper.classList.remove('light-theme');
         updateThemeUI(false);
     } else {
-        body.classList.add('light-theme');
+        wrapper.classList.add('light-theme');
         updateThemeUI(true);
     }
     if (window.lastParsedTickets && window.lastParsedDateFilteredTickets) {
@@ -1868,11 +1872,13 @@ function toggleTheme() {
 function initThemeFromURL() {
     var urlParams = new URLSearchParams(window.location.search);
     var theme = urlParams.get('themeName') || 'dark';
+    var wrapper = document.querySelector('.custom-dashboard-wrapper');
+    if (!wrapper) return;
     if (theme === 'light') {
-        document.body.classList.add('light-theme');
+        wrapper.classList.add('light-theme');
         updateThemeUI(true);
     } else {
-        document.body.classList.remove('light-theme');
+        wrapper.classList.remove('light-theme');
         updateThemeUI(false);
     }
 }
