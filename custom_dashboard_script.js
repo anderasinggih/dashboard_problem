@@ -66,6 +66,122 @@ function calculateAgingDays(createTimeStr, closeTimeStr, lastUpdateTimeStr, oper
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// PURE HELPER FUNCTIONS (top-level, used across multiple render functions)
+// Centralised here to avoid duplicating identical logic in 2–3 places each.
+// ─────────────────────────────────────────────────────────────────────────────
+
+// OWS severity UUID constants (from createticketlevel field)
+var SEV_UUID_EMERGENCY = '507';
+var SEV_UUID_CRITICAL  = '508';
+var SEV_UUID_MAJOR     = '50c';
+var SEV_UUID_MINOR     = '1029';
+
+/**
+ * Returns canonical severity label from any raw OWS severity/createticketlevel value.
+ * Handles: UUID substrings, text names, numeric codes (1-4).
+ * @param {string} rawStr
+ * @returns {'Emergency'|'Critical'|'Major'|'Minor'}
+ */
+function getSeverityLabel(rawStr) {
+    var s = String(rawStr || '').toLowerCase();
+    if (s.indexOf(SEV_UUID_EMERGENCY) !== -1 || s.indexOf('emergency') !== -1 || s === '1') return 'Emergency';
+    if (s.indexOf(SEV_UUID_CRITICAL)  !== -1 || s.indexOf('critical')  !== -1 || s === '2') return 'Critical';
+    if (s.indexOf(SEV_UUID_MAJOR)     !== -1 || s.indexOf('major')     !== -1 || s === '3') return 'Major';
+    return 'Minor'; // default
+}
+
+/**
+ * Returns canonical root cause label from raw root_cause/rootcause/cause field value.
+ * @param {string} rawStr
+ * @returns {'Environment'|'Transmission'|'Power'|'Hardware'|'Others'}
+ */
+function getRootCauseLabel(rawStr) {
+    var r = String(rawStr || '').toLowerCase();
+    if (r.indexOf('env') !== -1 || r.indexOf('lingkungan') !== -1 || r.indexOf('suhu') !== -1)
+        return 'Environment';
+    if (r.indexOf('trans') !== -1 || r.indexOf('fiber') !== -1 || r.indexOf('cut') !== -1 ||
+        r.indexOf('optic') !== -1 || r.indexOf('fo') !== -1 || r.indexOf('kabel') !== -1 || r.indexOf('cable') !== -1)
+        return 'Transmission';
+    if (r.indexOf('power') !== -1 || r.indexOf('pwr') !== -1 || r.indexOf('pln') !== -1 ||
+        r.indexOf('genset') !== -1 || r.indexOf('baterai') !== -1 || r.indexOf('battery') !== -1)
+        return 'Power';
+    if (r.indexOf('hardware') !== -1 || r.indexOf('hw') !== -1 || r.indexOf('perangkat') !== -1 ||
+        r.indexOf('modul') !== -1 || r.indexOf('card') !== -1 || r.indexOf('sfp') !== -1)
+        return 'Hardware';
+    return 'Others';
+}
+
+/**
+ * Returns canonical status category from raw ticketstatus/status field value.
+ * @param {string} rawStr
+ * @returns {'open'|'pending'|'closed'|'unknown'}
+ */
+function getStatusCategory(rawStr) {
+    var s = String(rawStr || '').toLowerCase();
+    if (s === 'running' || s === 'open'    || s === 'true'  || s === '1') return 'open';
+    if (s === 'pending' || s === 'in progress')                            return 'pending';
+    if (s === 'closed'  || s === 'completed' || s === 'false' || s === '0') return 'closed';
+    return 'unknown';
+}
+
+/**
+ * Returns the ISO-8601 week label (e.g. 'W28') for a given date string.
+ * Returns null if the date string is missing or invalid — callers must check for null.
+ * @param {string} dateStr
+ * @returns {string|null}
+ */
+function getWeekLabel(dateStr) {
+    if (!dateStr) return null;
+    var cleanDateStr = dateStr.replace(/\//g, '-');
+    var parts = cleanDateStr.split(' ')[0].split('-');
+    if (parts.length < 3) return null;
+    var yr = parseInt(parts[0], 10);
+    var mo = parseInt(parts[1], 10) - 1;
+    var dy = parseInt(parts[2], 10);
+    var d = new Date(yr, mo, dy);
+    if (isNaN(d.getTime())) return null;
+    // ISO-8601: week starts Monday, Thursday determines the year
+    var dayNum = d.getDay() || 7;
+    d.setDate(d.getDate() + 4 - dayNum);
+    var yearStart = new Date(d.getFullYear(), 0, 1);
+    var weekNo = Math.ceil((((d - yearStart) / 86400000) + 1) / 7);
+    return 'W' + weekNo;
+}
+
+/**
+ * Returns a human-readable date range string (e.g. '14 Jul - 20 Jul 2026') for a week label.
+ * @param {string} wLabel  e.g. 'W28'
+ * @param {Array}  tickets used to infer the year from ticket create dates
+ * @returns {string}
+ */
+function getWeekRangeString(wLabel, tickets) {
+    var num = parseInt(wLabel.replace('W', ''), 10);
+    if (isNaN(num)) return '';
+    var year = 2026;
+    if (tickets && tickets.length > 0) {
+        for (var i = 0; i < tickets.length; i++) {
+            var dStr = tickets[i].createtime || tickets[i].operate_time;
+            if (dStr) {
+                var cleanDStr = dStr.replace(/\//g, '-');
+                var yr = parseInt(cleanDStr.split(' ')[0].split('-')[0], 10);
+                if (!isNaN(yr)) { year = yr; break; }
+            }
+        }
+    }
+    var jan4 = new Date(year, 0, 4);
+    var jan4Day = jan4.getDay() || 7;
+    var mondayOfW1 = new Date(jan4.getTime() - (jan4Day - 1) * 86400000);
+    var startOfWeek = new Date(mondayOfW1.getTime() + (num - 1) * 7 * 86400000);
+    var endOfWeek   = new Date(startOfWeek.getTime() + 6 * 86400000);
+    var mo = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    return startOfWeek.getDate() + ' ' + mo[startOfWeek.getMonth()] + ' - ' +
+           endOfWeek.getDate()   + ' ' + mo[endOfWeek.getMonth()] + ' ' + endOfWeek.getFullYear();
+}
+
+// Registered ECharts resize handlers keyed by containerId — prevents listener accumulation on re-renders
+var _echartsResizeHandlers = {};
+
+// ─────────────────────────────────────────────────────────────────────────────
 // AUTO-PAGINATION ENGINE
 // OWS API hard limit = 1000 per call. This engine fetches pages sequentially
 // (start=0 → 1000 → 2000 → ...) until the returned page is < 1000 records,
@@ -256,23 +372,22 @@ function updateAllTimeCards(tickets) {
 
     for (var i = 0; i < tickets.length; i++) {
         var item = tickets[i];
-        var statusLower = String(item.ticketstatus || item.status || '').toLowerCase();
-
         var partner = getTicketPartner(item);
+        var statusCat = getStatusCategory(item.ticketstatus || item.status || '');
 
-        if (statusLower === 'running' || statusLower === 'open' || statusLower === 'true' || statusLower === '1') {
+        if (statusCat === 'open') {
             openCount++;
             if (partner === 'Telkom Akses') taOpen++;
             else if (partner === 'Mandau') mOpen++;
             else if (partner === 'Persada') pOpen++;
             else othOpen++;
-        } else if (statusLower === 'in progress' || statusLower === 'pending') {
+        } else if (statusCat === 'pending') {
             inProgressCount++;
             if (partner === 'Telkom Akses') taPending++;
             else if (partner === 'Mandau') mPending++;
             else if (partner === 'Persada') pPending++;
             else othPending++;
-        } else if (statusLower === 'closed' || statusLower === 'completed' || statusLower === 'false' || statusLower === '0') {
+        } else if (statusCat === 'closed') {
             closedCount++;
             if (partner === 'Telkom Akses') taClosed++;
             else if (partner === 'Mandau') mClosed++;
@@ -369,34 +484,16 @@ function renderCurrentTicketsPage() {
 
         var partner = getTicketPartner(item);
 
-        // Map Severity (including OWS createticketlevel UUID checks)
-        var sevRaw = String(item.severity || item.createticketlevel || '').toLowerCase();
-        var sevLabel = 'Minor';
-        var sevClass = 'custom-badge-sev-minor';
-        if (sevRaw.indexOf('507') !== -1 || sevRaw.indexOf('emergency') !== -1 || sevRaw === '1') {
-            sevLabel = 'Emergency';
-            sevClass = 'custom-badge-sev-emergency';
-        } else if (sevRaw.indexOf('508') !== -1 || sevRaw.indexOf('critical') !== -1 || sevRaw === '2') {
-            sevLabel = 'Critical';
-            sevClass = 'custom-badge-sev-critical';
-        } else if (sevRaw.indexOf('50c') !== -1 || sevRaw.indexOf('major') !== -1 || sevRaw === '3') {
-            sevLabel = 'Major';
-            sevClass = 'custom-badge-sev-major';
-        } else if (sevRaw.indexOf('1029') !== -1 || sevRaw.indexOf('minor') !== -1 || sevRaw === '4') {
-            sevLabel = 'Minor';
-            sevClass = 'custom-badge-sev-minor';
-        }
+        // Map Severity — uses getSeverityLabel() helper (top-level, avoids duplication)
+        var sevLabel = getSeverityLabel(item.severity || item.createticketlevel || '');
+        var sevClass = 'custom-badge-sev-' + sevLabel.toLowerCase();
 
-        // Map Status
-        var statusClass = 'custom-badge-open';
-        var statusLower = String(status).toLowerCase();
-        if (statusLower === 'running' || statusLower === 'open' || statusLower === 'true' || statusLower === '1') {
-            statusClass = 'custom-badge-open';
-        } else if (statusLower === 'in progress' || statusLower === 'pending') {
-            statusClass = 'custom-badge-pending';
-        } else if (statusLower === 'closed' || statusLower === 'completed' || statusLower === 'false' || statusLower === '0') {
-            statusClass = 'custom-badge-closed';
-        }
+        // Map Status — uses getStatusCategory() helper
+        var statusCat = getStatusCategory(status);
+        var statusClass = statusCat === 'open' ? 'custom-badge-open'
+                        : statusCat === 'pending' ? 'custom-badge-pending'
+                        : statusCat === 'closed' ? 'custom-badge-closed'
+                        : 'custom-badge-open';
 
         var displayNo = startIdx + i + 1;
         var rc = item.root_cause || item.rootcause || item.cause || '-';
@@ -551,17 +648,12 @@ function renderSeverityDashboard(tickets) {
 
     if (tickets && tickets.length > 0) {
         tickets.forEach(function (t) {
-            var sevRaw = String(t.severity || t.createticketlevel || t.priority || '').toLowerCase();
-            var sev = 'Minor';
-            if (sevRaw.indexOf('507') !== -1 || sevRaw.indexOf('emergency') !== -1 || sevRaw === '1') sev = 'Emergency';
-            else if (sevRaw.indexOf('508') !== -1 || sevRaw.indexOf('critical') !== -1 || sevRaw === '2') sev = 'Critical';
-            else if (sevRaw.indexOf('50c') !== -1 || sevRaw.indexOf('major') !== -1 || sevRaw === '3') sev = 'Major';
-            else if (sevRaw.indexOf('1029') !== -1 || sevRaw.indexOf('minor') !== -1 || sevRaw === '4') sev = 'Minor';
-
+            // Use centralised helpers to avoid duplicating mapping logic
+            var sev = getSeverityLabel(t.severity || t.createticketlevel || t.priority || '');
             severityData[sev].total++;
 
-            var statusRaw = String(t.ticketstatus || t.status || '').toLowerCase();
-            if (statusRaw === 'pending' || statusRaw === 'in progress' || statusRaw === 'running') {
+            var statusCat = getStatusCategory(t.ticketstatus || t.status || '');
+            if (statusCat === 'pending' || statusCat === 'open') {
                 severityData[sev].pending++;
             }
 
@@ -570,14 +662,7 @@ function renderSeverityDashboard(tickets) {
                 severityData[sev].overSla++;
             }
 
-            // Map Root Cause
-            var rcRaw = String(t.root_cause || t.rootcause || t.cause || '').toLowerCase();
-            var rcName = 'Others';
-            if (rcRaw.indexOf('env') !== -1 || rcRaw.indexOf('lingkungan') !== -1 || rcRaw.indexOf('suhu') !== -1) rcName = 'Environment';
-            else if (rcRaw.indexOf('trans') !== -1 || rcRaw.indexOf('fiber') !== -1 || rcRaw.indexOf('cut') !== -1 || rcRaw.indexOf('optic') !== -1 || rcRaw.indexOf('fo') !== -1 || rcRaw.indexOf('kabel') !== -1 || rcRaw.indexOf('cable') !== -1) rcName = 'Transmission';
-            else if (rcRaw.indexOf('power') !== -1 || rcRaw.indexOf('pwr') !== -1 || rcRaw.indexOf('pln') !== -1 || rcRaw.indexOf('genset') !== -1 || rcRaw.indexOf('baterai') !== -1 || rcRaw.indexOf('battery') !== -1) rcName = 'Power';
-            else if (rcRaw.indexOf('hardware') !== -1 || rcRaw.indexOf('hw') !== -1 || rcRaw.indexOf('perangkat') !== -1 || rcRaw.indexOf('modul') !== -1 || rcRaw.indexOf('card') !== -1 || rcRaw.indexOf('sfp') !== -1) rcName = 'Hardware';
-
+            var rcName = getRootCauseLabel(t.root_cause || t.rootcause || t.cause || '');
             var rcObj = severityData[sev].rootCauses.find(function (rc) { return rc.name === rcName; });
             if (rcObj) {
                 rcObj.value++;
@@ -721,9 +806,12 @@ function renderDonutChart(containerId, data, totalVal, pctVal) {
 
     myChart.setOption(option);
 
-    window.addEventListener('resize', function () {
-        myChart.resize();
-    });
+    // Fix: remove old handler before adding new to prevent accumulation on re-renders
+    if (_echartsResizeHandlers[containerId]) {
+        window.removeEventListener('resize', _echartsResizeHandlers[containerId]);
+    }
+    _echartsResizeHandlers[containerId] = function () { myChart.resize(); };
+    window.addEventListener('resize', _echartsResizeHandlers[containerId]);
 }
 
 function renderPhaseDashboard(tickets) {
@@ -951,67 +1039,42 @@ function renderTrendsAndCompliance(weeklyTrendTickets, rootCauseTickets, complia
         { name: 'Others', value: 0, color: '#8b949e' }
     ];
 
+    // complianceData: 3 fixed partners + 'Others' bucket for everyone else.
+    // (IJE, Surge removed — they are never returned by getTicketPartner and always show 0)
     var complianceData = [
-        { party: 'Persada', total: 0, within: 0, over: 0, ach: '0.0%' },
         { party: 'Telkom Akses', total: 0, within: 0, over: 0, ach: '0.0%' },
-        { party: 'Mandau', total: 0, within: 0, over: 0, ach: '0.0%' },
-        { party: 'IJE', total: 0, within: 0, over: 0, ach: '0.0%' },
-        { party: 'Surge', total: 0, within: 0, over: 0, ach: '0.0%' }
+        { party: 'Mandau',       total: 0, within: 0, over: 0, ach: '0.0%' },
+        { party: 'Persada',      total: 0, within: 0, over: 0, ach: '0.0%' },
+        { party: 'Others',       total: 0, within: 0, over: 0, ach: '0.0%' }
     ];
 
     var weeklyMap = {};
+    // getWeekLabel and getWeekRangeString are now top-level functions — no closure redefinition needed
 
-    function getWeekLabel(dateStr) {
-        if (!dateStr) return 'W28';
-        var cleanDateStr = dateStr.replace(/\//g, '-');
-        var parts = cleanDateStr.split(' ')[0].split('-');
-        if (parts.length < 3) return 'W28';
-        var yr = parseInt(parts[0], 10);
-        var mo = parseInt(parts[1], 10) - 1;
-        var dy = parseInt(parts[2], 10);
-        var d = new Date(yr, mo, dy);
-        if (isNaN(d.getTime())) return 'W28';
-        var dayNum = d.getDay() || 7;
-        d.setDate(d.getDate() + 4 - dayNum);
-        var yearStart = new Date(d.getFullYear(), 0, 1);
-        var weekNo = Math.ceil((((d - yearStart) / 86400000) + 1) / 7);
-        return 'W' + weekNo;
-    }
-
-    // 1. Top Root Cause (using rootCauseTickets - fully filtered by date + party)
+    // 1. Top Root Cause — uses getRootCauseLabel() helper
     var rcTickets = rootCauseTickets || [];
     if (rcTickets.length > 0) {
         rcTickets.forEach(function (t) {
-            var rcRaw = String(t.root_cause || t.rootcause || t.cause || '').toLowerCase();
-            var rcName = 'Others';
-            if (rcRaw.indexOf('env') !== -1 || rcRaw.indexOf('lingkungan') !== -1 || rcRaw.indexOf('suhu') !== -1) rcName = 'Environment';
-            else if (rcRaw.indexOf('trans') !== -1 || rcRaw.indexOf('fiber') !== -1 || rcRaw.indexOf('cut') !== -1 || rcRaw.indexOf('optic') !== -1 || rcRaw.indexOf('fo') !== -1 || rcRaw.indexOf('kabel') !== -1 || rcRaw.indexOf('cable') !== -1) rcName = 'Transmission';
-            else if (rcRaw.indexOf('power') !== -1 || rcRaw.indexOf('pwr') !== -1 || rcRaw.indexOf('pln') !== -1 || rcRaw.indexOf('genset') !== -1 || rcRaw.indexOf('baterai') !== -1 || rcRaw.indexOf('battery') !== -1) rcName = 'Power';
-            else if (rcRaw.indexOf('hardware') !== -1 || rcRaw.indexOf('hw') !== -1 || rcRaw.indexOf('perangkat') !== -1 || rcRaw.indexOf('modul') !== -1 || rcRaw.indexOf('card') !== -1 || rcRaw.indexOf('sfp') !== -1) rcName = 'Hardware';
-
+            var rcName = getRootCauseLabel(t.root_cause || t.rootcause || t.cause || '');
             var rcObj = rootCauseData.find(function (rc) { return rc.name === rcName; });
             if (rcObj) rcObj.value++;
         });
     }
 
-    // 2. SLA Compliance (using complianceTickets - date-filtered only)
+    // 2. SLA Compliance — falls back to 'Others' bucket for unrecognised partners
     var compTickets = complianceTickets || [];
     if (compTickets.length > 0) {
         compTickets.forEach(function (t) {
             var partner = getTicketPartner(t);
-            var compObj = complianceData.find(function (c) { return c.party === partner; });
+            var compObj = complianceData.find(function (c) { return c.party === partner; })
+                       || complianceData.find(function (c) { return c.party === 'Others'; });
             if (compObj) {
                 compObj.total++;
                 var isOver = t.over_sla || t.sla_over || t.is_over_sla;
                 var overVal = (isOver === true || String(isOver).toLowerCase() === 'true' || String(isOver) === '1');
-                if (overVal) {
-                    compObj.over++;
-                } else {
-                    compObj.within++;
-                }
+                if (overVal) { compObj.over++; } else { compObj.within++; }
             }
         });
-
         complianceData.forEach(function (c) {
             c.ach = c.total ? ((c.within / c.total) * 100).toFixed(1) + '%' : '0.0%';
         });
@@ -1062,32 +1125,7 @@ function renderTrendsAndCompliance(weeklyTrendTickets, rootCauseTickets, complia
         });
     }
 
-    function getWeekRangeString(wLabel, tickets) {
-        var num = parseInt(wLabel.replace('W', ''), 10);
-        if (isNaN(num)) return '';
-        var year = 2026;
-        if (tickets && tickets.length > 0) {
-            for (var i = 0; i < tickets.length; i++) {
-                var dStr = tickets[i].createtime || tickets[i].operate_time;
-                if (dStr) {
-                    var cleanDStr = dStr.replace(/\//g, '-');
-                    var yr = parseInt(cleanDStr.split(' ')[0].split('-')[0], 10);
-                    if (!isNaN(yr)) {
-                        year = yr;
-                        break;
-                    }
-                }
-            }
-        }
-        var jan4 = new Date(year, 0, 4);
-        var jan4Day = jan4.getDay() || 7;
-        var mondayOfW1 = new Date(jan4.getTime() - (jan4Day - 1) * 86400000);
-        var startOfWeek = new Date(mondayOfW1.getTime() + (num - 1) * 7 * 86400000);
-        var endOfWeek = new Date(startOfWeek.getTime() + 6 * 86400000);
-        var monthsShort = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-        return String(startOfWeek.getDate()) + ' ' + monthsShort[startOfWeek.getMonth()] + ' - ' + String(endOfWeek.getDate()) + ' ' + monthsShort[endOfWeek.getMonth()] + ' ' + endOfWeek.getFullYear();
-    }
-
+    // getWeekRangeString is now top-level — no closure redefinition needed
     var weeksList = Object.keys(weeklyMap).sort(function (a, b) {
         var numA = parseInt(a.replace('W', ''), 10);
         var numB = parseInt(b.replace('W', ''), 10);
@@ -1282,7 +1320,9 @@ function drawWeeklyTrendChart(containerId, data) {
     };
 
     myChart.setOption(option);
-    window.addEventListener('resize', function () { myChart.resize(); });
+    if (_echartsResizeHandlers[containerId]) window.removeEventListener('resize', _echartsResizeHandlers[containerId]);
+    _echartsResizeHandlers[containerId] = function () { myChart.resize(); };
+    window.addEventListener('resize', _echartsResizeHandlers[containerId]);
 }
 
 function drawTopRootCauseChart(containerId, data) {
@@ -1360,7 +1400,9 @@ function drawTopRootCauseChart(containerId, data) {
     };
 
     myChart.setOption(option);
-    window.addEventListener('resize', function () { myChart.resize(); });
+    if (_echartsResizeHandlers[containerId]) window.removeEventListener('resize', _echartsResizeHandlers[containerId]);
+    _echartsResizeHandlers[containerId] = function () { myChart.resize(); };
+    window.addEventListener('resize', _echartsResizeHandlers[containerId]);
 }
 
 function renderSlaComplianceTable(containerId, rows) {
@@ -1642,31 +1684,16 @@ function showTicketDetailModal(ticketId) {
 
     var agingVal = ticket.aging || ticket.aging_days || ticket.days || calculateAgingDays(ticket.createtime, ticket.closetime, ticket.lastupdatetime, ticket.operate_time, status);
 
-    var sevRaw = String(ticket.severity || ticket.createticketlevel || '').toLowerCase();
-    var sevLabel = 'Minor';
-    var sevClass = 'custom-badge-sev-minor';
-    if (sevRaw.indexOf('507') !== -1 || sevRaw.indexOf('emergency') !== -1 || sevRaw === '1') {
-        sevLabel = 'Emergency';
-        sevClass = 'custom-badge-sev-emergency';
-    } else if (sevRaw.indexOf('508') !== -1 || sevRaw.indexOf('critical') !== -1 || sevRaw === '2') {
-        sevLabel = 'Critical';
-        sevClass = 'custom-badge-sev-critical';
-    } else if (sevRaw.indexOf('50c') !== -1 || sevRaw.indexOf('major') !== -1 || sevRaw === '3') {
-        sevLabel = 'Major';
-        sevClass = 'custom-badge-sev-major';
-    }
+    // Use centralised helpers (same as table row rendering)
+    var sevLabel = getSeverityLabel(ticket.severity || ticket.createticketlevel || '');
+    var sevClass  = 'custom-badge-sev-' + sevLabel.toLowerCase();
 
     var rc = ticket.root_cause || ticket.rootcause || ticket.cause || '-';
 
-    var statusClass = 'custom-badge-open';
-    var statusLower = String(status).toLowerCase();
-    if (statusLower === 'running' || statusLower === 'open' || statusLower === 'true' || statusLower === '1') {
-        statusClass = 'custom-badge-open';
-    } else if (statusLower === 'in progress' || statusLower === 'pending') {
-        statusClass = 'custom-badge-pending';
-    } else if (statusLower === 'closed' || statusLower === 'completed' || statusLower === 'false' || statusLower === '0') {
-        statusClass = 'custom-badge-closed';
-    }
+    var statusCatModal = getStatusCategory(status);
+    var statusClass = statusCatModal === 'pending' ? 'custom-badge-pending'
+                    : statusCatModal === 'closed'  ? 'custom-badge-closed'
+                    : 'custom-badge-open';
 
     var html = '<div style="margin-bottom:16px;">';
     html += '  <h4 style="margin:0 0 6px 0; color:#f0f6fc; font-size:15px; font-weight:600;">' + title + '</h4>';
