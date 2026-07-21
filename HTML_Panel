@@ -293,7 +293,7 @@
         <span>3. WEEKLY TREND</span>
       </div>
       <div class="custom-panel-body" style="padding: 16px;">
-        <div id="chartWeeklyTrend" style="width: 100%; height: 280px;"></div>
+        <div id="chartWeeklyTrend" style="width: 100%; min-width: 1200px; height: 280px;"></div>
       </div>
     </div>
 
