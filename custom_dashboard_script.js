@@ -710,6 +710,7 @@ function renderPhaseDashboard(tickets) {
 
     if (tickets && tickets.length > 0) {
         tickets.forEach(function (t) {
+            if (isTicketClosed(t)) return;
             var phaseRaw = String(t.operate_phase || t.phase || t.current_phase || t.state || '').toLowerCase();
             var phase = '1. Create PT';
             if (phaseRaw.indexOf('confirm') !== -1) phase = '6. Confirm PT';
@@ -990,27 +991,39 @@ function renderTrendsAndCompliance(weeklyTrendTickets, rootCauseTickets, complia
     var trendTickets = weeklyTrendTickets || [];
     if (trendTickets.length > 0) {
         trendTickets.forEach(function (t) {
-            var dateVal = t.createtime || t.createfirstoccurtime || t.operate_time;
-            var wLabel = getWeekLabel(dateVal);
-            if (!weeklyMap[wLabel]) {
-                weeklyMap[wLabel] = { newPT: 0, closedPT: 0, pendingPT: 0, overSla: 0, total: 0, withinSla: 0 };
-            }
-            var weekRow = weeklyMap[wLabel];
-            weekRow.total++;
-            weekRow.newPT++;
-
-            var statusRaw = String(t.ticketstatus || t.status || '').toLowerCase();
-            if (statusRaw === 'closed' || statusRaw === 'completed' || statusRaw === 'false' || statusRaw === '0') {
-                weekRow.closedPT++;
-            } else {
-                weekRow.pendingPT++;
+            // 1. Count as New PT in the week of creation
+            var createDate = t.createtime || t.createfirstoccurtime || t.operate_time;
+            if (createDate) {
+                var createWeek = getWeekLabel(createDate);
+                if (!weeklyMap[createWeek]) {
+                    weeklyMap[createWeek] = { newPT: 0, closedPT: 0, pendingPT: 0, overSla: 0, total: 0, withinSla: 0 };
+                }
+                weeklyMap[createWeek].newPT++;
             }
 
-            var isOverVal = (t.over_sla === true || String(t.over_sla).toLowerCase() === 'true' || String(t.over_sla) === '1');
-            if (isOverVal) {
-                weekRow.overSla++;
-            } else {
-                weekRow.withinSla++;
+            // 2. Count as Closed/Pending/SLA in the week of resolution (for closed) or creation (for pending)
+            var isClosed = isTicketClosed(t);
+            var targetDate = isClosed ? getConfirmSubmitTime(t) : (t.createtime || t.createfirstoccurtime || t.operate_time);
+            if (targetDate) {
+                var targetWeek = getWeekLabel(targetDate);
+                if (!weeklyMap[targetWeek]) {
+                    weeklyMap[targetWeek] = { newPT: 0, closedPT: 0, pendingPT: 0, overSla: 0, total: 0, withinSla: 0 };
+                }
+                var weekRow = weeklyMap[targetWeek];
+                weekRow.total++;
+                
+                if (isClosed) {
+                    weekRow.closedPT++;
+                } else {
+                    weekRow.pendingPT++;
+                }
+
+                var isOverVal = (t.over_sla === true || String(t.over_sla).toLowerCase() === 'true' || String(t.over_sla) === '1');
+                if (isOverVal) {
+                    weekRow.overSla++;
+                } else {
+                    weekRow.withinSla++;
+                }
             }
         });
     }
@@ -1684,4 +1697,32 @@ function startLiveClock() {
     updateClock();
     setInterval(updateClock, 1000);
 }
+window.startLiveClock = startLiveClock;
+
+function isTicketAccepted(t) {
+    if (!t) return false;
+    var val = t['Accept or Not(Confirm PT)'] || t.accept_or_not_confirm_pt || t.acceptornotconfirmpt || t.accept_or_not || t.acceptornot || t.confirm_status || '';
+    val = String(val).toLowerCase();
+    return val === 'accept' || val === 'accepted' || val === 'yes' || val === 'true';
+}
+
+function isTicketClosed(t) {
+    if (!t) return false;
+    var statusRaw = String(t.ticketstatus || t.status || '').toLowerCase();
+    if (statusRaw === 'closed' || statusRaw === 'completed' || statusRaw === 'false' || statusRaw === '0') {
+        return true;
+    }
+    return isTicketAccepted(t);
+}
+
+function getConfirmSubmitTime(t) {
+    if (!t) return null;
+    var val = t['SubmitTime(Confirm PT)'] || t.submittime_confirm_pt || t.submittimeconfirmpt || t.submit_time_confirm || t.confirm_submit_time || '';
+    if (val) return val;
+    return t.closetime || t.closure_time || t.lastupdatetime || t.operate_time || t.createtime;
+}
+
+window.isTicketAccepted = isTicketAccepted;
+window.isTicketClosed = isTicketClosed;
+window.getConfirmSubmitTime = getConfirmSubmitTime;
 window.startLiveClock = startLiveClock;
