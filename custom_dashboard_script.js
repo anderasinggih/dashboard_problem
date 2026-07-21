@@ -78,7 +78,7 @@ function loadProblemTickets(startDate, endDate, party) {
 
     var requestData = {
         "start": 0,
-        "limit": 1500,
+        "limit": 1000,  // OWS API maximum is 1000 - do not exceed
         "startDate": startDate || "2000-01-01 00:00:00",
         "endDate": endDate || "2099-12-31 23:59:59",
         "party": party || "ALL"
