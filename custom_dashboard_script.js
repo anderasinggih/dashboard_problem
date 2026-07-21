@@ -1107,7 +1107,7 @@ function drawWeeklyTrendChart(containerId, data) {
                 var dataIndex = params[0].dataIndex;
                 var weekLabel = params[0].name;
                 var rangeStr = data.ranges && data.ranges[dataIndex] ? data.ranges[dataIndex] : '';
-                var html = '<div style="font-weight: bold; margin-bottom: 4px; color: #fafafa;">' + weekLabel + ' (' + rangeStr + ')</div>';
+                var html = '<div style="font-weight: bold; margin-bottom: 4px; color: inherit;">' + weekLabel + ' (' + rangeStr + ')</div>';
                 params.forEach(function (p) {
                     var val = p.value;
                     if (p.seriesName.indexOf('%') !== -1) {
