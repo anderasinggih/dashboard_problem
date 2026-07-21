@@ -503,10 +503,10 @@ function renderSeverityDashboard(tickets) {
             overSla: 0,
             pctOfTotal: '0%',
             rootCauses: [
-                { name: 'Fiber Cut', value: 0, pct: '0%', color: '#0f62fe' },
-                { name: 'Hardware', value: 0, pct: '0%', color: '#ff7849' },
+                { name: 'Environment', value: 0, pct: '0%', color: '#8a3ffc' },
+                { name: 'Transmission', value: 0, pct: '0%', color: '#0f62fe' },
                 { name: 'Power', value: 0, pct: '0%', color: '#24a148' },
-                { name: 'Configuration', value: 0, pct: '0%', color: '#8a3ffc' },
+                { name: 'Hardware', value: 0, pct: '0%', color: '#ff7849' },
                 { name: 'Others', value: 0, pct: '0%', color: '#8d8d8d' }
             ]
         };
@@ -536,11 +536,10 @@ function renderSeverityDashboard(tickets) {
             // Map Root Cause
             var rcRaw = String(t.root_cause || t.rootcause || t.cause || '').toLowerCase();
             var rcName = 'Others';
-            if (rcRaw.indexOf('fiber') !== -1 || rcRaw.indexOf('cut') !== -1) rcName = 'Fiber Cut';
-            else if (rcRaw.indexOf('hardware') !== -1 || rcRaw.indexOf('hw') !== -1) rcName = 'Hardware';
-            else if (rcRaw.indexOf('power') !== -1 || rcRaw.indexOf('pwr') !== -1) rcName = 'Power';
-            else if (rcRaw.indexOf('config') !== -1) rcName = 'Configuration';
-            else if (rcRaw.indexOf('software') !== -1 || rcRaw.indexOf('app') !== -1 || rcRaw.indexOf('sw') !== -1) rcName = 'Software';
+            if (rcRaw.indexOf('env') !== -1 || rcRaw.indexOf('lingkungan') !== -1 || rcRaw.indexOf('suhu') !== -1) rcName = 'Environment';
+            else if (rcRaw.indexOf('trans') !== -1 || rcRaw.indexOf('fiber') !== -1 || rcRaw.indexOf('cut') !== -1 || rcRaw.indexOf('optic') !== -1 || rcRaw.indexOf('fo') !== -1 || rcRaw.indexOf('kabel') !== -1 || rcRaw.indexOf('cable') !== -1) rcName = 'Transmission';
+            else if (rcRaw.indexOf('power') !== -1 || rcRaw.indexOf('pwr') !== -1 || rcRaw.indexOf('pln') !== -1 || rcRaw.indexOf('genset') !== -1 || rcRaw.indexOf('baterai') !== -1 || rcRaw.indexOf('battery') !== -1) rcName = 'Power';
+            else if (rcRaw.indexOf('hardware') !== -1 || rcRaw.indexOf('hw') !== -1 || rcRaw.indexOf('perangkat') !== -1 || rcRaw.indexOf('modul') !== -1 || rcRaw.indexOf('card') !== -1 || rcRaw.indexOf('sfp') !== -1) rcName = 'Hardware';
 
             var rcObj = severityData[sev].rootCauses.find(function (rc) { return rc.name === rcName; });
             if (rcObj) {
@@ -590,10 +589,10 @@ function renderLegend(containerId, rootCauses) {
     for (var i = 0; i < rootCauses.length; i++) {
         var item = rootCauses[i];
         var dotClass = '';
-        if (item.name === 'Fiber Cut') dotClass = 'custom-fiber-cut';
-        else if (item.name === 'Hardware') dotClass = 'custom-hardware';
+        if (item.name === 'Environment') dotClass = 'custom-environment';
+        else if (item.name === 'Transmission') dotClass = 'custom-transmission';
         else if (item.name === 'Power') dotClass = 'custom-power';
-        else if (item.name === 'Configuration') dotClass = 'custom-configuration';
+        else if (item.name === 'Hardware') dotClass = 'custom-hardware';
         else dotClass = 'custom-others';
 
         html += '<tr>';
@@ -918,11 +917,10 @@ function renderTrendsAndCompliance(weeklyTrendTickets, rootCauseTickets, complia
     }
 
     var rootCauseData = [
-        { name: 'Fiber Cut', value: 0, color: '#58a6ff' },
-        { name: 'Hardware', value: 0, color: '#f0883e' },
+        { name: 'Environment', value: 0, color: '#bc8cff' },
+        { name: 'Transmission', value: 0, color: '#58a6ff' },
         { name: 'Power', value: 0, color: '#3fb950' },
-        { name: 'Configuration', value: 0, color: '#bc8cff' },
-        { name: 'Software', value: 0, color: '#ff7b72' },
+        { name: 'Hardware', value: 0, color: '#f0883e' },
         { name: 'Others', value: 0, color: '#8b949e' }
     ];
 
@@ -955,11 +953,10 @@ function renderTrendsAndCompliance(weeklyTrendTickets, rootCauseTickets, complia
         rcTickets.forEach(function (t) {
             var rcRaw = String(t.root_cause || t.rootcause || t.cause || '').toLowerCase();
             var rcName = 'Others';
-            if (rcRaw.indexOf('fiber') !== -1 || rcRaw.indexOf('cut') !== -1) rcName = 'Fiber Cut';
-            else if (rcRaw.indexOf('hardware') !== -1 || rcRaw.indexOf('hw') !== -1) rcName = 'Hardware';
-            else if (rcRaw.indexOf('power') !== -1 || rcRaw.indexOf('pwr') !== -1) rcName = 'Power';
-            else if (rcRaw.indexOf('config') !== -1) rcName = 'Configuration';
-            else if (rcRaw.indexOf('software') !== -1 || rcRaw.indexOf('app') !== -1 || rcRaw.indexOf('sw') !== -1) rcName = 'Software';
+            if (rcRaw.indexOf('env') !== -1 || rcRaw.indexOf('lingkungan') !== -1 || rcRaw.indexOf('suhu') !== -1) rcName = 'Environment';
+            else if (rcRaw.indexOf('trans') !== -1 || rcRaw.indexOf('fiber') !== -1 || rcRaw.indexOf('cut') !== -1 || rcRaw.indexOf('optic') !== -1 || rcRaw.indexOf('fo') !== -1 || rcRaw.indexOf('kabel') !== -1 || rcRaw.indexOf('cable') !== -1) rcName = 'Transmission';
+            else if (rcRaw.indexOf('power') !== -1 || rcRaw.indexOf('pwr') !== -1 || rcRaw.indexOf('pln') !== -1 || rcRaw.indexOf('genset') !== -1 || rcRaw.indexOf('baterai') !== -1 || rcRaw.indexOf('battery') !== -1) rcName = 'Power';
+            else if (rcRaw.indexOf('hardware') !== -1 || rcRaw.indexOf('hw') !== -1 || rcRaw.indexOf('perangkat') !== -1 || rcRaw.indexOf('modul') !== -1 || rcRaw.indexOf('card') !== -1 || rcRaw.indexOf('sfp') !== -1) rcName = 'Hardware';
 
             var rcObj = rootCauseData.find(function (rc) { return rc.name === rcName; });
             if (rcObj) rcObj.value++;
@@ -1477,9 +1474,7 @@ function initDetailModalDOM() {
         '.custom-badge-status { display: inline-block; padding: 3px 10px; border-radius: 12px; font-weight: 700; font-size: 10px; text-transform: uppercase; } ' +
         '.custom-badge-open { background-color: #da3633 !important; color: #ffffff !important; } ' +
         '.custom-badge-pending { background-color: #d15704 !important; color: #ffffff !important; } ' +
-        '.custom-badge-closed { background-color: #238636 !important; color: #ffffff !important; } ' +
-        '.custom-modal-body::-webkit-scrollbar { display: none !important; } ' +
-        '.custom-modal-body { -ms-overflow-style: none !important; scrollbar-width: none !important; }';
+        '.custom-badge-closed { background-color: #238636 !important; color: #ffffff !important; }';
     document.head.appendChild(dynamicStyle);
 
     var modalDiv = document.createElement('div');
