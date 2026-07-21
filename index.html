@@ -48,10 +48,15 @@
     <!-- Inject HTML Panel -->
     <div class="custom-dashboard-wrapper">
         <!-- Header Bar -->
-        <div class="custom-dashboard-header">
+        <div class="custom-dashboard-header" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
             <div class="custom-header-info">
                 <h1 class="custom-header-title">PROBLEM MANAGEMENT DASHBOARD</h1>
                 <p class="custom-header-subtitle" id="liveTickerClock">Real-time enterprise monitoring & ticket tracking (NOC Environment)</p>
+            </div>
+            <div class="custom-theme-toggle-wrapper">
+                <button onclick="toggleTheme()" class="custom-theme-toggle-btn" id="themeToggleBtn">
+                    <span class="custom-toggle-icon">☀</span> <span class="custom-toggle-text">Light Mode</span>
+                </button>
             </div>
         </div>
 

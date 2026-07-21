@@ -154,6 +154,10 @@ function parseAndRender(res, isFiltered, startDate, endDate, party) {
             updateAllTimeCards(rawTickets);
         }
 
+        // Cache parsed ticket collections to window to support live theme redrawing
+        window.lastParsedTickets = fullyFilteredTickets;
+        window.lastParsedDateFilteredTickets = dateFilteredTickets;
+
         // Render list & charts
         renderTicketsData(fullyFilteredTickets, dateFilteredTickets);
         updatePanelFilterBadges(party);
@@ -630,6 +634,10 @@ function renderDonutChart(containerId, data, totalVal, pctVal) {
         colors.push(item.color);
     }
 
+    var isLight = document.body.classList.contains('light-theme');
+    var centerTextColor = isLight ? '#24292f' : '#f0f6fc';
+    var centerSubColor = isLight ? '#57606a' : '#8b949e';
+
     var option = {
         color: colors,
         tooltip: {
@@ -666,7 +674,7 @@ function renderDonutChart(containerId, data, totalVal, pctVal) {
                 style: {
                     text: String(totalVal),
                     textAlign: 'center',
-                    fill: '#f0f6fc',
+                    fill: centerTextColor,
                     fontSize: 16,
                     fontWeight: 'bold'
                 }
@@ -678,7 +686,7 @@ function renderDonutChart(containerId, data, totalVal, pctVal) {
                 style: {
                     text: '(' + pctVal + ')',
                     textAlign: 'center',
-                    fill: '#8b949e',
+                    fill: centerSubColor,
                     fontSize: 9
                 }
             }
@@ -1096,6 +1104,11 @@ function drawWeeklyTrendChart(containerId, data) {
 
     var myChart = echarts.init(chartDom);
 
+    var isLight = document.body.classList.contains('light-theme');
+    var axisColor = isLight ? '#d0d7de' : '#30363d';
+    var textColor = isLight ? '#24292f' : '#c9d1d9';
+    var labelColor = isLight ? '#57606a' : '#8b949e';
+
     var option = {
         backgroundColor: 'transparent',
         tooltip: {
@@ -1122,7 +1135,7 @@ function drawWeeklyTrendChart(containerId, data) {
         legend: {
             data: ['New PT', 'Closed PT', 'Pending PT', 'Over SLA', 'SLA Achievement (%)'],
             textStyle: {
-                color: '#c9d1d9',
+                color: textColor,
                 fontSize: 10
             },
             top: '2%'
@@ -1143,12 +1156,12 @@ function drawWeeklyTrendChart(containerId, data) {
                 height: 18,
                 bottom: 25,
                 borderColor: 'transparent',
-                backgroundColor: 'rgba(47, 47, 54, 0.4)',
-                fillerColor: 'rgba(88, 166, 255, 0.2)',
-                handleColor: '#58a6ff',
+                backgroundColor: isLight ? 'rgba(208, 215, 222, 0.4)' : 'rgba(47, 47, 54, 0.4)',
+                fillerColor: isLight ? 'rgba(9, 105, 218, 0.15)' : 'rgba(88, 166, 255, 0.2)',
+                handleColor: isLight ? '#0969da' : '#58a6ff',
                 handleSize: '100%',
                 textStyle: {
-                    color: '#8b949e'
+                    color: labelColor
                 }
             },
             {
@@ -1161,28 +1174,28 @@ function drawWeeklyTrendChart(containerId, data) {
             {
                 type: 'category',
                 data: data.weeks,
-                axisLine: { lineStyle: { color: '#30363d' } },
-                axisLabel: { color: '#8b949e' }
+                axisLine: { lineStyle: { color: axisColor } },
+                axisLabel: { color: labelColor }
             }
         ],
         yAxis: [
             {
                 type: 'value',
                 name: 'PT (Total)',
-                nameTextStyle: { color: '#8b949e' },
-                axisLine: { lineStyle: { color: '#30363d' } },
-                axisLabel: { color: '#8b949e' },
-                splitLine: { lineStyle: { color: '#30363d' } }
+                nameTextStyle: { color: labelColor },
+                axisLine: { lineStyle: { color: axisColor } },
+                axisLabel: { color: labelColor },
+                splitLine: { lineStyle: { color: axisColor } }
             },
             {
                 type: 'value',
                 name: 'SLA %',
-                nameTextStyle: { color: '#8b949e' },
+                nameTextStyle: { color: labelColor },
                 min: 0,
                 max: 100,
-                axisLine: { lineStyle: { color: '#30363d' } },
+                axisLine: { lineStyle: { color: axisColor } },
                 axisLabel: {
-                    color: '#8b949e',
+                    color: labelColor,
                     formatter: '{value}%'
                 },
                 splitLine: { show: false }
@@ -1275,6 +1288,11 @@ function drawTopRootCauseChart(containerId, data) {
 
     var totalSum = seriesData.reduce(function (a, b) { return a + b; }, 0);
 
+    var isLight = document.body.classList.contains('light-theme');
+    var axisColor = isLight ? '#d0d7de' : '#30363d';
+    var textColor = isLight ? '#24292f' : '#c9d1d9';
+    var labelColor = isLight ? '#57606a' : '#8b949e';
+
     var option = {
         backgroundColor: 'transparent',
         tooltip: {
@@ -1290,15 +1308,15 @@ function drawTopRootCauseChart(containerId, data) {
         },
         xAxis: {
             type: 'value',
-            axisLine: { lineStyle: { color: '#30363d' } },
-            axisLabel: { color: '#8b949e' },
-            splitLine: { lineStyle: { color: '#30363d' } }
+            axisLine: { lineStyle: { color: axisColor } },
+            axisLabel: { color: labelColor },
+            splitLine: { lineStyle: { color: axisColor } }
         },
         yAxis: {
             type: 'category',
             data: yAxisData,
-            axisLine: { lineStyle: { color: '#30363d' } },
-            axisLabel: { color: '#c9d1d9', fontSize: 10 }
+            axisLine: { lineStyle: { color: axisColor } },
+            axisLabel: { color: textColor, fontSize: 10 }
         },
         series: [
             {
@@ -1318,7 +1336,7 @@ function drawTopRootCauseChart(containerId, data) {
                         var pct = totalSum ? Math.round((val / totalSum) * 1000) / 10 + '%' : '0%';
                         return val + ' (' + pct + ')';
                     },
-                    color: '#c9d1d9',
+                    color: textColor,
                     fontSize: 9
                 }
             }
@@ -1817,3 +1835,54 @@ function handleTicketSearch(query) {
     renderCurrentTicketsPage();
 }
 window.handleTicketSearch = handleTicketSearch;
+
+function updateThemeUI(isLight) {
+    var btn = document.getElementById('themeToggleBtn');
+    if (!btn) return;
+    var icon = btn.querySelector('.custom-toggle-icon');
+    var txt = btn.querySelector('.custom-toggle-text');
+    if (isLight) {
+        if (icon) icon.innerText = '☾';
+        if (txt) txt.innerText = 'Dark Mode';
+    } else {
+        if (icon) icon.innerText = '☀';
+        if (txt) txt.innerText = 'Light Mode';
+    }
+}
+
+function toggleTheme() {
+    var body = document.body;
+    var isLight = body.classList.contains('light-theme');
+    if (isLight) {
+        body.classList.remove('light-theme');
+        updateThemeUI(false);
+    } else {
+        body.classList.add('light-theme');
+        updateThemeUI(true);
+    }
+    if (window.lastParsedTickets && window.lastParsedDateFilteredTickets) {
+        renderTicketsData(window.lastParsedTickets, window.lastParsedDateFilteredTickets);
+    }
+}
+
+function initThemeFromURL() {
+    var urlParams = new URLSearchParams(window.location.search);
+    var theme = urlParams.get('themeName') || 'dark';
+    if (theme === 'light') {
+        document.body.classList.add('light-theme');
+        updateThemeUI(true);
+    } else {
+        document.body.classList.remove('light-theme');
+        updateThemeUI(false);
+    }
+}
+
+window.toggleTheme = toggleTheme;
+window.updateThemeUI = updateThemeUI;
+window.initThemeFromURL = initThemeFromURL;
+
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initThemeFromURL);
+} else {
+    initThemeFromURL();
+}
