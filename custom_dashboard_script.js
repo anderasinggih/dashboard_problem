@@ -1015,7 +1015,11 @@ function renderTrendsAndCompliance(weeklyTrendTickets, rootCauseTickets, complia
         });
     }
 
-    var weeksList = Object.keys(weeklyMap).sort();
+    var weeksList = Object.keys(weeklyMap).sort(function (a, b) {
+        var numA = parseInt(a.replace('W', ''), 10);
+        var numB = parseInt(b.replace('W', ''), 10);
+        return numA - numB;
+    });
     var trendData = {
         weeks: weeksList,
         newPT: [],
