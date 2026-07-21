@@ -1,0 +1,104 @@
+1. Sumber Data (Dari Mana Datanya?)
+Data diambil dari array tiket problem management yang dikirim oleh server OWS. Untuk setiap tiket, skrip membaca properti/field berikut:
+
+Tanggal Pembuatan Tiket: Menggunakan properti t.createtime (atau fallback t.createfirstoccurtime / t.operate_time).
+Tanggal Penyelesaian Tiket (Confirm): Menggunakan properti kustom SubmitTime(Confirm PT) (atau fallback ke closetime / lastupdatetime jika kosong).
+Status Penyelesaian: Dibaca dari t.ticketstatus (apakah bernilai closed/completed) atau dari keputusan konfirmasi t['Accept or Not(Confirm PT)'] (apakah bernilai accept).
+Status SLA: Dibaca dari properti t.over_sla (apakah bernilai true/1 yang berarti melanggar, atau false/0 yang berarti aman).
+2. Logika Konversi Tanggal ke Minggu (getWeekLabel)
+Bagaimana tanggal real seperti 2026-05-30 diubah menjadi label minggu seperti W22? Skrip menggunakan perhitungan kalender standar:
+
+Menentukan tanggal 1 Januari dari tahun tiket tersebut dibuat sebagai jangkar (onejan).
+Menghitung selisih hari dari tanggal tiket ke tanggal 1 Januari tersebut.
+Menghitung nomor minggu menggunakan rumus: $$\text{Nomor Minggu} = \text{Math.ceil} \left( \frac{\text{Selisih Hari} + \text{Hari Pertama di Tahun Tersebut} + 1}{7} \right)$$
+Hasil: Tanggal 30 Mei 2026 diterjemahkan secara otomatis menjadi minggu ke-22 (W22).
+3. Logika Perhitungan Metrik Grafik (Bagaimana Cara Menghitungnya?)
+Skrip melakukan iterasi (looping) pada semua tiket dan mengelompokkannya ke dalam minggu yang sesuai berdasarkan dua tanggal berbeda untuk memisahkan kapan tiket masuk vs kapan tiket selesai:
+
+A. New PT (Batang Biru - Tiket Masuk Baru)
+Kalkulasi: Dihitung berdasarkan Tanggal Pembuatan Tiket (createtime).
+Contoh: Jika tiket dibuat di tanggal yang masuk kategori W10, maka batang New PT di kolom W10 bertambah +1.
+B. Closed PT (Batang Hijau - Tiket Selesai)
+Kalkulasi: Dihitung berdasarkan Tanggal Konfirmasi Disetujui (SubmitTime(Confirm PT)).
+Kriteria Selesai: Tiket memiliki status closed/completed atau hasil konfirmasi di kolom Accept or Not(Confirm PT) bernilai Accept.
+Contoh: Jika tiket dibuat di W10 tapi baru di-Accept pada tanggal yang masuk W14, maka pencapaian Closed PT +1 akan masuk di kolom W14 (bukan di W10). Ini sangat akurat untuk mengukur produktivitas kerja mingguan.
+C. Pending PT (Batang Oranye - Tiket Masih Mengantre)
+Kalkulasi: Semua tiket aktif yang belum di-Accept atau belum berstatus closed. Diplot berdasarkan minggu pembuatannya.
+D. SLA Achievement (%) (Garis Ungu - Persentase Keberhasilan SLA)
+Kalkulasi: Menghitung rasio tiket yang diselesaikan tepat waktu (tidak melanggar SLA) terhadap seluruh tiket pada minggu target tersebut.
+Rumus: $$\text{SLA Achievement (%)} = \left( \frac{\text{Tiket yang aman dari SLA (Within SLA)}}{\text{Total Tiket di Minggu Tersebut}} \right) \times 100%$$
+4. Logika Rentang Tanggal Tooltip (Saat Kursor Di-hover)
+Ketika kursor diarahkan ke W14, fungsi getWeekRangeString() akan melakukan perhitungan mundur:
+
+Membaca tahun aktif tiket (misal 2026).
+Mencari tanggal hari Senin s.d. Minggu untuk minggu ke-14 di tahun 2026.
+Menghasilkan string format 06 Apr - 12 Apr 2026 untuk ditampilkan mendampingi label W14.
+
+================================================================================
+5. Alur Visual Pemetaan Data Mingguan (Data Flow Visualization)
+================================================================================
+
+[Representasi Tiket Individual]
+-----------------------------------------------------------------------------
+Tiket PT-20260408-001 (Dibuat: 08 Apr 2026, Disetujui/Accept: 25 Apr 2026)
+-----------------------------------------------------------------------------
+
+              ISO-8601 W15 (06 Apr - 12 Apr)       ISO-8601 W17 (20 Apr - 26 Apr)
+              +----------------------------+       +----------------------------+
+              | Kapan Dibuat?              |       | Kapan Di-Accept/Confirm?   |
+              | 08 Apr 2026  ------------->|       | 25 Apr 2026 -------------->|
+              +----------------------------+       +----------------------------+
+                            |                                    |
+                            v                                    v
+                 Dihitung sebagai: NEW PT             Dihitung sebagai: CLOSED PT
+                            |                                    |
+                            v                                    v
+              +----------------------------+       +----------------------------+
+              | Batang Biru W15 bertambah  |       | Batang Hijau W17 bertambah |
+              | sebanyak +1                |       | sebanyak +1                |
+              +----------------------------+       +----------------------------+
+
+
+[Skema Pembagian Minggu ISO-8601 (Senin s.d. Minggu)]
+-----------------------------------------------------------------------------
+Tahun 2026 (Jan 1 adalah hari Kamis -> W1 dimulai Senin 29 Des 2025 s.d 4 Jan 2026)
+-----------------------------------------------------------------------------
+
+    W10:  [Senin, 02 Mar 2026] <============ 7 hari ============> [Minggu, 08 Mar 2026]
+    W14:  [Senin, 30 Mar 2026] <============ 7 hari ============> [Minggu, 05 Apr 2026]
+    W15:  [Senin, 06 Apr 2026] <============ 7 hari ============> [Minggu, 12 Apr 2026]
+    W16:  [Senin, 13 Apr 2026] <============ 7 hari ============> [Minggu, 19 Apr 2026]
+    W17:  [Senin, 20 Apr 2026] <============ 7 hari ============> [Minggu, 26 Apr 2026]
+
+
+[Alur Looping Validasi & Perhitungan]
+-----------------------------------------------------------------------------
+Setiap tiket dibaca satu-persatu oleh skrip JavaScript:
+-----------------------------------------------------------------------------
+
+         [ Mulai Tiket ]
+                |
+                v
+       +-----------------+
+       | Ambil data      | -> Dibuat: 08 Apr (W15)
+       | tanggal & status| -> Selesai: 25 Apr (W17)
+       +-----------------+
+                |
+                +---------------------+
+                |                     |
+                v                     v
+         [ Alur New PT ]       [ Alur Closed PT ]
+                |                     |
+          Dihitung pada         Apakah tiket statusnya
+         Creation Week (W15)    Closed atau Confirm PT = Accept?
+                |                     |
+                v                     +----------+----------+
+          [ NEW PT +1 ]               | Ya                  | Tidak
+         (Batang Biru W15)            v                     v
+                                Dihitung pada        Tetap dihitung
+                                Closure Week (W17)   sebagai PENDING
+                                      |              di Creation Week (W15)
+                                      v                     |
+                               [ CLOSED PT +1 ]             v
+                              (Batang Hijau W17)     [ PENDING PT +1 ]
+                                                     (Batang Oranye W15)
