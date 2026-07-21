@@ -102,3 +102,8 @@ Setiap tiket dibaca satu-persatu oleh skrip JavaScript:
                                [ CLOSED PT +1 ]             v
                               (Batang Hijau W17)     [ PENDING PT +1 ]
                                                      (Batang Oranye W15)
+
+-----------------------------------------------------------------------------
+* Diagram Infografis Visual (PNG) Tersimpan di:
+  /Users/lovinpeace/.gemini/antigravity-ide/brain/6e4ba44e-4a5e-4af4-9bdc-fa8b03962da0/weekly_data_flow_diagram_1784620588941.png
+-----------------------------------------------------------------------------
