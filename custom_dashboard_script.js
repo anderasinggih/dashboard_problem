@@ -1028,6 +1028,31 @@ function renderTrendsAndCompliance(weeklyTrendTickets, rootCauseTickets, complia
         });
     }
 
+    function getWeekRangeString(wLabel, tickets) {
+        var num = parseInt(wLabel.replace('W', ''), 10);
+        if (isNaN(num)) return '';
+        var year = 2026;
+        if (tickets && tickets.length > 0) {
+            for (var i = 0; i < tickets.length; i++) {
+                var dStr = tickets[i].createtime || tickets[i].operate_time;
+                if (dStr) {
+                    var yr = parseInt(dStr.split(' ')[0].split('-')[0], 10);
+                    if (!isNaN(yr)) {
+                        year = yr;
+                        break;
+                    }
+                }
+            }
+        }
+        var jan1 = new Date(year, 0, 1);
+        var jan1Day = jan1.getDay();
+        var daysOffset = (num - 1) * 7 - jan1Day;
+        var startOfWeek = new Date(year, 0, 1 + daysOffset);
+        var endOfWeek = new Date(year, 0, 1 + daysOffset + 6);
+        var monthsShort = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+        return String(startOfWeek.getDate()) + ' ' + monthsShort[startOfWeek.getMonth()] + ' - ' + String(endOfWeek.getDate()) + ' ' + monthsShort[endOfWeek.getMonth()] + ' ' + endOfWeek.getFullYear();
+    }
+
     var weeksList = Object.keys(weeklyMap).sort(function (a, b) {
         var numA = parseInt(a.replace('W', ''), 10);
         var numB = parseInt(b.replace('W', ''), 10);
@@ -1035,6 +1060,7 @@ function renderTrendsAndCompliance(weeklyTrendTickets, rootCauseTickets, complia
     });
     var trendData = {
         weeks: weeksList,
+        ranges: [],
         newPT: [],
         closedPT: [],
         pendingPT: [],
@@ -1044,6 +1070,7 @@ function renderTrendsAndCompliance(weeklyTrendTickets, rootCauseTickets, complia
 
     weeksList.forEach(function (w) {
         var row = weeklyMap[w];
+        trendData.ranges.push(getWeekRangeString(w, trendTickets));
         trendData.newPT.push(row.newPT);
         trendData.closedPT.push(row.closedPT);
         trendData.pendingPT.push(row.pendingPT);
@@ -1074,6 +1101,21 @@ function drawWeeklyTrendChart(containerId, data) {
             trigger: 'axis',
             axisPointer: {
                 type: 'shadow'
+            },
+            formatter: function (params) {
+                if (!params || params.length === 0) return '';
+                var dataIndex = params[0].dataIndex;
+                var weekLabel = params[0].name;
+                var rangeStr = data.ranges && data.ranges[dataIndex] ? data.ranges[dataIndex] : '';
+                var html = '<div style="font-weight: bold; margin-bottom: 4px; color: #fafafa;">' + weekLabel + ' (' + rangeStr + ')</div>';
+                params.forEach(function (p) {
+                    var val = p.value;
+                    if (p.seriesName.indexOf('%') !== -1) {
+                        val = val + '%';
+                    }
+                    html += '<div>' + p.marker + ' ' + p.seriesName + ': <span style="font-weight: bold; float: right; margin-left: 15px;">' + val + '</span></div>';
+                });
+                return html;
             }
         },
         legend: {
