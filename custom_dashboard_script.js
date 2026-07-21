@@ -1,11 +1,26 @@
 function getTicketPartner(item) {
     if (!item) return 'Blanks';
     
-    // Membaca murni dari kolom pasti OWS: Problem Responsible Party
     var rawParty = item.problem_responsible_party || item.problemresponsibleparty || item['Problem Responsible Party'] || '';
     rawParty = rawParty.trim();
     
+    // Fallback jika kolom utama kosong (OWS API response tidak populate)
     if (!rawParty) {
+        var title = String(item.title || item.problem_name || item.description || '').toLowerCase();
+        var desc = String(item.createptproblemdes || '').toLowerCase();
+        var assign = String(item.createptassignto || '').toLowerCase();
+        var operator = String(item.currentoperator || '').toLowerCase();
+        var originator = String(item.originator || '').toLowerCase();
+        
+        if (title.indexOf('telkom') !== -1 || title.indexOf('akses') !== -1 || desc.indexOf('telkom') !== -1) {
+            return 'Telkom Akses';
+        } else if (title.indexOf('mandau') !== -1 || desc.indexOf('mandau') !== -1 || assign.indexOf('pm') !== -1 || operator.indexOf('pm') !== -1) {
+            return 'Mandau';
+        } else if (title.indexOf('persada') !== -1 || desc.indexOf('persada') !== -1 || assign.indexOf('pwx') !== -1 || originator.indexOf('pwx') !== -1 || operator.indexOf('pwx') !== -1) {
+            return 'Persada';
+        } else if (title.indexOf('ije') !== -1 || assign.indexOf('ije') !== -1) {
+            return 'IJE';
+        }
         return 'Blanks';
     }
     
@@ -195,6 +210,7 @@ function updateAllTimeCards(tickets) {
         setCardValue('taOpen', 0); setCardValue('taPending', 0); setCardValue('taClosed', 0);
         setCardValue('mOpen', 0); setCardValue('mPending', 0); setCardValue('mClosed', 0);
         setCardValue('pOpen', 0); setCardValue('pPending', 0); setCardValue('pClosed', 0);
+        setCardValue('othOpen', 0); setCardValue('othPending', 0); setCardValue('othClosed', 0);
         return;
     }
 
@@ -202,6 +218,7 @@ function updateAllTimeCards(tickets) {
     var taOpen = 0, taPending = 0, taClosed = 0;
     var mOpen = 0, mPending = 0, mClosed = 0;
     var pOpen = 0, pPending = 0, pClosed = 0;
+    var othOpen = 0, othPending = 0, othClosed = 0;
 
     for (var i = 0; i < tickets.length; i++) {
         var item = tickets[i];
@@ -214,16 +231,19 @@ function updateAllTimeCards(tickets) {
             if (partner === 'Telkom Akses') taOpen++;
             else if (partner === 'Mandau') mOpen++;
             else if (partner === 'Persada') pOpen++;
+            else othOpen++;
         } else if (statusLower === 'in progress' || statusLower === 'pending') {
             inProgressCount++;
             if (partner === 'Telkom Akses') taPending++;
             else if (partner === 'Mandau') mPending++;
             else if (partner === 'Persada') pPending++;
+            else othPending++;
         } else if (statusLower === 'closed' || statusLower === 'completed' || statusLower === 'false' || statusLower === '0') {
             closedCount++;
             if (partner === 'Telkom Akses') taClosed++;
             else if (partner === 'Mandau') mClosed++;
             else if (partner === 'Persada') pClosed++;
+            else othClosed++;
         }
     }
 
@@ -234,6 +254,7 @@ function updateAllTimeCards(tickets) {
     setCardValue('taOpen', taOpen); setCardValue('taPending', taPending); setCardValue('taClosed', taClosed);
     setCardValue('mOpen', mOpen); setCardValue('mPending', mPending); setCardValue('mClosed', mClosed);
     setCardValue('pOpen', pOpen); setCardValue('pPending', pPending); setCardValue('pClosed', pClosed);
+    setCardValue('othOpen', othOpen); setCardValue('othPending', othPending); setCardValue('othClosed', othClosed);
 }
 
 // Global pagination state
@@ -672,7 +693,7 @@ function renderPhaseDashboard(tickets) {
         '6. Confirm PT'
     ];
 
-    var categories = ['Overall', 'TelkomAkses', 'Mandau', 'Persada'];
+    var categories = ['Overall', 'TelkomAkses', 'Mandau', 'Persada', 'Others'];
     var phaseData = {};
 
     categories.forEach(function (cat) {
@@ -696,16 +717,17 @@ function renderPhaseDashboard(tickets) {
             var aging = parseFloat(t.aging || t.aging_days || t.days || calculateAgingDays(t.createtime, t.closetime, t.lastupdatetime, t.operate_time, statusRaw));
 
             var partner = getTicketPartner(t).replace(' ', ''); // Returns 'TelkomAkses', 'Mandau', 'Persada', 'Huawei', etc.
+            var targetPartner = partner;
+            if (partner !== 'TelkomAkses' && partner !== 'Mandau' && partner !== 'Persada') {
+                targetPartner = 'Others';
+            }
 
             var buck = 'b1';
             if (aging > 21) buck = 'b4';
             else if (aging > 15) buck = 'b3';
             else if (aging > 7) buck = 'b2';
 
-            [partner, 'Overall'].forEach(function (targetCat) {
-                if (targetCat !== 'Overall' && targetCat !== 'TelkomAkses' && targetCat !== 'Mandau' && targetCat !== 'Persada') {
-                    return;
-                }
+            [targetPartner, 'Overall'].forEach(function (targetCat) {
                 var row = phaseData[targetCat].find(function (r) { return r.phase === phase; });
                 if (row) {
                     row.total++;
@@ -728,6 +750,7 @@ function renderPhaseDashboard(tickets) {
     renderPhasePartner('tablePhaseTelkom', phaseData.TelkomAkses);
     renderPhasePartner('tablePhaseMandau', phaseData.Mandau);
     renderPhasePartner('tablePhasePersada', phaseData.Persada);
+    renderPhasePartner('tablePhaseOthers', phaseData.Others);
 }
 
 function renderPhaseOverall(containerId, phaseRows) {

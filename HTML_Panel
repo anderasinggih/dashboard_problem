@@ -118,6 +118,27 @@
         </div>
       </div>
     </div>
+
+    <!-- Partner Card: Others -->
+    <div class="custom-partner-card">
+      <div class="custom-partner-logo">
+        <span style="color: #a1a1aa; letter-spacing: 2px; font-weight: 800;">OTHERS</span>
+      </div>
+      <div class="custom-partner-metrics">
+        <div class="custom-metric-col">
+          <div class="custom-metric-label">Open PT</div>
+          <div class="custom-metric-val" id="othOpen">0</div>
+        </div>
+        <div class="custom-metric-col">
+          <div class="custom-metric-label">Pending PT</div>
+          <div class="custom-metric-val" id="othPending">0</div>
+        </div>
+        <div class="custom-metric-col">
+          <div class="custom-metric-label">Closed PT</div>
+          <div class="custom-metric-val" id="othClosed">0</div>
+        </div>
+      </div>
+    </div>
   </div>
 
   <!-- 1. SEVERITY OVERVIEW (SLA BASED) -->
@@ -282,6 +303,16 @@
           </div>
           <div class="custom-phase-table-wrapper" id="tablePhasePersada">
             <div style="color: #8b949e; padding: 10px; font-size: 12px;">Memuat data Persada...</div>
+          </div>
+        </div>
+
+        <!-- COLUMN 5: OTHERS -->
+        <div class="custom-phase-col">
+          <div class="custom-phase-col-header">
+            <span style="color: #a1a1aa; font-size: 14px; font-weight: 800; letter-spacing: 2px;">OTHERS</span>
+          </div>
+          <div class="custom-phase-table-wrapper" id="tablePhaseOthers">
+            <div style="color: #8b949e; padding: 10px; font-size: 12px;">Memuat data Others...</div>
           </div>
         </div>
       </div>
