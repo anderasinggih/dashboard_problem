@@ -934,17 +934,6 @@ function renderTrendsAndCompliance(weeklyTrendTickets, rootCauseTickets, complia
     ];
 
     var weeklyMap = {};
-    for (var wIdx = 1; wIdx <= 30; wIdx++) {
-        var label = 'W' + wIdx;
-        weeklyMap[label] = {
-            newPT: Math.floor(Math.random() * 12) + 2,
-            closedPT: Math.floor(Math.random() * 8) + 1,
-            pendingPT: Math.floor(Math.random() * 5),
-            overSla: Math.floor(Math.random() * 2),
-            total: 10,
-            withinSla: 8
-        };
-    }
 
     function getWeekLabel(dateStr) {
         if (!dateStr) return 'W28';
