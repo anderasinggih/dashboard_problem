@@ -65,6 +65,70 @@ function calculateAgingDays(createTimeStr, closeTimeStr, lastUpdateTimeStr, oper
     return diffMs / (1000 * 60 * 60 * 24);
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// AUTO-PAGINATION ENGINE
+// OWS API hard limit = 1000 per call. This engine fetches pages sequentially
+// (start=0 → 1000 → 2000 → ...) until the returned page is < 1000 records,
+// then merges all pages into a single complete dataset.
+// ─────────────────────────────────────────────────────────────────────────────
+
+var PAGE_LIMIT = 1000; // OWS max — never exceed this
+
+function callOWSPage(startDate, endDate, party, startOffset, onSuccess, onError) {
+    var requestData = {
+        "start": startOffset,
+        "limit": PAGE_LIMIT,
+        "startDate": startDate || "2000-01-01 00:00:00",
+        "endDate": endDate || "2099-12-31 23:59:59",
+        "party": party || "ALL"
+    };
+    console.log('[PAGINATION] Fetching page start=' + startOffset, requestData);
+    MessageProcessor.process({
+        serviceId: '/adc-service/rest/v1/services/dashboard_problem_ticket_test/dashboard_problem_ticket_test/dashboard__problem_ticket',
+        data: requestData,
+        success: function (res) { onSuccess(res); },
+        error: function (err) { onError(err); }
+    });
+}
+
+function extractTickets(res) {
+    if (res && res.result && res.result._values) return res.result._values;
+    if (res && res.result && res.result.results) return res.result.results;
+    if (res && res.results) return res.results;
+    if (res && res._values) return res._values;
+    if (res && res.data) return res.data;
+    if (Array.isArray(res)) return res;
+    return [];
+}
+
+function fetchAllPages(startDate, endDate, party, onComplete, onError, _accumulated, _offset) {
+    // Internal state
+    var accumulated = _accumulated || [];
+    var offset = _offset || 0;
+
+    if (typeof MessageProcessor === 'undefined') {
+        onError({ message: 'MessageProcessor OWS tidak ditemukan di browser context.' });
+        return;
+    }
+
+    callOWSPage(startDate, endDate, party, offset, function (res) {
+        var page = extractTickets(res);
+        accumulated = accumulated.concat(page);
+        console.log('[PAGINATION] Page start=' + offset + ' returned ' + page.length + ' records. Total so far: ' + accumulated.length);
+
+        if (page.length >= PAGE_LIMIT) {
+            // More pages may exist — fetch next
+            fetchAllPages(startDate, endDate, party, onComplete, onError, accumulated, offset + PAGE_LIMIT);
+        } else {
+            // Last page reached (returned fewer than PAGE_LIMIT)
+            console.log('[PAGINATION] All pages fetched. Grand total: ' + accumulated.length + ' records.');
+            onComplete(accumulated);
+        }
+    }, function (err) {
+        onError(err);
+    });
+}
+
 function loadProblemTickets(startDate, endDate, party) {
     var container = document.querySelector('#ticketContainer');
     if (container) {
@@ -72,89 +136,59 @@ function loadProblemTickets(startDate, endDate, party) {
         var loadingDiv = document.createElement('div');
         loadingDiv.style.color = '#6c757d';
         loadingDiv.style.padding = '12px';
-        loadingDiv.textContent = 'Memuat data real dari server...';
+        loadingDiv.textContent = 'Memuat data dari server (pagination)...';
         container.appendChild(loadingDiv);
     }
 
-    var requestData = {
-        "start": 0,
-        "limit": 1000,  // OWS API maximum is 1000 - do not exceed
-        "startDate": startDate || "2000-01-01 00:00:00",
-        "endDate": endDate || "2099-12-31 23:59:59",
-        "party": party || "ALL"
-    };
+    var isFiltered = !!(startDate || endDate || (party && party !== 'ALL'));
 
-    console.log('[DEBUG] Calling OWS Service with payload:', JSON.stringify(requestData));
-
-    if (typeof MessageProcessor !== 'undefined') {
-        MessageProcessor.process({
-            serviceId: '/adc-service/rest/v1/services/dashboard_problem_ticket_test/dashboard_problem_ticket_test/dashboard__problem_ticket',
-            data: requestData,
-            success: function (res) {
-                console.log('Response OWS Success:', res);
-                parseAndRender(res, !!(startDate || endDate || (party && party !== 'ALL')), startDate, endDate, party);
-            },
-            error: function (err) {
-                console.error('Response OWS Error:', err);
-                showError('Gagal memuat data: ' + (err.message || 'Error Service'));
-            }
-        });
-    } else {
-        showError('MessageProcessor OWS tidak ditemukan di browser context.');
-    }
+    // For filtered views: only fetch the filtered pages (faster)
+    // For unfiltered (all-time): must fetch ALL pages for accurate stat cards
+    fetchAllPages(startDate, endDate, party, function (allTickets) {
+        parseAndRender(allTickets, isFiltered, startDate, endDate, party);
+    }, function (err) {
+        console.error('OWS Pagination Error:', err);
+        showError('Gagal memuat data: ' + (err.message || 'Error Service'));
+    });
 }
 
-function parseAndRender(res, isFiltered, startDate, endDate, party) {
+function parseAndRender(rawTickets, isFiltered, startDate, endDate, party) {
     try {
-        var rawTickets = [];
-        if (res && res.result && res.result._values) {
-            rawTickets = res.result._values;
-        } else if (res && res.result && res.result.results) {
-            rawTickets = res.result.results;
-        } else if (res && res.results) {
-            rawTickets = res.results;
-        } else if (res && res._values) {
-            rawTickets = res._values;
-        } else if (res && res.data) {
-            rawTickets = res.data;
-        } else if (Array.isArray(res)) {
-            rawTickets = res;
-        }
-        //filterr
+        // rawTickets is already a merged array from fetchAllPages (all pages combined)
+        if (!Array.isArray(rawTickets)) rawTickets = [];
+
+        // Client-side date filter fallback (in case OWS backend has type mismatch issues)
         var dateFilteredTickets = rawTickets;
-        if (rawTickets && rawTickets.length > 0) {
-            // Client-side date filter fallback to ensure dashboard updates correctly even if OWS backend has type mismatch issues
-            if (startDate || endDate) {
-                var startMs = startDate ? new Date(startDate.replace(/-/g, '/')).getTime() : 0;
-                var endMs = endDate ? new Date(endDate.replace(/-/g, '/')).getTime() : Infinity;
-                dateFilteredTickets = rawTickets.filter(function (t) {
-                    if (!t.createtime) return false;
-                    var tMs = new Date(t.createtime.replace(/-/g, '/')).getTime();
-                    return tMs >= startMs && tMs <= endMs;
-                });
-            }
+        if (rawTickets.length > 0 && (startDate || endDate)) {
+            var startMs = startDate ? new Date(startDate.replace(/-/g, '/')).getTime() : 0;
+            var endMs = endDate ? new Date(endDate.replace(/-/g, '/')).getTime() : Infinity;
+            dateFilteredTickets = rawTickets.filter(function (t) {
+                if (!t.createtime) return false;
+                var tMs = new Date(t.createtime.replace(/-/g, '/')).getTime();
+                return tMs >= startMs && tMs <= endMs;
+            });
         }
 
+        // Client-side party filter fallback
         var fullyFilteredTickets = dateFilteredTickets;
-        if (dateFilteredTickets && dateFilteredTickets.length > 0) {
-            // Client-side party filter fallback
-            if (party && party !== 'ALL') {
-                fullyFilteredTickets = dateFilteredTickets.filter(function (t) {
-                    var ticketPartner = getTicketPartner(t);
-                    return ticketPartner.toLowerCase() === party.toLowerCase();
-                });
-            }
+        if (dateFilteredTickets.length > 0 && party && party !== 'ALL') {
+            fullyFilteredTickets = dateFilteredTickets.filter(function (t) {
+                var ticketPartner = getTicketPartner(t);
+                return ticketPartner.toLowerCase() === party.toLowerCase();
+            });
         }
 
-        console.log('[DEBUG] OWS Response parsed. Raw Count:', rawTickets.length, 'DateFiltered:', dateFilteredTickets.length, 'FullyFiltered:', fullyFilteredTickets.length);
+        console.log('[DEBUG] Parsed. Raw (all pages):', rawTickets.length, '| DateFiltered:', dateFilteredTickets.length, '| FullyFiltered:', fullyFilteredTickets.length);
 
-        // Save dataset and update cards ONLY on all-time load
+        // Update all-time stat cards with the COMPLETE dataset (all pages merged)
+        // For unfiltered view: rawTickets = all tickets (accurate grand total)
+        // For filtered view: rawTickets = filtered subset (accurate subset total for header cards)
         if (!isFiltered) {
             window.allTicketsData = rawTickets;
             updateAllTimeCards(rawTickets);
         }
 
-        // Render list & charts
+        // Render list & charts with the current filter applied
         renderTicketsData(fullyFilteredTickets, dateFilteredTickets);
         updatePanelFilterBadges(party);
     } catch (e) {
