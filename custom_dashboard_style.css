@@ -478,7 +478,7 @@
 .custom-panel-body {
   padding: 8px;
   background-color: #0d0d10;
-  overflow-x: auto;
+  overflow-x: auto !important;
 }
 
 /* Original List Item Styles */
@@ -1157,4 +1157,8 @@
 .custom-noc-table tbody tr:hover {
   background-color: #18181b !important;
   cursor: pointer;
+}
+
+#chartWeeklyTrend {
+  min-width: 1200px !important;
 }
