@@ -892,12 +892,18 @@ function renderPhaseOverall(containerId, phaseRows) {
     var totalB1 = 0, totalB2 = 0, totalB3 = 0, totalB4 = 0;
     var weightedAgingSum = 0;
 
-    var html = '<table class="custom-phase-table">';
+    var html = '<table class="custom-phase-table" style="table-layout: fixed; width: 100%;">';
+    html += '<colgroup>';
+    html += '  <col style="width: 200px;">';  // Phase name — fixed, not stretching
+    html += '  <col style="width: 70px;">';   // Total PT — narrow
+    html += '  <col>';                         // Aging Bucket — takes remaining space (widest)
+    html += '  <col style="width: 110px;">';  // Avg Aging
+    html += '</colgroup>';
     html += '<thead>';
     html += '<tr>';
     html += '<th style="text-align:left;">Phase</th>';
     html += '<th>Total PT</th>';
-    html += '<th style="width: 120px;">Aging Bucket (Days)</th>';
+    html += '<th>Aging Bucket (Days)</th>';
     html += '<th>Avg Aging (Days)</th>';
     html += '</tr>';
     html += '</thead>';
