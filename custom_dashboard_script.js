@@ -105,7 +105,7 @@ function getStatusCategory(rawStr) {
     var s = String(rawStr || '').toLowerCase();
     if (s === 'running' || s === 'open' || s === 'true' || s === '1') return 'open';
     if (s === 'pending' || s === 'in progress') return 'pending';
-    if (s === 'closed' || s === 'completed' || s === 'false' || s === '0') return 'closed';
+    if (s === 'closed' || s === 'completed' || s === 'canceled' || s === 'cancelled' || s === 'rejected' || s === 'false' || s === '0') return 'closed';
     return 'unknown';
 }
 
