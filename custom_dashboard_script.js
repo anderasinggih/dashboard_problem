@@ -989,7 +989,9 @@ function renderPhaseDashboard(tickets) {
         '3. Analyze PT',
         '4. Handle Implement PT',
         '5. Implement PT',
-        '6. Confirm PT'
+        '6. Confirm PT',
+        '7. Closed PT',
+        '8. Canceled PT'
     ];
 
     var categories = ['Overall', 'TelkomAkses', 'Mandau', 'Persada', 'Others'];
@@ -1003,19 +1005,26 @@ function renderPhaseDashboard(tickets) {
 
     if (tickets && tickets.length > 0) {
         tickets.forEach(function (t) {
-            if (isTicketClosed(t)) return;
-            var phaseRaw = String(t.operate_phase || t.phase || t.current_phase || t.state || '').toLowerCase();
+            var statusCat = getStatusCategory(t.ticketstatus || t.status || '');
             var phase = '1. Create PT';
-            if (phaseRaw.indexOf('confirm') !== -1) phase = '6. Confirm PT';
-            else if (phaseRaw.indexOf('handle analyze') !== -1) phase = '2. Handle Analyze PT';
-            else if (phaseRaw.indexOf('analyze') !== -1) phase = '3. Analyze PT';
-            else if (phaseRaw.indexOf('handle implement') !== -1) phase = '4. Handle Implement PT';
-            else if (phaseRaw.indexOf('implement') !== -1) phase = '5. Implement PT';
+
+            if (statusCat === 'closed') {
+                phase = '7. Closed PT';
+            } else if (statusCat === 'canceled') {
+                phase = '8. Canceled PT';
+            } else {
+                var phaseRaw = String(t.operate_phase || t.phase || t.current_phase || t.state || '').toLowerCase();
+                if (phaseRaw.indexOf('confirm') !== -1) phase = '6. Confirm PT';
+                else if (phaseRaw.indexOf('handle analyze') !== -1) phase = '2. Handle Analyze PT';
+                else if (phaseRaw.indexOf('analyze') !== -1) phase = '3. Analyze PT';
+                else if (phaseRaw.indexOf('handle implement') !== -1) phase = '4. Handle Implement PT';
+                else if (phaseRaw.indexOf('implement') !== -1) phase = '5. Implement PT';
+            }
 
             var statusRaw = String(t.ticketstatus || t.status || '').toLowerCase();
             var aging = parseFloat(t.aging || t.aging_days || t.days || calculateAgingDays(t.createtime, t.closetime, t.lastupdatetime, t.operate_time, statusRaw));
 
-            var partner = getTicketPartner(t).replace(' ', ''); // Returns 'TelkomAkses', 'Mandau', 'Persada', 'Huawei', etc.
+            var partner = getTicketPartner(t).replace(' ', ''); // Returns 'TelkomAkses', 'Mandau', 'Persada', 'Others', etc.
             var targetPartner = partner;
             if (partner !== 'TelkomAkses' && partner !== 'Mandau' && partner !== 'Persada') {
                 targetPartner = 'Others';
