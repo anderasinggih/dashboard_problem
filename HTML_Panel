@@ -55,6 +55,17 @@
         <div class="custom-stat-number custom-text-success" id="statClosed">0</div>
       </div>
     </div>
+
+    <!-- Card: Canceled PT -->
+    <div class="custom-stat-card">
+      <div class="custom-stat-left">
+        <div class="custom-icon-wrapper custom-icon-canceled">✕</div>
+      </div>
+      <div class="custom-stat-right">
+        <div class="custom-stat-title">CANCELED PT</div>
+        <div class="custom-stat-number custom-text-muted" id="statCanceled">0</div>
+      </div>
+    </div>
   </div>
 
   <!-- 2. PARTNER CARDS -->
@@ -77,6 +88,10 @@
           <div class="custom-metric-label">Closed PT</div>
           <div class="custom-metric-val" id="taClosed">0</div>
         </div>
+        <div class="custom-metric-col">
+          <div class="custom-metric-label">Canceled PT</div>
+          <div class="custom-metric-val" id="taCanceled">0</div>
+        </div>
       </div>
     </div>
 
@@ -97,6 +112,10 @@
         <div class="custom-metric-col">
           <div class="custom-metric-label">Closed PT</div>
           <div class="custom-metric-val" id="mClosed">0</div>
+        </div>
+        <div class="custom-metric-col">
+          <div class="custom-metric-label">Canceled PT</div>
+          <div class="custom-metric-val" id="mCanceled">0</div>
         </div>
       </div>
     </div>
@@ -119,6 +138,10 @@
           <div class="custom-metric-label">Closed PT</div>
           <div class="custom-metric-val" id="pClosed">0</div>
         </div>
+        <div class="custom-metric-col">
+          <div class="custom-metric-label">Canceled PT</div>
+          <div class="custom-metric-val" id="pCanceled">0</div>
+        </div>
       </div>
     </div>
 
@@ -139,6 +162,10 @@
         <div class="custom-metric-col">
           <div class="custom-metric-label">Closed PT</div>
           <div class="custom-metric-val" id="othClosed">0</div>
+        </div>
+        <div class="custom-metric-col">
+          <div class="custom-metric-label">Canceled PT</div>
+          <div class="custom-metric-val" id="othCanceled">0</div>
         </div>
       </div>
     </div>

@@ -238,6 +238,16 @@
   border: 1px solid rgba(128, 90, 213, 0.3);
 }
 
+.custom-icon-canceled {
+  background-color: rgba(110, 118, 129, 0.15);
+  color: #8b949e;
+  border: 1px solid rgba(110, 118, 129, 0.3);
+}
+
+.custom-text-muted {
+  color: #8b949e !important;
+}
+
 /* Partner Card Styles */
 .custom-partner-card {
   flex: 1.5;

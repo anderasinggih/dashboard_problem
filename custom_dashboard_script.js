@@ -104,13 +104,14 @@ function getRootCauseLabel(rawStr) {
 /**
  * Returns canonical status category from raw ticketstatus field value.
  * @param {string} rawStr
- * @returns {'open'|'pending'|'closed'|'unknown'}
+ * @returns {'open'|'pending'|'closed'|'canceled'|'unknown'}
  */
 function getStatusCategory(rawStr) {
     var s = String(rawStr || '').toLowerCase();
     if (s === 'running' || s === 'open' || s === 'true' || s === '1') return 'open';
     if (s === 'pending' || s === 'in progress') return 'pending';
-    if (s === 'closed' || s === 'completed' || s === 'canceled' || s === 'cancelled' || s === 'rejected' || s === 'false' || s === '0') return 'closed';
+    if (s === 'canceled' || s === 'cancelled' || s === 'rejected') return 'canceled';
+    if (s === 'closed' || s === 'completed' || s === 'false' || s === '0') return 'closed';
     return 'unknown';
 }
 
@@ -391,18 +392,19 @@ function updateAllTimeCards(tickets) {
         setCardValue('statOpen', 0);
         setCardValue('statInProgress', 0);
         setCardValue('statClosed', 0);
-        setCardValue('taOpen', 0); setCardValue('taPending', 0); setCardValue('taClosed', 0);
-        setCardValue('mOpen', 0); setCardValue('mPending', 0); setCardValue('mClosed', 0);
-        setCardValue('pOpen', 0); setCardValue('pPending', 0); setCardValue('pClosed', 0);
-        setCardValue('othOpen', 0); setCardValue('othPending', 0); setCardValue('othClosed', 0);
+        setCardValue('statCanceled', 0);
+        setCardValue('taOpen', 0); setCardValue('taPending', 0); setCardValue('taClosed', 0); setCardValue('taCanceled', 0);
+        setCardValue('mOpen', 0); setCardValue('mPending', 0); setCardValue('mClosed', 0); setCardValue('mCanceled', 0);
+        setCardValue('pOpen', 0); setCardValue('pPending', 0); setCardValue('pClosed', 0); setCardValue('pCanceled', 0);
+        setCardValue('othOpen', 0); setCardValue('othPending', 0); setCardValue('othClosed', 0); setCardValue('othCanceled', 0);
         return;
     }
 
-    var openCount = 0, inProgressCount = 0, closedCount = 0;
-    var taOpen = 0, taPending = 0, taClosed = 0;
-    var mOpen = 0, mPending = 0, mClosed = 0;
-    var pOpen = 0, pPending = 0, pClosed = 0;
-    var othOpen = 0, othPending = 0, othClosed = 0;
+    var openCount = 0, inProgressCount = 0, closedCount = 0, canceledCount = 0;
+    var taOpen = 0, taPending = 0, taClosed = 0, taCanceled = 0;
+    var mOpen = 0, mPending = 0, mClosed = 0, mCanceled = 0;
+    var pOpen = 0, pPending = 0, pClosed = 0, pCanceled = 0;
+    var othOpen = 0, othPending = 0, othClosed = 0, othCanceled = 0;
 
     for (var i = 0; i < tickets.length; i++) {
         var item = tickets[i];
@@ -427,6 +429,12 @@ function updateAllTimeCards(tickets) {
             else if (partner === 'Mandau') mClosed++;
             else if (partner === 'Persada') pClosed++;
             else othClosed++;
+        } else if (statusCat === 'canceled') {
+            canceledCount++;
+            if (partner === 'Telkom Akses') taCanceled++;
+            else if (partner === 'Mandau') mCanceled++;
+            else if (partner === 'Persada') pCanceled++;
+            else othCanceled++;
         }
     }
 
@@ -434,10 +442,11 @@ function updateAllTimeCards(tickets) {
     setCardValue('statOpen', openCount);
     setCardValue('statInProgress', inProgressCount);
     setCardValue('statClosed', closedCount);
-    setCardValue('taOpen', taOpen); setCardValue('taPending', taPending); setCardValue('taClosed', taClosed);
-    setCardValue('mOpen', mOpen); setCardValue('mPending', mPending); setCardValue('mClosed', mClosed);
-    setCardValue('pOpen', pOpen); setCardValue('pPending', pPending); setCardValue('pClosed', pClosed);
-    setCardValue('othOpen', othOpen); setCardValue('othPending', othPending); setCardValue('othClosed', othClosed);
+    setCardValue('statCanceled', canceledCount);
+    setCardValue('taOpen', taOpen); setCardValue('taPending', taPending); setCardValue('taClosed', taClosed); setCardValue('taCanceled', taCanceled);
+    setCardValue('mOpen', mOpen); setCardValue('mPending', mPending); setCardValue('mClosed', mClosed); setCardValue('mCanceled', mCanceled);
+    setCardValue('pOpen', pOpen); setCardValue('pPending', pPending); setCardValue('pClosed', pClosed); setCardValue('pCanceled', pCanceled);
+    setCardValue('othOpen', othOpen); setCardValue('othPending', othPending); setCardValue('othClosed', othClosed); setCardValue('othCanceled', othCanceled);
 }
 
 // Global pagination state
@@ -551,7 +560,8 @@ function renderCurrentTicketsPage() {
         var statusClass = statusCat === 'open' ? 'custom-badge-open'
             : statusCat === 'pending' ? 'custom-badge-pending'
                 : statusCat === 'closed' ? 'custom-badge-closed'
-                    : 'custom-badge-open';
+                    : statusCat === 'canceled' ? 'custom-badge-canceled'
+                        : 'custom-badge-open';
 
         var displayNo = startIdx + i + 1;
         var rc = item.root_cause || item.rootcause || item.cause || '-';
@@ -1697,7 +1707,8 @@ function initDetailModalDOM() {
         '.custom-badge-status { display: inline-block; padding: 3px 10px; border-radius: 12px; font-weight: 700; font-size: 10px; text-transform: uppercase; } ' +
         '.custom-badge-open { background-color: #da3633 !important; color: #ffffff !important; } ' +
         '.custom-badge-pending { background-color: #d15704 !important; color: #ffffff !important; } ' +
-        '.custom-badge-closed { background-color: #238636 !important; color: #ffffff !important; }';
+        '.custom-badge-closed { background-color: #238636 !important; color: #ffffff !important; } ' +
+        '.custom-badge-canceled { background-color: #6e7681 !important; color: #ffffff !important; }';
     document.head.appendChild(dynamicStyle);
 
     var modalDiv = document.createElement('div');
@@ -1756,7 +1767,8 @@ function showTicketDetailModal(ticketId) {
     var statusCatModal = getStatusCategory(status);
     var statusClass = statusCatModal === 'pending' ? 'custom-badge-pending'
         : statusCatModal === 'closed' ? 'custom-badge-closed'
-            : 'custom-badge-open';
+            : statusCatModal === 'canceled' ? 'custom-badge-canceled'
+                : 'custom-badge-open';
 
     var html = '<div style="margin-bottom:16px;">';
     html += '  <h4 style="margin:0 0 6px 0; color:#f0f6fc; font-size:15px; font-weight:600;">' + title + '</h4>';
@@ -1888,6 +1900,9 @@ function isTicketAccepted(t) {
 function isTicketClosed(t) {
     if (!t) return false;
     var statusRaw = String(t.ticketstatus || '').toLowerCase();
+    if (statusRaw === 'canceled' || statusRaw === 'cancelled' || statusRaw === 'rejected') {
+        return false;
+    }
     if (statusRaw === 'closed' || statusRaw === 'completed' || statusRaw === 'false' || statusRaw === '0') {
         return true;
     }
