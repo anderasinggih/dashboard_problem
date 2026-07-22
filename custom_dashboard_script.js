@@ -304,20 +304,105 @@ function loadProblemTickets(startDate, endDate, party) {
         var loadingDiv = document.createElement('div');
         loadingDiv.style.color = '#6c757d';
         loadingDiv.style.padding = '12px';
-        loadingDiv.textContent = 'Memuat data dari server (pagination)...';
+        loadingDiv.textContent = 'Memuat data agregasi dari server OWS...';
         container.appendChild(loadingDiv);
     }
 
     var isFiltered = !!(startDate || endDate || (party && party !== 'ALL'));
 
-    // For filtered views: only fetch the filtered pages (faster)
-    // For unfiltered (all-time): must fetch ALL pages for accurate stat cards
-    fetchAllPages(startDate, endDate, party, function (allTickets) {
-        parseAndRender(allTickets, isFiltered, startDate, endDate, party);
+    // Panggil Service Agregasi Baru OWS
+    callOWSSummary(startDate, endDate, party, function (res) {
+        var summaryList = extractSummaryList(res);
+        parseAndRenderSummary(summaryList, isFiltered, party);
+
+        // Sekaligus panggil List Tiket untuk merender tabel & modal detail
+        fetchAllPages(startDate, endDate, party, function (allTickets) {
+            window.ticketsPagination.tickets = allTickets || [];
+            window.ticketsPagination.currentPage = 1;
+            renderCurrentTicketsPage();
+        }, function (err) {
+            console.warn('OWS List fetch error:', err);
+        });
     }, function (err) {
-        console.error('OWS Pagination Error:', err);
-        showError('Gagal memuat data: ' + (err.message || 'Error Service'));
+        console.error('OWS Summary Error:', err);
+        // Fallback jika service agregasi belum terpublish / error: panggil full pages
+        fetchAllPages(startDate, endDate, party, function (allTickets) {
+            parseAndRender(allTickets, isFiltered, startDate, endDate, party);
+        }, function (fallbackErr) {
+            showError('Gagal memuat data: ' + (fallbackErr.message || 'Error Service'));
+        });
     });
+}
+
+function extractSummaryList(res) {
+    if (!res) return [];
+    if (res.result && res.result._values) return res.result._values;
+    if (res.result && res.result.results) return res.result.results;
+    if (res.results) return res.results;
+    if (res._values) return res._values;
+    if (res.data) return res.data;
+    if (Array.isArray(res)) return res;
+    return [];
+}
+
+function parseAndRenderSummary(summaryList, isFiltered, party) {
+    if (!Array.isArray(summaryList)) summaryList = [];
+
+    var grandTotal = 0, openCount = 0, inProgressCount = 0, closedCount = 0, canceledCount = 0;
+    var taOpen = 0, taPending = 0, taClosed = 0, taCanceled = 0;
+    var mOpen = 0, mPending = 0, mClosed = 0, mCanceled = 0;
+    var pOpen = 0, pPending = 0, pClosed = 0, pCanceled = 0;
+    var othOpen = 0, othPending = 0, othClosed = 0, othCanceled = 0;
+
+    for (var i = 0; i < summaryList.length; i++) {
+        var item = summaryList[i];
+        var cnt = parseInt(item.total_count || item.count || 1, 10);
+        if (isNaN(cnt)) cnt = 1;
+
+        var partner = getTicketPartner(item);
+        var statusCat = getStatusCategory(item.ticketstatus || item.status || '');
+
+        grandTotal += cnt;
+
+        if (statusCat === 'open') {
+            openCount += cnt;
+            if (partner === 'Telkom Akses') taOpen += cnt;
+            else if (partner === 'Mandau') mOpen += cnt;
+            else if (partner === 'Persada') pOpen += cnt;
+            else othOpen += cnt;
+        } else if (statusCat === 'pending') {
+            inProgressCount += cnt;
+            if (partner === 'Telkom Akses') taPending += cnt;
+            else if (partner === 'Mandau') mPending += cnt;
+            else if (partner === 'Persada') pPending += cnt;
+            else othPending += cnt;
+        } else if (statusCat === 'closed') {
+            closedCount += cnt;
+            if (partner === 'Telkom Akses') taClosed += cnt;
+            else if (partner === 'Mandau') mClosed += cnt;
+            else if (partner === 'Persada') pClosed += cnt;
+            else othClosed += cnt;
+        } else if (statusCat === 'canceled') {
+            canceledCount += cnt;
+            if (partner === 'Telkom Akses') taCanceled += cnt;
+            else if (partner === 'Mandau') mCanceled += cnt;
+            else if (partner === 'Persada') pCanceled += cnt;
+            else othCanceled += cnt;
+        }
+    }
+
+    setCardValue('statTotal', grandTotal);
+    setCardValue('statOpen', openCount);
+    setCardValue('statInProgress', inProgressCount);
+    setCardValue('statClosed', closedCount);
+    setCardValue('statCanceled', canceledCount);
+
+    setCardValue('taOpen', taOpen); setCardValue('taPending', taPending); setCardValue('taClosed', taClosed); setCardValue('taCanceled', taCanceled);
+    setCardValue('mOpen', mOpen); setCardValue('mPending', mPending); setCardValue('mClosed', mClosed); setCardValue('mCanceled', mCanceled);
+    setCardValue('pOpen', pOpen); setCardValue('pPending', pPending); setCardValue('pClosed', pClosed); setCardValue('pCanceled', pCanceled);
+    setCardValue('othOpen', othOpen); setCardValue('othPending', othPending); setCardValue('othClosed', othClosed); setCardValue('othCanceled', othCanceled);
+
+    updatePanelFilterBadges(party);
 }
 
 function parseAndRender(rawTickets, isFiltered, startDate, endDate, party) {
