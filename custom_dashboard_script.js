@@ -623,11 +623,11 @@ function exportFilteredTicketsXLSX() {
     }
 
     var xmlContent = xmlHeader + xmlRows.join('') + xmlFooter;
-    var blob = new Blob([xmlContent], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+    var blob = new Blob([xmlContent], { type: 'application/vnd.ms-excel' });
     var url = URL.createObjectURL(blob);
     var link = document.createElement('a');
     link.setAttribute('href', url);
-    link.setAttribute('download', 'Problem_Tickets_Report_' + new Date().toISOString().slice(0, 10) + '.xlsx');
+    link.setAttribute('download', 'Problem_Tickets_Report_' + new Date().toISOString().slice(0, 10) + '.xls');
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -2155,7 +2155,5 @@ window.changeTicketsPageSize = changeTicketsPageSize;
 window.showTicketDetailModal = showTicketDetailModal;
 window.closeTicketDetailModal = closeTicketDetailModal;
 window.startLiveClock = startLiveClock;
-window.isTicketAccepted = isTicketAccepted;
-window.isTicketClosed = isTicketClosed;
-window.getConfirmSubmitTime = getConfirmSubmitTime;
+window.exportFilteredTicketsXLSX = exportFilteredTicketsXLSX;
 window.handleTicketSearch = handleTicketSearch;
