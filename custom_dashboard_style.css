@@ -239,9 +239,16 @@
 }
 
 .custom-icon-canceled {
-  background-color: rgba(218, 54, 51, 0.15);
-  color: #ff7b72;
-  border: 1px solid rgba(218, 54, 51, 0.4);
+  background-color: rgba(218, 54, 51, 0.15) !important;
+  color: #ff7b72 !important;
+  border: 1px solid rgba(218, 54, 51, 0.4) !important;
+  border-radius: 50% !important;
+  width: 44px !important;
+  height: 44px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  font-size: 20px !important;
 }
 
 .custom-text-muted {

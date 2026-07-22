@@ -1353,7 +1353,7 @@ function drawWeeklyTrendChart(containerId, data) {
                 name: 'Pending PT',
                 type: 'line',
                 data: data.pendingPT,
-                itemStyle: { color: '#00e5ff' },
+                itemStyle: { color: '#ffd000ff' },
                 lineStyle: { width: 3.5, type: 'solid' },
                 symbol: 'circle',
                 symbolSize: 8,
