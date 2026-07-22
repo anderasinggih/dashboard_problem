@@ -2035,7 +2035,18 @@ function getConfirmSubmitTime(t) {
     return t.closetime || t.lastupdatetime || t.operate_time || t.createtime;
 }
 
+var _searchDebounceTimer = null;
+
 function handleTicketSearch(query) {
+    if (_searchDebounceTimer) {
+        clearTimeout(_searchDebounceTimer);
+    }
+    _searchDebounceTimer = setTimeout(function () {
+        executeTicketSearch(query);
+    }, 300);
+}
+
+function executeTicketSearch(query) {
     var rawList = window.activeFilteredTickets || [];
     if (!query || !query.trim()) {
         window.ticketsPagination.tickets = rawList;
