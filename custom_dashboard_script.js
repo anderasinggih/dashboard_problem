@@ -209,16 +209,17 @@ function callOWSPage(startDate, endDate, party, startOffset, onSuccess, onError)
 
 function sanitizeTicket(raw) {
     if (!raw || typeof raw !== 'object') return raw;
-    // Client-side Data Thinning: Keep ONLY the essential fields needed for dashboard rendering & search
+    // Client-side Data Thinning: Keep ONLY essential fields matching real OWS JSON structure
     return {
-        orderid: raw.orderid || raw.id || raw.code || '',
+        orderid: raw.orderid || raw.keycode || raw.id || raw.code || '',
         title: raw.title || raw.problem_name || raw.description || '',
         ticketstatus: raw.ticketstatus || raw.status || raw.active_status || '',
         severity: raw.severity || raw.createticketlevel || raw.priority || '',
         createticketlevel: raw.createticketlevel || '',
-        root_cause: raw.root_cause || raw.rootcause || raw.cause || '',
-        operate_phase: raw.operate_phase || raw.phase || raw.current_phase || raw.state || '',
-        problem_responsible_party: raw.problem_responsible_party || raw.problemresponsibleparty || raw['Problem Responsible Party'] || '',
+        root_cause: raw.root_cause || raw.rootcause || raw.cause || raw.analyzecause || raw.implementcauseres || '',
+        operate_phase: raw.current_phase || raw.operate_phase || raw.phase || raw.state || '',
+        current_phase: raw.current_phase || raw.operate_phase || '',
+        problem_responsible_party: raw.problem_responsible_party || raw.problemresponsibleparty || raw['Problem Responsible Party'] || raw.role_project_name || '',
         createptproblemdes: raw.createptproblemdes || '',
         createptassignto: raw.createptassignto || '',
         currentoperator: raw.currentoperator || '',
@@ -230,8 +231,8 @@ function sanitizeTicket(raw) {
         aging: raw.aging || raw.aging_days || raw.days || null,
         over_sla: raw.over_sla || raw.sla_over || raw.is_over_sla || null,
         slastatus: raw.slastatus || '',
-        'Accept or Not(Confirm PT)': raw['Accept or Not(Confirm PT)'] || raw.accept_or_not_confirm_pt || raw.acceptornotconfirmpt || raw.accept_or_not || '',
-        'SubmitTime(Confirm PT)': raw['SubmitTime(Confirm PT)'] || raw.submittime_confirm_pt || raw.submittimeconfirmpt || raw.submit_time_confirm || ''
+        'Accept or Not(Confirm PT)': raw['Accept or Not(Confirm PT)'] || raw.confirmaccept || raw.accept_or_not_confirm_pt || raw.acceptornotconfirmpt || raw.accept_or_not || '',
+        'SubmitTime(Confirm PT)': raw['SubmitTime(Confirm PT)'] || raw.pt14_submittime || raw.submittime_confirm_pt || raw.submittimeconfirmpt || raw.submit_time_confirm || ''
     };
 }
 
