@@ -1,13 +1,13 @@
+// ─────────────────────────────────────────────────────────────────────────────
+// 01. DOMAIN & DATA HELPERS
+// ─────────────────────────────────────────────────────────────────────────────
+
 function getTicketPartner(item) {
     if (!item) return 'Others';
-
-    // 100% Pure OWS Production Script: HANYA membaca dari kolom resmi 'responsibility'
     var rawParty = String(item.responsibility || item.problem_responsible_party || '').trim();
     if (!rawParty) return 'Others';
 
     var lower = rawParty.toLowerCase();
-    
-    // Strict Grouping: Telkom Akses, Mandau, Persada. Selain itu dikelompokkan ke 'Others'
     if (lower.indexOf('telkom') !== -1 || lower.indexOf('akses') !== -1) {
         return 'Telkom Akses';
     } else if (lower.indexOf('mandau') !== -1) {
@@ -155,10 +155,10 @@ function getWeekRangeString(wLabel, tickets) {
 var _echartsResizeHandlers = {};
 
 // ─────────────────────────────────────────────────────────────────────────────
-// AUTO-PAGINATION ENGINE & STRICT DATA THINNING
+// 02. AUTO-PAGINATION & DATA THINNING ENGINE
 // ─────────────────────────────────────────────────────────────────────────────
 
-var PAGE_LIMIT = 1000; // OWS max — never exceed this
+var PAGE_LIMIT = 1000;
 
 function callOWSPage(startDate, endDate, party, startOffset, onSuccess, onError) {
     var requestData = {
@@ -179,7 +179,6 @@ function callOWSPage(startDate, endDate, party, startOffset, onSuccess, onError)
 
 function sanitizeTicket(raw) {
     if (!raw || typeof raw !== 'object') return raw;
-    // 100% Pure OWS Server Production Script (Menggunakan nama kolom resmi Database OWS)
     var sevRaw = raw.severity || raw.createticketlevel || '';
     var slaStat = raw.slastatus || '';
     var isOver = raw.over_sla !== undefined && raw.over_sla !== null ? raw.over_sla : (String(slaStat).toLowerCase() === 'sla_violation' || String(slaStat).toLowerCase() === 'over');
