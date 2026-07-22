@@ -191,28 +191,32 @@ function callOWSPage(startDate, endDate, party, startOffset, onSuccess, onError)
 
 function sanitizeTicket(raw) {
     if (!raw || typeof raw !== 'object') return raw;
-    // 100% Strict Field Mapping (Menggunakan nama kolom resmi OWS Database)
+    // 100% Strict Field Mapping (Menggunakan nama kolom resmi OWS Database & CSV Export)
+    var sevRaw = raw.severity || raw['Ticket Level(Create PT)'] || raw.createticketlevel || '';
+    var slaStat = raw.slastatus || raw['SLA Status'] || '';
+    var isOver = raw.over_sla !== undefined && raw.over_sla !== null ? raw.over_sla : (String(slaStat).toLowerCase() === 'sla_violation' || String(slaStat).toLowerCase() === 'over');
+
     return {
-        orderid: raw.orderid || raw.keycode || '',
-        title: raw.title || '',
-        ticketstatus: raw.ticketstatus || '',
-        severity: raw.severity || raw.createticketlevel || '',
+        orderid: raw.orderid || raw.keycode || raw['Ticket ID'] || '',
+        title: raw.title || raw['Ticket Title'] || '',
+        ticketstatus: raw.ticketstatus || raw['Ticket Status'] || '',
+        severity: sevRaw,
         createticketlevel: raw.createticketlevel || '',
-        root_cause: raw.root_cause || raw.analyzecause || '',
-        operate_phase: raw.current_phase || raw.operate_phase || '',
-        current_phase: raw.current_phase || raw.operate_phase || '',
-        problem_responsible_party: raw.problem_responsible_party || raw.createptassignto || '',
+        root_cause: raw.root_cause || raw['Root Cause'] || raw.analyzecause || '',
+        operate_phase: raw.current_phase || raw['Current Phase'] || raw.operate_phase || '',
+        current_phase: raw.current_phase || raw['Current Phase'] || raw.operate_phase || '',
+        problem_responsible_party: raw.problem_responsible_party || raw['Problem Responsible Party'] || raw.createptassignto || '',
         createptproblemdes: raw.createptproblemdes || '',
         createptassignto: raw.createptassignto || '',
         currentoperator: raw.currentoperator || '',
         originator: raw.originator || '',
         createtime: raw.createtime || raw.createfirstoccurtime || '',
-        closetime: raw.closetime || '',
+        closetime: raw.closetime || raw['Closure Time'] || '',
         lastupdatetime: raw.lastupdatetime || '',
         operate_time: raw.operate_time || '',
         aging: raw.aging !== undefined ? raw.aging : null,
-        over_sla: raw.over_sla !== undefined ? raw.over_sla : null,
-        slastatus: raw.slastatus || '',
+        over_sla: isOver,
+        slastatus: slaStat,
         'Accept or Not(Confirm PT)': raw.confirmaccept || raw['Accept or Not(Confirm PT)'] || '',
         'SubmitTime(Confirm PT)': raw.pt14_submittime || raw['SubmitTime(Confirm PT)'] || ''
     };
