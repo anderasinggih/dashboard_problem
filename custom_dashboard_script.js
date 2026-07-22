@@ -177,6 +177,23 @@ var _echartsResizeHandlers = {};
 // ─────────────────────────────────────────────────────────────────────────────
 
 var PAGE_LIMIT = 1000;
+var OWS_SUMMARY_SERVICE_ID = '/adc-service/rest/v1/services/gde_dashboard/problem_ticket_dashboard/problem_ticket_get_dashboard_summary';
+var OWS_LIST_SERVICE_ID = '/adc-service/rest/v1/services/dashboard_problem_ticket_test/dashboard_problem_ticket_test/dashboard__problem_ticket';
+
+function callOWSSummary(startDate, endDate, party, onSuccess, onError) {
+    var requestData = {
+        "startDate": startDate || "2000-01-01 00:00:00",
+        "endDate": endDate || "2099-12-31 23:59:59",
+        "party": party || "ALL"
+    };
+    console.log('[SUMMARY] Fetching summary serviceId=' + OWS_SUMMARY_SERVICE_ID, requestData);
+    MessageProcessor.process({
+        serviceId: OWS_SUMMARY_SERVICE_ID,
+        data: requestData,
+        success: function (res) { onSuccess(res); },
+        error: function (err) { onError(err); }
+    });
+}
 
 function callOWSPage(startDate, endDate, party, startOffset, onSuccess, onError) {
     var requestData = {
@@ -188,7 +205,7 @@ function callOWSPage(startDate, endDate, party, startOffset, onSuccess, onError)
     };
     console.log('[PAGINATION] Fetching page start=' + startOffset, requestData);
     MessageProcessor.process({
-        serviceId: '/adc-service/rest/v1/services/dashboard_problem_ticket_test/dashboard_problem_ticket_test/dashboard__problem_ticket',
+        serviceId: OWS_LIST_SERVICE_ID,
         data: requestData,
         success: function (res) { onSuccess(res); },
         error: function (err) { onError(err); }
