@@ -1013,12 +1013,23 @@ function renderPhaseDashboard(tickets) {
             } else if (statusCat === 'canceled') {
                 phase = '8. Canceled PT';
             } else {
+                var isRejected = (String(t.confirmaccept || t['Accept or Not(Confirm PT)'] || '').toLowerCase().indexOf('reject') !== -1);
                 var phaseRaw = String(t.operate_phase || t.phase || t.current_phase || t.state || '').toLowerCase();
-                if (phaseRaw.indexOf('confirm') !== -1) phase = '6. Confirm PT';
-                else if (phaseRaw.indexOf('handle analyze') !== -1) phase = '2. Handle Analyze PT';
-                else if (phaseRaw.indexOf('analyze') !== -1) phase = '3. Analyze PT';
-                else if (phaseRaw.indexOf('handle implement') !== -1) phase = '4. Handle Implement PT';
-                else if (phaseRaw.indexOf('implement') !== -1) phase = '5. Implement PT';
+                
+                // Looping rule: If Confirm PT is Rejected, ticket loops back to 5. Implement PT
+                if (isRejected) {
+                    phase = '5. Implement PT';
+                } else if (phaseRaw.indexOf('confirm') !== -1) {
+                    phase = '6. Confirm PT';
+                } else if (phaseRaw.indexOf('handle analyze') !== -1) {
+                    phase = '2. Handle Analyze PT';
+                } else if (phaseRaw.indexOf('analyze') !== -1) {
+                    phase = '3. Analyze PT';
+                } else if (phaseRaw.indexOf('handle implement') !== -1) {
+                    phase = '4. Handle Implement PT';
+                } else if (phaseRaw.indexOf('implement') !== -1) {
+                    phase = '5. Implement PT';
+                }
             }
 
             var statusRaw = String(t.ticketstatus || t.status || '').toLowerCase();
