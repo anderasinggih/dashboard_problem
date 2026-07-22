@@ -1,8 +1,8 @@
 function getTicketPartner(item) {
     if (!item) return 'Others';
 
-    // 100% Strict Mapping: HANYA membaca dari kolom resmi 'responsibility'
-    var rawParty = String(item.responsibility || item.Responsibility || item.problem_responsible_party || item['Problem Responsible Party'] || '').trim();
+    // 100% Pure OWS Production Script: HANYA membaca dari kolom resmi 'responsibility'
+    var rawParty = String(item.responsibility || item.problem_responsible_party || '').trim();
     if (!rawParty) return 'Others';
 
     var lower = rawParty.toLowerCase();
@@ -179,34 +179,34 @@ function callOWSPage(startDate, endDate, party, startOffset, onSuccess, onError)
 
 function sanitizeTicket(raw) {
     if (!raw || typeof raw !== 'object') return raw;
-    // 100% Strict Field Mapping (Menggunakan nama kolom resmi OWS Database & CSV Export)
-    var sevRaw = raw.severity || raw['Ticket Level(Create PT)'] || raw.createticketlevel || '';
-    var slaStat = raw.slastatus || raw['SLA Status'] || '';
+    // 100% Pure OWS Server Production Script (Menggunakan nama kolom resmi Database OWS)
+    var sevRaw = raw.severity || raw.createticketlevel || '';
+    var slaStat = raw.slastatus || '';
     var isOver = raw.over_sla !== undefined && raw.over_sla !== null ? raw.over_sla : (String(slaStat).toLowerCase() === 'sla_violation' || String(slaStat).toLowerCase() === 'over');
 
     return {
-        orderid: raw.orderid || raw.keycode || raw['Ticket ID'] || '',
-        title: raw.title || raw['Ticket Title'] || '',
-        ticketstatus: raw.ticketstatus || raw['Ticket Status'] || '',
+        orderid: raw.orderid || raw.keycode || '',
+        title: raw.title || '',
+        ticketstatus: raw.ticketstatus || '',
         severity: sevRaw,
         createticketlevel: raw.createticketlevel || '',
-        root_cause: raw.root_cause || raw['Root Cause'] || raw.analyzecause || '',
-        operate_phase: raw.current_phase || raw['Current Phase'] || raw.operate_phase || '',
-        current_phase: raw.current_phase || raw['Current Phase'] || raw.operate_phase || '',
-        problem_responsible_party: raw.responsibility || raw.Responsibility || raw.problem_responsible_party || raw['Problem Responsible Party'] || '',
+        root_cause: raw.root_cause || raw.analyzecause || '',
+        operate_phase: raw.current_phase || raw.operate_phase || '',
+        current_phase: raw.current_phase || raw.operate_phase || '',
+        responsibility: raw.responsibility || raw.problem_responsible_party || '',
         createptproblemdes: raw.createptproblemdes || '',
         createptassignto: raw.createptassignto || '',
         currentoperator: raw.currentoperator || '',
         originator: raw.originator || '',
         createtime: raw.createtime || raw.createfirstoccurtime || '',
-        closetime: raw.closetime || raw['Closure Time'] || '',
+        closetime: raw.closetime || '',
         lastupdatetime: raw.lastupdatetime || '',
         operate_time: raw.operate_time || '',
         aging: raw.aging !== undefined ? raw.aging : null,
         over_sla: isOver,
         slastatus: slaStat,
-        'Accept or Not(Confirm PT)': raw.confirmaccept || raw['Accept or Not(Confirm PT)'] || '',
-        'SubmitTime(Confirm PT)': raw.pt14_submittime || raw['SubmitTime(Confirm PT)'] || ''
+        confirmaccept: raw.confirmaccept || '',
+        pt14_submittime: raw.pt14_submittime || ''
     };
 }
 

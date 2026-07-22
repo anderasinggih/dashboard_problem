@@ -452,7 +452,7 @@
 
         window.MessageProcessor = {
             process: function(options) {
-                fetch('tickets_data.csv?v=' + Date.now())
+                fetch('tickets_data.csv')
                     .then(response => response.text())
                     .then(text => {
                         const parsed = parseCSV(text);
@@ -460,22 +460,25 @@
                         
                         const headers = parsed[0].map(h => h.trim());
                         
-                        // Map CSV Headers to OWS JSON fields
+                        // Map CSV Headers to OWS JSON fields (Local Sandbox Emulation)
                         const headerMap = {
                             'Ticket ID': 'orderid',
                             'Title': 'title',
                             'Ticket Status': 'ticketstatus',
                             'Current Phase': 'current_phase',
                             'operate_phase': 'operate_phase',
-                            'Problem Responsible Party': 'problem_responsible_party',
-                            'Ticket Level(Create PT)': 'createticketlevel',
+                            'Responsibility': 'responsibility',
+                            'Problem Responsible Party': 'responsibility',
+                            'Ticket Level(Create PT)': 'severity',
                             'Created At': 'createtime',
                             'Closure Time': 'closetime',
                             'Updated At': 'lastupdatetime',
                             'operate_time': 'operate_time',
                             'Description': 'createptproblemdes',
                             'Root Cause': 'root_cause',
-                            'SLA Status': 'slastatus'
+                            'SLA Status': 'slastatus',
+                            'Accept or Not(Confirm PT)': 'confirmaccept',
+                            'SubmitTime(Confirm PT)': 'pt14_submittime'
                         };
 
                         const tickets = [];
