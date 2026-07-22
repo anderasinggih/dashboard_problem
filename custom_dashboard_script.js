@@ -399,6 +399,11 @@ function parseAndRenderSummary(summaryList, isFiltered, party) {
     setCardValue('pOpen', pOpen); setCardValue('pPending', pPending); setCardValue('pClosed', pClosed); setCardValue('pCanceled', pCanceled);
     setCardValue('othOpen', othOpen); setCardValue('othPending', othPending); setCardValue('othClosed', othClosed); setCardValue('othCanceled', othCanceled);
 
+    // Trigger rendering untuk Container 1 (Severity), 2 (Phase), 3 (Trends), 4 (Root Cause), 5 (SLA)
+    renderSeverityDashboard(summaryList);
+    renderPhaseDashboard(summaryList);
+    renderTrendsAndCompliance(summaryList, summaryList, summaryList);
+
     updatePanelFilterBadges(party);
 }
 
