@@ -1353,15 +1353,15 @@ function drawWeeklyTrendChart(containerId, data) {
                 name: 'Pending PT',
                 type: 'line',
                 data: data.pendingPT,
-                itemStyle: { color: '#d15704' },
+                itemStyle: { color: '#00e5ff' },
                 lineStyle: { width: 3.5, type: 'solid' },
                 symbol: 'circle',
-                symbolSize: 7,
+                symbolSize: 8,
                 label: {
                     show: true,
                     position: 'top',
-                    color: '#f0883e',
-                    fontSize: 10,
+                    color: '#00e5ff',
+                    fontSize: 11,
                     fontWeight: 'bold'
                 }
             },
@@ -1369,15 +1369,15 @@ function drawWeeklyTrendChart(containerId, data) {
                 name: 'Over SLA',
                 type: 'line',
                 data: data.overSla,
-                itemStyle: { color: '#da3633' },
-                lineStyle: { width: 2.5, type: 'dashed' },
+                itemStyle: { color: '#ff0055' },
+                lineStyle: { width: 3, type: 'dashed' },
                 symbol: 'triangle',
-                symbolSize: 8,
+                symbolSize: 9,
                 label: {
                     show: true,
                     position: 'bottom',
-                    color: '#ff7b72',
-                    fontSize: 10,
+                    color: '#ff0055',
+                    fontSize: 11,
                     fontWeight: 'bold'
                 }
             },
