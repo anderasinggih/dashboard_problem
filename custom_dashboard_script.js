@@ -2014,14 +2014,18 @@ function isTicketAccepted(t) {
 
 function isTicketClosed(t) {
     if (!t) return false;
-    var statusRaw = String(t.ticketstatus || '').toLowerCase();
+    var statusRaw = String(t.ticketstatus || t.status || '').toLowerCase();
+    
+    // Explicitly exclude Canceled status
     if (statusRaw === 'canceled' || statusRaw === 'cancelled' || statusRaw === 'rejected') {
         return false;
     }
-    if (statusRaw === 'closed' || statusRaw === 'completed' || statusRaw === 'false' || statusRaw === '0') {
-        return true;
-    }
-    return isTicketAccepted(t);
+
+    // Strict Double Verification: Status must be Closed/Completed AND User must have Confirm & Accepted
+    var isStatusClosed = (statusRaw === 'closed' || statusRaw === 'completed' || statusRaw === 'false' || statusRaw === '0');
+    var isAccepted = isTicketAccepted(t);
+
+    return isStatusClosed && isAccepted;
 }
 
 function getConfirmSubmitTime(t) {
