@@ -560,13 +560,51 @@ function renderSearchBar() {
     var container = document.getElementById('ticketSearchContainer');
     if (!container) return;
     if (!document.getElementById('customTicketSearchInput')) {
-        var html = '<div style="padding: 12px 16px; border-bottom: 1px solid #27272a; display: flex; gap: 10px; align-items: center;">';
+        var html = '<div style="padding: 12px 16px; border-bottom: 1px solid #27272a; display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">';
         html += '  <input type="text" id="customTicketSearchInput" placeholder="Search by Ticket ID, Title, Operator..." ';
-        html += '    style="flex: 1; background-color: #0d0d10; border: 1px solid #27272a; border-radius: 6px; padding: 8px 12px; color: #e4e4e7; font-size: 13px; outline: none; transition: border-color 0.2s;" ';
+        html += '    style="flex: 1; min-width: 200px; background-color: #0d0d10; border: 1px solid #27272a; border-radius: 6px; padding: 8px 12px; color: #e4e4e7; font-size: 13px; outline: none;" ';
         html += '    oninput="handleTicketSearch(this.value)">';
+        html += '  <button onclick="exportFilteredTicketsCSV()" class="custom-btn" style="background-color: #238636; color: #ffffff; font-size: 12px; padding: 6px 14px; border-radius: 6px; font-weight: 600; cursor: pointer; border: none; display: flex; align-items: center; gap: 6px;">';
+        html += '    <span>📥 Export CSV</span>';
+        html += '  </button>';
         html += '</div>';
         container.innerHTML = html;
     }
+}
+
+function exportFilteredTicketsCSV() {
+    var tickets = window.ticketsPagination.tickets || window.activeFilteredTickets || [];
+    if (tickets.length === 0) {
+        alert('Tidak ada data tiket untuk diexport.');
+        return;
+    }
+
+    var headers = ['Ticket ID', 'Title', 'Partner', 'Severity', 'Root Cause', 'Phase', 'Aging (Days)', 'Status'];
+    var csvRows = [headers.join(',')];
+
+    for (var i = 0; i < tickets.length; i++) {
+        var t = tickets[i];
+        var id = '"' + (t.orderid || t.id || '').replace(/"/g, '""') + '"';
+        var title = '"' + (t.title || '').replace(/"/g, '""') + '"';
+        var partner = '"' + getTicketPartner(t) + '"';
+        var sev = '"' + getSeverityLabel(t.severity || t.createticketlevel || '') + '"';
+        var rc = '"' + (t.root_cause || '-').replace(/"/g, '""') + '"';
+        var phase = '"' + (t.operate_phase || t.current_phase || '-').replace(/"/g, '""') + '"';
+        var aging = t.aging !== null && t.aging !== undefined ? parseFloat(t.aging).toFixed(1) : calculateAgingDays(t.createtime, t.closetime, t.lastupdatetime, t.operate_time, t.ticketstatus).toFixed(1);
+        var status = '"' + (t.ticketstatus || 'Open') + '"';
+
+        csvRows.push([id, title, partner, sev, rc, phase, aging, status].join(','));
+    }
+
+    var csvString = csvRows.join('\n');
+    var blob = new Blob([csvString], { type: 'text/csv;charset=utf-8;' });
+    var url = URL.createObjectURL(blob);
+    var link = document.createElement('a');
+    link.setAttribute('href', url);
+    link.setAttribute('download', 'Problem_Tickets_Export_' + new Date().toISOString().slice(0,10) + '.csv');
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
 }
 
 function renderTicketsData(tickets, dateFilteredTickets) {
