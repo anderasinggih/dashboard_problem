@@ -1,31 +1,19 @@
 function getTicketPartner(item) {
     if (!item) return 'Others';
 
-    // 100% Strict Mapping: HANYA membaca dari kolom resmi vendor di OWS Database
-    var rawParty = String(item.problem_responsible_party || item.createptassignto || '').trim();
+    // 100% Strict Mapping: HANYA membaca dari kolom resmi 'responsibility'
+    var rawParty = String(item.responsibility || item.Responsibility || item.problem_responsible_party || item['Problem Responsible Party'] || '').trim();
     if (!rawParty) return 'Others';
 
     var lower = rawParty.toLowerCase();
     
-    // Exact vendor identifier checks
+    // Strict Grouping: Telkom Akses, Mandau, Persada. Selain itu dikelompokkan ke 'Others'
     if (lower.indexOf('telkom') !== -1 || lower.indexOf('akses') !== -1) {
         return 'Telkom Akses';
-    } else if (lower.indexOf('mandau') !== -1 || lower.indexOf('group:pm') !== -1 || lower === 'pm') {
+    } else if (lower.indexOf('mandau') !== -1) {
         return 'Mandau';
-    } else if (lower.indexOf('persada') !== -1 || lower.indexOf('pwx') !== -1) {
+    } else if (lower.indexOf('persada') !== -1) {
         return 'Persada';
-    } else if (lower.indexOf('famika') !== -1) {
-        return 'Famika';
-    } else if (lower.indexOf('fiberhome') !== -1) {
-        return 'Fiberhome';
-    } else if (lower.indexOf('huawei') !== -1) {
-        return 'Huawei';
-    } else if (lower.indexOf('kopindosat') !== -1) {
-        return 'Kopindosat';
-    } else if (lower.indexOf('nokia') !== -1) {
-        return 'Nokia';
-    } else if (lower.indexOf('ije') !== -1) {
-        return 'IJE';
     } else {
         return 'Others';
     }
@@ -205,7 +193,7 @@ function sanitizeTicket(raw) {
         root_cause: raw.root_cause || raw['Root Cause'] || raw.analyzecause || '',
         operate_phase: raw.current_phase || raw['Current Phase'] || raw.operate_phase || '',
         current_phase: raw.current_phase || raw['Current Phase'] || raw.operate_phase || '',
-        problem_responsible_party: raw.problem_responsible_party || raw['Problem Responsible Party'] || raw.createptassignto || '',
+        problem_responsible_party: raw.responsibility || raw.Responsibility || raw.problem_responsible_party || raw['Problem Responsible Party'] || '',
         createptproblemdes: raw.createptproblemdes || '',
         createptassignto: raw.createptassignto || '',
         currentoperator: raw.currentoperator || '',
