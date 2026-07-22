@@ -579,30 +579,44 @@ function exportFilteredTicketsXLSX() {
         return;
     }
 
-    var headers = ['No', 'Ticket ID', 'Title', 'Partner', 'Severity', 'Root Cause', 'Phase', 'Aging (Days)', 'Status'];
-    var csvRows = [headers.join(',')];
+    var html = '<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">';
+    html += '<head><meta charset="utf-8"><!--[if gte mso 9]><xml><x:ExcelWorkbook><x:ExcelWorksheets><x:ExcelWorksheet><x:Name>Problem Tickets</x:Name><x:WorksheetOptions><x:DisplayGridlines/></x:WorksheetOptions></x:ExcelWorksheet></x:ExcelWorksheets></x:ExcelWorkbook></xml><![endif]--></head>';
+    html += '<body><table border="1">';
+    html += '<tr style="background-color:#1f2937; color:#ffffff; font-weight:bold;">';
+    html += '<th>No</th><th>Ticket ID</th><th>Title</th><th>Partner</th><th>Severity</th><th>Root Cause</th><th>Phase</th><th>Aging (Days)</th><th>Status</th>';
+    html += '</tr>';
 
     for (var i = 0; i < tickets.length; i++) {
         var t = tickets[i];
-        var id = '"' + String(t.orderid || t.id || '').replace(/"/g, '""') + '"';
-        var title = '"' + String(t.title || '').replace(/"/g, '""') + '"';
-        var partner = '"' + String(getTicketPartner(t)).replace(/"/g, '""') + '"';
-        var sev = '"' + String(getSeverityLabel(t.severity || t.createticketlevel || '')).replace(/"/g, '""') + '"';
-        var rc = '"' + String(t.root_cause || '-').replace(/"/g, '""') + '"';
-        var phase = '"' + String(t.operate_phase || t.current_phase || '-').replace(/"/g, '""') + '"';
+        var id = String(t.orderid || t.id || '');
+        var title = String(t.title || '');
+        var partner = getTicketPartner(t);
+        var sev = getSeverityLabel(t.severity || t.createticketlevel || '');
+        var rc = String(t.root_cause || '-');
+        var phase = String(t.operate_phase || t.current_phase || '-');
         var aging = t.aging !== null && t.aging !== undefined ? parseFloat(t.aging).toFixed(1) : calculateAgingDays(t.createtime, t.closetime, t.lastupdatetime, t.operate_time, t.ticketstatus).toFixed(1);
-        var status = '"' + String(t.ticketstatus || 'Open').replace(/"/g, '""') + '"';
+        var status = String(t.ticketstatus || 'Open');
 
-        csvRows.push([(i + 1), id, title, partner, sev, rc, phase, aging, status].join(','));
+        html += '<tr>';
+        html += '<td>' + (i + 1) + '</td>';
+        html += '<td>' + id + '</td>';
+        html += '<td>' + title + '</td>';
+        html += '<td>' + partner + '</td>';
+        html += '<td>' + sev + '</td>';
+        html += '<td>' + rc + '</td>';
+        html += '<td>' + phase + '</td>';
+        html += '<td>' + aging + '</td>';
+        html += '<td>' + status + '</td>';
+        html += '</tr>';
     }
 
-    // Include UTF-8 BOM (\uFEFF) so Microsoft Excel opens the file cleanly without warning
-    var csvContent = '\uFEFF' + csvRows.join('\n');
-    var blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    html += '</table></body></html>';
+
+    var blob = new Blob(['\uFEFF' + html], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;' });
     var url = URL.createObjectURL(blob);
     var link = document.createElement('a');
     link.setAttribute('href', url);
-    link.setAttribute('download', 'Problem_Tickets_Report_' + new Date().toISOString().slice(0, 10) + '.csv');
+    link.setAttribute('download', 'Problem_Tickets_Report_' + new Date().toISOString().slice(0, 10) + '.xlsx');
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
