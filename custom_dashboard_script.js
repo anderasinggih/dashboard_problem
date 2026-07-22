@@ -659,13 +659,8 @@ function renderCurrentTicketsPage() {
     var pag = window.ticketsPagination;
     var tickets = pag.tickets || [];
 
-    var searchHtml =
-        '<div style="padding: 12px 16px; border-bottom: 1px solid #27272a; display: flex; gap: 10px; align-items: center;">' +
-        '  <input type="text" id="customTicketSearchInput" placeholder="Search by Ticket ID, Title, Operator..." ' +
-        '    value="' + (document.getElementById('customTicketSearchInput')?.value || '') + '" ' +
-        '    style="flex: 1; background-color: #0d0d10; border: 1px solid #27272a; border-radius: 6px; padding: 8px 12px; color: #e4e4e7; font-size: 13px; outline: none;" ' +
-        '    oninput="handleTicketSearch(this.value)">' +
-        '</div>';
+    // Always inject search bar & export button header directly into ticketSearchContainer
+    renderSearchBar();
 
     if (tickets.length === 0) {
         container.innerHTML = '<div style="color: #6c757d; padding: 12px;">No tickets found for the selected date range.</div>';
