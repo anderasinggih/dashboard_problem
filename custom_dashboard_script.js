@@ -207,14 +207,51 @@ function callOWSPage(startDate, endDate, party, startOffset, onSuccess, onError)
     });
 }
 
+function sanitizeTicket(raw) {
+    if (!raw || typeof raw !== 'object') return raw;
+    // Client-side Data Thinning: Keep ONLY the essential fields needed for dashboard rendering & search
+    return {
+        orderid: raw.orderid || raw.id || raw.code || '',
+        title: raw.title || raw.problem_name || raw.description || '',
+        ticketstatus: raw.ticketstatus || raw.status || raw.active_status || '',
+        severity: raw.severity || raw.createticketlevel || raw.priority || '',
+        createticketlevel: raw.createticketlevel || '',
+        root_cause: raw.root_cause || raw.rootcause || raw.cause || '',
+        operate_phase: raw.operate_phase || raw.phase || raw.current_phase || raw.state || '',
+        problem_responsible_party: raw.problem_responsible_party || raw.problemresponsibleparty || raw['Problem Responsible Party'] || '',
+        createptproblemdes: raw.createptproblemdes || '',
+        createptassignto: raw.createptassignto || '',
+        currentoperator: raw.currentoperator || '',
+        originator: raw.originator || '',
+        createtime: raw.createtime || raw.createfirstoccurtime || raw.operate_time || '',
+        closetime: raw.closetime || raw.closure_time || '',
+        lastupdatetime: raw.lastupdatetime || '',
+        operate_time: raw.operate_time || '',
+        aging: raw.aging || raw.aging_days || raw.days || null,
+        over_sla: raw.over_sla || raw.sla_over || raw.is_over_sla || null,
+        slastatus: raw.slastatus || '',
+        'Accept or Not(Confirm PT)': raw['Accept or Not(Confirm PT)'] || raw.accept_or_not_confirm_pt || raw.acceptornotconfirmpt || raw.accept_or_not || '',
+        'SubmitTime(Confirm PT)': raw['SubmitTime(Confirm PT)'] || raw.submittime_confirm_pt || raw.submittimeconfirmpt || raw.submit_time_confirm || ''
+    };
+}
+
 function extractTickets(res) {
-    if (res && res.result && res.result._values) return res.result._values;
-    if (res && res.result && res.result.results) return res.result.results;
-    if (res && res.results) return res.results;
-    if (res && res._values) return res._values;
-    if (res && res.data) return res.data;
-    if (Array.isArray(res)) return res;
-    return [];
+    var rawList = [];
+    if (res && res.result && res.result._values) rawList = res.result._values;
+    else if (res && res.result && res.result.results) rawList = res.result.results;
+    else if (res && res.results) rawList = res.results;
+    else if (res && res._values) rawList = res._values;
+    else if (res && res.data) rawList = res.data;
+    else if (Array.isArray(res)) rawList = res;
+
+    if (!Array.isArray(rawList)) return [];
+
+    // Perform Data Thinning on every item
+    var thinned = new Array(rawList.length);
+    for (var i = 0; i < rawList.length; i++) {
+        thinned[i] = sanitizeTicket(rawList[i]);
+    }
+    return thinned;
 }
 
 function fetchAllPages(startDate, endDate, party, onComplete, onError, _accumulated, _offset) {
