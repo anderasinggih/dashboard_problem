@@ -579,55 +579,30 @@ function exportFilteredTicketsXLSX() {
         return;
     }
 
-    var xmlHeader = '<?xml version="1.0"?><?mso-application progid="Excel.Sheet"?>' +
-        '<Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet" ' +
-        'xmlns:o="urn:schemas-microsoft-com:office:office" ' +
-        'xmlns:x="urn:schemas-microsoft-com:office:excel" ' +
-        'xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet">' +
-        '<Styles>' +
-        '  <Style ss:ID="HeaderStyle"><Font ss:Bold="1" ss:Color="#FFFFFF"/><Interior ss:Color="#1F2937" ss:Pattern="Solid"/></Style>' +
-        '</Styles>' +
-        '<Worksheet ss:Name="Problem Tickets"><Table>';
-
-    var xmlFooter = '</Table></Worksheet></Workbook>';
-
     var headers = ['No', 'Ticket ID', 'Title', 'Partner', 'Severity', 'Root Cause', 'Phase', 'Aging (Days)', 'Status'];
-    var xmlRows = ['<Row>'];
-    for (var h = 0; h < headers.length; h++) {
-        xmlRows.push('<Cell ss:StyleID="HeaderStyle"><Data ss:Type="String">' + headers[h] + '</Data></Cell>');
-    }
-    xmlRows.push('</Row>');
+    var csvRows = [headers.join(',')];
 
     for (var i = 0; i < tickets.length; i++) {
         var t = tickets[i];
-        var id = (t.orderid || t.id || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-        var title = (t.title || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-        var partner = getTicketPartner(t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-        var sev = getSeverityLabel(t.severity || t.createticketlevel || '');
-        var rc = (t.root_cause || '-').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-        var phase = (t.operate_phase || t.current_phase || '-').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+        var id = '"' + String(t.orderid || t.id || '').replace(/"/g, '""') + '"';
+        var title = '"' + String(t.title || '').replace(/"/g, '""') + '"';
+        var partner = '"' + String(getTicketPartner(t)).replace(/"/g, '""') + '"';
+        var sev = '"' + String(getSeverityLabel(t.severity || t.createticketlevel || '')).replace(/"/g, '""') + '"';
+        var rc = '"' + String(t.root_cause || '-').replace(/"/g, '""') + '"';
+        var phase = '"' + String(t.operate_phase || t.current_phase || '-').replace(/"/g, '""') + '"';
         var aging = t.aging !== null && t.aging !== undefined ? parseFloat(t.aging).toFixed(1) : calculateAgingDays(t.createtime, t.closetime, t.lastupdatetime, t.operate_time, t.ticketstatus).toFixed(1);
-        var status = t.ticketstatus || 'Open';
+        var status = '"' + String(t.ticketstatus || 'Open').replace(/"/g, '""') + '"';
 
-        xmlRows.push('<Row>');
-        xmlRows.push('<Cell><Data ss:Type="Number">' + (i + 1) + '</Data></Cell>');
-        xmlRows.push('<Cell><Data ss:Type="String">' + id + '</Data></Cell>');
-        xmlRows.push('<Cell><Data ss:Type="String">' + title + '</Data></Cell>');
-        xmlRows.push('<Cell><Data ss:Type="String">' + partner + '</Data></Cell>');
-        xmlRows.push('<Cell><Data ss:Type="String">' + sev + '</Data></Cell>');
-        xmlRows.push('<Cell><Data ss:Type="String">' + rc + '</Data></Cell>');
-        xmlRows.push('<Cell><Data ss:Type="String">' + phase + '</Data></Cell>');
-        xmlRows.push('<Cell><Data ss:Type="Number">' + aging + '</Data></Cell>');
-        xmlRows.push('<Cell><Data ss:Type="String">' + status + '</Data></Cell>');
-        xmlRows.push('</Row>');
+        csvRows.push([(i + 1), id, title, partner, sev, rc, phase, aging, status].join(','));
     }
 
-    var xmlContent = xmlHeader + xmlRows.join('') + xmlFooter;
-    var blob = new Blob([xmlContent], { type: 'application/vnd.ms-excel' });
+    // Include UTF-8 BOM (\uFEFF) so Microsoft Excel opens the file cleanly without warning
+    var csvContent = '\uFEFF' + csvRows.join('\n');
+    var blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     var url = URL.createObjectURL(blob);
     var link = document.createElement('a');
     link.setAttribute('href', url);
-    link.setAttribute('download', 'Problem_Tickets_Report_' + new Date().toISOString().slice(0, 10) + '.xls');
+    link.setAttribute('download', 'Problem_Tickets_Report_' + new Date().toISOString().slice(0, 10) + '.csv');
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
