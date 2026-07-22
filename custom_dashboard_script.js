@@ -310,24 +310,20 @@ function loadProblemTickets(startDate, endDate, party) {
 
     var isFiltered = !!(startDate || endDate || (party && party !== 'ALL'));
 
-    // Panggil Service Agregasi Baru OWS
+    // 1. Panggil Service Agregasi untuk Stat Cards & Partner Cards Atas (Instan < 50ms)
     callOWSSummary(startDate, endDate, party, function (res) {
         var summaryList = extractSummaryList(res);
         parseAndRenderSummary(summaryList, isFiltered, party);
-
-        // Sekaligus panggil List Tiket untuk merender tabel & modal detail
-        fetchAllPages(startDate, endDate, party, function (allTickets) {
-            window.ticketsPagination.tickets = allTickets || [];
-            window.ticketsPagination.currentPage = 1;
-            renderCurrentTicketsPage();
-        }, function (err) {
-            console.warn('OWS List fetch error:', err);
-        });
     }, function (err) {
-        console.error('OWS Summary Error:', err);
-        // Strict Mode: Jika Service Summary Gagal -> Set Stat Cards & Summary ke 0
-        parseAndRenderSummary([], isFiltered, party);
-        showError('Gagal memuat data summary dari OWS: ' + (err.message || 'Error Summary Service'));
+        console.warn('OWS Summary Service Notice:', err);
+    });
+
+    // 2. Panggil Service List Tiket untuk merender Container 1-5 (Chart, Heatmap, Trends, List Tabel)
+    fetchAllPages(startDate, endDate, party, function (allTickets) {
+        parseAndRender(allTickets, isFiltered, startDate, endDate, party);
+    }, function (err) {
+        console.error('OWS List fetch error:', err);
+        showError('Gagal memuat data tiket: ' + (err.message || 'Error Service'));
     });
 }
 
