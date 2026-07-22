@@ -325,12 +325,9 @@ function loadProblemTickets(startDate, endDate, party) {
         });
     }, function (err) {
         console.error('OWS Summary Error:', err);
-        // Fallback jika service agregasi belum terpublish / error: panggil full pages
-        fetchAllPages(startDate, endDate, party, function (allTickets) {
-            parseAndRender(allTickets, isFiltered, startDate, endDate, party);
-        }, function (fallbackErr) {
-            showError('Gagal memuat data: ' + (fallbackErr.message || 'Error Service'));
-        });
+        // Strict Mode: Jika Service Summary Gagal -> Set Stat Cards & Summary ke 0
+        parseAndRenderSummary([], isFiltered, party);
+        showError('Gagal memuat data summary dari OWS: ' + (err.message || 'Error Summary Service'));
     });
 }
 
