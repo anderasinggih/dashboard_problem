@@ -1,35 +1,20 @@
 function getTicketPartner(item) {
-    if (!item) return 'Blanks';
+    if (!item) return 'Others';
 
-    var rawParty = item.problem_responsible_party || item.problemresponsibleparty || item['Problem Responsible Party'] || '';
-    rawParty = rawParty.trim();
+    // Strict Mapping: HANYA membaca dari kolom resmi OWS (tanpa tebak-tebakan kata di title/description)
+    var rawParty = item.problem_responsible_party || item.problemresponsibleparty || item['Problem Responsible Party'] || item.role_project_name || item.createptassignto || '';
+    rawParty = String(rawParty).trim();
 
-    // Fallback jika kolom utama kosong (OWS API response tidak populate)
-    if (!rawParty) {
-        var title = String(item.title || item.problem_name || item.description || '').toLowerCase();
-        var desc = String(item.createptproblemdes || '').toLowerCase();
-        var assign = String(item.createptassignto || '').toLowerCase();
-        var operator = String(item.currentoperator || '').toLowerCase();
-        var originator = String(item.originator || '').toLowerCase();
-
-        if (title.indexOf('telkom') !== -1 || title.indexOf('akses') !== -1 || desc.indexOf('telkom') !== -1) {
-            return 'Telkom Akses';
-        } else if (title.indexOf('mandau') !== -1 || desc.indexOf('mandau') !== -1 || assign.indexOf('pm') !== -1 || operator.indexOf('pm') !== -1) {
-            return 'Mandau';
-        } else if (title.indexOf('persada') !== -1 || desc.indexOf('persada') !== -1 || assign.indexOf('pwx') !== -1 || originator.indexOf('pwx') !== -1 || operator.indexOf('pwx') !== -1) {
-            return 'Persada';
-        } else if (title.indexOf('ije') !== -1 || assign.indexOf('ije') !== -1) {
-            return 'IJE';
-        }
-        return 'Blanks';
-    }
+    if (!rawParty) return 'Others';
 
     var lower = rawParty.toLowerCase();
+    
+    // Check resmi berdasarkan identifier vendor
     if (lower.indexOf('telkom') !== -1 || lower.indexOf('akses') !== -1) {
         return 'Telkom Akses';
-    } else if (lower.indexOf('mandau') !== -1) {
+    } else if (lower.indexOf('mandau') !== -1 || lower.indexOf('group:pm') !== -1 || lower === 'pm') {
         return 'Mandau';
-    } else if (lower.indexOf('persada') !== -1) {
+    } else if (lower.indexOf('persada') !== -1 || lower.indexOf('pwx') !== -1) {
         return 'Persada';
     } else if (lower.indexOf('famika') !== -1) {
         return 'Famika';
@@ -41,6 +26,8 @@ function getTicketPartner(item) {
         return 'Kopindosat';
     } else if (lower.indexOf('nokia') !== -1) {
         return 'Nokia';
+    } else if (lower.indexOf('ije') !== -1) {
+        return 'IJE';
     } else {
         return 'Others';
     }
