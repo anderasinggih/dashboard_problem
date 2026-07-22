@@ -560,66 +560,13 @@ function renderSearchBar() {
     var container = document.getElementById('ticketSearchContainer');
     if (!container) return;
     if (!document.getElementById('customTicketSearchInput')) {
-        var html = '<div style="padding: 12px 16px; border-bottom: 1px solid #27272a; display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">';
+        var html = '<div style="padding: 12px 16px; border-bottom: 1px solid #27272a; display: flex; gap: 10px; align-items: center;">';
         html += '  <input type="text" id="customTicketSearchInput" placeholder="Search by Ticket ID, Title, Operator..." ';
-        html += '    style="flex: 1; min-width: 200px; background-color: #0d0d10; border: 1px solid #27272a; border-radius: 6px; padding: 8px 12px; color: #e4e4e7; font-size: 13px; outline: none;" ';
+        html += '    style="flex: 1; background-color: #0d0d10; border: 1px solid #27272a; border-radius: 6px; padding: 8px 12px; color: #e4e4e7; font-size: 13px; outline: none; transition: border-color 0.2s;" ';
         html += '    oninput="handleTicketSearch(this.value)">';
-        html += '  <button onclick="exportFilteredTicketsXLSX()" class="custom-btn" style="background-color: #238636; color: #ffffff; font-size: 12px; padding: 6px 14px; border-radius: 6px; font-weight: 600; cursor: pointer; border: none; display: flex; align-items: center; gap: 6px;">';
-        html += '    <span>Export XLSX</span>';
-        html += '  </button>';
         html += '</div>';
         container.innerHTML = html;
     }
-}
-
-function exportFilteredTicketsXLSX() {
-    var tickets = window.ticketsPagination.tickets || window.activeFilteredTickets || [];
-    if (tickets.length === 0) {
-        alert('Tidak ada data tiket untuk diexport.');
-        return;
-    }
-
-    var html = '<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">';
-    html += '<head><meta charset="utf-8"><!--[if gte mso 9]><xml><x:ExcelWorkbook><x:ExcelWorksheets><x:ExcelWorksheet><x:Name>Problem Tickets</x:Name><x:WorksheetOptions><x:DisplayGridlines/></x:WorksheetOptions></x:ExcelWorksheet></x:ExcelWorksheets></x:ExcelWorkbook></xml><![endif]--></head>';
-    html += '<body><table border="1">';
-    html += '<tr style="background-color:#1f2937; color:#ffffff; font-weight:bold;">';
-    html += '<th>No</th><th>Ticket ID</th><th>Title</th><th>Partner</th><th>Severity</th><th>Root Cause</th><th>Phase</th><th>Aging (Days)</th><th>Status</th>';
-    html += '</tr>';
-
-    for (var i = 0; i < tickets.length; i++) {
-        var t = tickets[i];
-        var id = String(t.orderid || t.id || '');
-        var title = String(t.title || '');
-        var partner = getTicketPartner(t);
-        var sev = getSeverityLabel(t.severity || t.createticketlevel || '');
-        var rc = String(t.root_cause || '-');
-        var phase = String(t.operate_phase || t.current_phase || '-');
-        var aging = t.aging !== null && t.aging !== undefined ? parseFloat(t.aging).toFixed(1) : calculateAgingDays(t.createtime, t.closetime, t.lastupdatetime, t.operate_time, t.ticketstatus).toFixed(1);
-        var status = String(t.ticketstatus || 'Open');
-
-        html += '<tr>';
-        html += '<td>' + (i + 1) + '</td>';
-        html += '<td>' + id + '</td>';
-        html += '<td>' + title + '</td>';
-        html += '<td>' + partner + '</td>';
-        html += '<td>' + sev + '</td>';
-        html += '<td>' + rc + '</td>';
-        html += '<td>' + phase + '</td>';
-        html += '<td>' + aging + '</td>';
-        html += '<td>' + status + '</td>';
-        html += '</tr>';
-    }
-
-    html += '</table></body></html>';
-
-    var blob = new Blob(['\uFEFF' + html], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;' });
-    var url = URL.createObjectURL(blob);
-    var link = document.createElement('a');
-    link.setAttribute('href', url);
-    link.setAttribute('download', 'Problem_Tickets_Report_' + new Date().toISOString().slice(0, 10) + '.xlsx');
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
 }
 
 function renderTicketsData(tickets, dateFilteredTickets) {
@@ -659,8 +606,13 @@ function renderCurrentTicketsPage() {
     var pag = window.ticketsPagination;
     var tickets = pag.tickets || [];
 
-    // Always inject search bar & export button header directly into ticketSearchContainer
-    renderSearchBar();
+    var searchHtml =
+        '<div style="padding: 12px 16px; border-bottom: 1px solid #27272a; display: flex; gap: 10px; align-items: center;">' +
+        '  <input type="text" id="customTicketSearchInput" placeholder="Search by Ticket ID, Title, Operator..." ' +
+        '    value="' + (document.getElementById('customTicketSearchInput')?.value || '') + '" ' +
+        '    style="flex: 1; background-color: #0d0d10; border: 1px solid #27272a; border-radius: 6px; padding: 8px 12px; color: #e4e4e7; font-size: 13px; outline: none;" ' +
+        '    oninput="handleTicketSearch(this.value)">' +
+        '</div>';
 
     if (tickets.length === 0) {
         container.innerHTML = '<div style="color: #6c757d; padding: 12px;">No tickets found for the selected date range.</div>';
@@ -1879,10 +1831,10 @@ function initDetailModalDOM() {
         '.custom-badge-sev-major { background-color: #382a0f !important; color: #e3b341 !important; border: 1px solid #b58900 !important; } ' +
         '.custom-badge-sev-minor { background-color: #132d15 !important; color: #56d364 !important; border: 1px solid #238636 !important; } ' +
         '.custom-badge-status { display: inline-block; padding: 3px 10px; border-radius: 12px; font-weight: 700; font-size: 10px; text-transform: uppercase; } ' +
-        '.custom-badge-open { background-color: #da3633 !important; color: #ffffff !important; } ' +
+        '.custom-badge-open { background-color: #d29922 !important; color: #09090b !important; } ' +
         '.custom-badge-pending { background-color: #d15704 !important; color: #ffffff !important; } ' +
         '.custom-badge-closed { background-color: #238636 !important; color: #ffffff !important; } ' +
-        '.custom-badge-canceled { background-color: #6e7681 !important; color: #ffffff !important; }';
+        '.custom-badge-canceled { background-color: #da3633 !important; color: #ffffff !important; }';
     document.head.appendChild(dynamicStyle);
 
     var modalDiv = document.createElement('div');
@@ -2139,5 +2091,7 @@ window.changeTicketsPageSize = changeTicketsPageSize;
 window.showTicketDetailModal = showTicketDetailModal;
 window.closeTicketDetailModal = closeTicketDetailModal;
 window.startLiveClock = startLiveClock;
-window.exportFilteredTicketsXLSX = exportFilteredTicketsXLSX;
+window.isTicketAccepted = isTicketAccepted;
+window.isTicketClosed = isTicketClosed;
+window.getConfirmSubmitTime = getConfirmSubmitTime;
 window.handleTicketSearch = handleTicketSearch;
