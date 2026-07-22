@@ -452,7 +452,7 @@
 
         window.MessageProcessor = {
             process: function(options) {
-                fetch('tickets_data.csv')
+                fetch('tickets_data.csv?v=' + Date.now())
                     .then(response => response.text())
                     .then(text => {
                         const parsed = parseCSV(text);
