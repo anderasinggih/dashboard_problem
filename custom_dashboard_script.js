@@ -1,15 +1,13 @@
 function getTicketPartner(item) {
     if (!item) return 'Others';
 
-    // Strict Mapping: HANYA membaca dari kolom resmi OWS (tanpa tebak-tebakan kata di title/description)
-    var rawParty = item.problem_responsible_party || item.problemresponsibleparty || item['Problem Responsible Party'] || item.role_project_name || item.createptassignto || '';
-    rawParty = String(rawParty).trim();
-
+    // 100% Strict Mapping: HANYA membaca dari kolom resmi vendor di OWS Database
+    var rawParty = String(item.problem_responsible_party || item.createptassignto || '').trim();
     if (!rawParty) return 'Others';
 
     var lower = rawParty.toLowerCase();
     
-    // Check resmi berdasarkan identifier vendor
+    // Exact vendor identifier checks
     if (lower.indexOf('telkom') !== -1 || lower.indexOf('akses') !== -1) {
         return 'Telkom Akses';
     } else if (lower.indexOf('mandau') !== -1 || lower.indexOf('group:pm') !== -1 || lower === 'pm') {
@@ -78,7 +76,7 @@ function getSeverityLabel(rawStr) {
 }
 
 /**
- * Returns canonical root cause label from raw root_cause/rootcause/cause field value.
+ * Returns canonical root cause label from raw root_cause field value.
  * @param {string} rawStr
  * @returns {'Environment'|'Transmission'|'Power'|'Hardware'|'Others'}
  */
@@ -99,7 +97,7 @@ function getRootCauseLabel(rawStr) {
 }
 
 /**
- * Returns canonical status category from raw ticketstatus/status field value.
+ * Returns canonical status category from raw ticketstatus field value.
  * @param {string} rawStr
  * @returns {'open'|'pending'|'closed'|'unknown'}
  */
@@ -169,10 +167,7 @@ function getWeekRangeString(wLabel, tickets) {
 var _echartsResizeHandlers = {};
 
 // ─────────────────────────────────────────────────────────────────────────────
-// AUTO-PAGINATION ENGINE
-// OWS API hard limit = 1000 per call. This engine fetches pages sequentially
-// (start=0 → 1000 → 2000 → ...) until the returned page is < 1000 records,
-// then merges all pages into a single complete dataset.
+// AUTO-PAGINATION ENGINE & STRICT DATA THINNING
 // ─────────────────────────────────────────────────────────────────────────────
 
 var PAGE_LIMIT = 1000; // OWS max — never exceed this
@@ -196,30 +191,30 @@ function callOWSPage(startDate, endDate, party, startOffset, onSuccess, onError)
 
 function sanitizeTicket(raw) {
     if (!raw || typeof raw !== 'object') return raw;
-    // Client-side Data Thinning: Keep ONLY essential fields matching real OWS JSON structure
+    // 100% Strict Field Mapping (Menggunakan nama kolom resmi OWS Database)
     return {
-        orderid: raw.orderid || raw.keycode || raw.id || raw.code || '',
-        title: raw.title || raw.problem_name || raw.description || '',
-        ticketstatus: raw.ticketstatus || raw.status || raw.active_status || '',
-        severity: raw.severity || raw.createticketlevel || raw.priority || '',
+        orderid: raw.orderid || raw.keycode || '',
+        title: raw.title || '',
+        ticketstatus: raw.ticketstatus || '',
+        severity: raw.severity || raw.createticketlevel || '',
         createticketlevel: raw.createticketlevel || '',
-        root_cause: raw.root_cause || raw.rootcause || raw.cause || raw.analyzecause || raw.implementcauseres || '',
-        operate_phase: raw.current_phase || raw.operate_phase || raw.phase || raw.state || '',
+        root_cause: raw.root_cause || raw.analyzecause || '',
+        operate_phase: raw.current_phase || raw.operate_phase || '',
         current_phase: raw.current_phase || raw.operate_phase || '',
-        problem_responsible_party: raw.problem_responsible_party || raw.problemresponsibleparty || raw['Problem Responsible Party'] || raw.role_project_name || '',
+        problem_responsible_party: raw.problem_responsible_party || raw.createptassignto || '',
         createptproblemdes: raw.createptproblemdes || '',
         createptassignto: raw.createptassignto || '',
         currentoperator: raw.currentoperator || '',
         originator: raw.originator || '',
-        createtime: raw.createtime || raw.createfirstoccurtime || raw.operate_time || '',
-        closetime: raw.closetime || raw.closure_time || '',
+        createtime: raw.createtime || raw.createfirstoccurtime || '',
+        closetime: raw.closetime || '',
         lastupdatetime: raw.lastupdatetime || '',
         operate_time: raw.operate_time || '',
-        aging: raw.aging || raw.aging_days || raw.days || null,
-        over_sla: raw.over_sla || raw.sla_over || raw.is_over_sla || null,
+        aging: raw.aging !== undefined ? raw.aging : null,
+        over_sla: raw.over_sla !== undefined ? raw.over_sla : null,
         slastatus: raw.slastatus || '',
-        'Accept or Not(Confirm PT)': raw['Accept or Not(Confirm PT)'] || raw.confirmaccept || raw.accept_or_not_confirm_pt || raw.acceptornotconfirmpt || raw.accept_or_not || '',
-        'SubmitTime(Confirm PT)': raw['SubmitTime(Confirm PT)'] || raw.pt14_submittime || raw.submittime_confirm_pt || raw.submittimeconfirmpt || raw.submit_time_confirm || ''
+        'Accept or Not(Confirm PT)': raw.confirmaccept || raw['Accept or Not(Confirm PT)'] || '',
+        'SubmitTime(Confirm PT)': raw.pt14_submittime || raw['SubmitTime(Confirm PT)'] || ''
     };
 }
 
