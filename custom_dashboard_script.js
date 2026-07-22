@@ -72,9 +72,9 @@ function calculateAgingDays(createTimeStr, closeTimeStr, lastUpdateTimeStr, oper
 
 // OWS severity UUID constants (from createticketlevel field)
 var SEV_UUID_EMERGENCY = '507';
-var SEV_UUID_CRITICAL  = '508';
-var SEV_UUID_MAJOR     = '50c';
-var SEV_UUID_MINOR     = '1029';
+var SEV_UUID_CRITICAL = '508';
+var SEV_UUID_MAJOR = '50c';
+var SEV_UUID_MINOR = '1029';
 
 /**
  * Returns canonical severity label from any raw OWS severity/createticketlevel value.
@@ -85,8 +85,8 @@ var SEV_UUID_MINOR     = '1029';
 function getSeverityLabel(rawStr) {
     var s = String(rawStr || '').toLowerCase();
     if (s.indexOf(SEV_UUID_EMERGENCY) !== -1 || s.indexOf('emergency') !== -1 || s === '1') return 'Emergency';
-    if (s.indexOf(SEV_UUID_CRITICAL)  !== -1 || s.indexOf('critical')  !== -1 || s === '2') return 'Critical';
-    if (s.indexOf(SEV_UUID_MAJOR)     !== -1 || s.indexOf('major')     !== -1 || s === '3') return 'Major';
+    if (s.indexOf(SEV_UUID_CRITICAL) !== -1 || s.indexOf('critical') !== -1 || s === '2') return 'Critical';
+    if (s.indexOf(SEV_UUID_MAJOR) !== -1 || s.indexOf('major') !== -1 || s === '3') return 'Major';
     return 'Minor'; // default
 }
 
@@ -118,9 +118,9 @@ function getRootCauseLabel(rawStr) {
  */
 function getStatusCategory(rawStr) {
     var s = String(rawStr || '').toLowerCase();
-    if (s === 'running' || s === 'open'    || s === 'true'  || s === '1') return 'open';
-    if (s === 'pending' || s === 'in progress')                            return 'pending';
-    if (s === 'closed'  || s === 'completed' || s === 'false' || s === '0') return 'closed';
+    if (s === 'running' || s === 'open' || s === 'true' || s === '1') return 'open';
+    if (s === 'pending' || s === 'in progress') return 'pending';
+    if (s === 'closed' || s === 'completed' || s === 'false' || s === '0') return 'closed';
     return 'unknown';
 }
 
@@ -172,10 +172,10 @@ function getWeekRangeString(wLabel, tickets) {
     var jan4Day = jan4.getDay() || 7;
     var mondayOfW1 = new Date(jan4.getTime() - (jan4Day - 1) * 86400000);
     var startOfWeek = new Date(mondayOfW1.getTime() + (num - 1) * 7 * 86400000);
-    var endOfWeek   = new Date(startOfWeek.getTime() + 6 * 86400000);
-    var mo = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    var endOfWeek = new Date(startOfWeek.getTime() + 6 * 86400000);
+    var mo = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
     return startOfWeek.getDate() + ' ' + mo[startOfWeek.getMonth()] + ' - ' +
-           endOfWeek.getDate()   + ' ' + mo[endOfWeek.getMonth()] + ' ' + endOfWeek.getFullYear();
+        endOfWeek.getDate() + ' ' + mo[endOfWeek.getMonth()] + ' ' + endOfWeek.getFullYear();
 }
 
 // Registered ECharts resize handlers keyed by containerId — prevents listener accumulation on re-renders
@@ -413,7 +413,23 @@ window.ticketsPagination = {
     pageSize: 10
 };
 
+function renderSearchBar() {
+    var container = document.getElementById('ticketSearchContainer');
+    if (!container) return;
+    if (!document.getElementById('customTicketSearchInput')) {
+        var html = '<div style="padding: 12px 16px; border-bottom: 1px solid #27272a; display: flex; gap: 10px; align-items: center;">';
+        html += '  <input type="text" id="customTicketSearchInput" placeholder="Search by Ticket ID, Title, Operator..." ';
+        html += '    style="flex: 1; background-color: #0d0d10; border: 1px solid #27272a; border-radius: 6px; padding: 8px 12px; color: #e4e4e7; font-size: 13px; outline: none; transition: border-color 0.2s;" ';
+        html += '    oninput="handleTicketSearch(this.value)">';
+        html += '</div>';
+        container.innerHTML = html;
+    }
+}
+
 function renderTicketsData(tickets, dateFilteredTickets) {
+    // Inject search bar into placeholder div dynamically from JS
+    renderSearchBar();
+
     // Simpan data asli hasil filter tanggal+party untuk pencarian
     window.activeFilteredTickets = tickets || [];
 
@@ -446,6 +462,14 @@ function renderCurrentTicketsPage() {
 
     var pag = window.ticketsPagination;
     var tickets = pag.tickets || [];
+
+    var searchHtml =
+        '<div style="padding: 12px 16px; border-bottom: 1px solid #27272a; display: flex; gap: 10px; align-items: center;">' +
+        '  <input type="text" id="customTicketSearchInput" placeholder="Search by Ticket ID, Title, Operator..." ' +
+        '    value="' + (document.getElementById('customTicketSearchInput')?.value || '') + '" ' +
+        '    style="flex: 1; background-color: #0d0d10; border: 1px solid #27272a; border-radius: 6px; padding: 8px 12px; color: #e4e4e7; font-size: 13px; outline: none;" ' +
+        '    oninput="handleTicketSearch(this.value)">' +
+        '</div>';
 
     if (tickets.length === 0) {
         container.innerHTML = '<div style="color: #6c757d; padding: 12px;">No tickets found for the selected date range.</div>';
@@ -491,9 +515,9 @@ function renderCurrentTicketsPage() {
         // Map Status — uses getStatusCategory() helper
         var statusCat = getStatusCategory(status);
         var statusClass = statusCat === 'open' ? 'custom-badge-open'
-                        : statusCat === 'pending' ? 'custom-badge-pending'
-                        : statusCat === 'closed' ? 'custom-badge-closed'
-                        : 'custom-badge-open';
+            : statusCat === 'pending' ? 'custom-badge-pending'
+                : statusCat === 'closed' ? 'custom-badge-closed'
+                    : 'custom-badge-open';
 
         var displayNo = startIdx + i + 1;
         var rc = item.root_cause || item.rootcause || item.cause || '-';
@@ -1049,9 +1073,9 @@ function renderTrendsAndCompliance(weeklyTrendTickets, rootCauseTickets, complia
     // (IJE, Surge removed — they are never returned by getTicketPartner and always show 0)
     var complianceData = [
         { party: 'Telkom Akses', total: 0, within: 0, over: 0, ach: '0.0%' },
-        { party: 'Mandau',       total: 0, within: 0, over: 0, ach: '0.0%' },
-        { party: 'Persada',      total: 0, within: 0, over: 0, ach: '0.0%' },
-        { party: 'Others',       total: 0, within: 0, over: 0, ach: '0.0%' }
+        { party: 'Mandau', total: 0, within: 0, over: 0, ach: '0.0%' },
+        { party: 'Persada', total: 0, within: 0, over: 0, ach: '0.0%' },
+        { party: 'Others', total: 0, within: 0, over: 0, ach: '0.0%' }
     ];
 
     var weeklyMap = {};
@@ -1073,7 +1097,7 @@ function renderTrendsAndCompliance(weeklyTrendTickets, rootCauseTickets, complia
         compTickets.forEach(function (t) {
             var partner = getTicketPartner(t);
             var compObj = complianceData.find(function (c) { return c.party === partner; })
-                       || complianceData.find(function (c) { return c.party === 'Others'; });
+                || complianceData.find(function (c) { return c.party === 'Others'; });
             if (compObj) {
                 compObj.total++;
                 var isOver = t.over_sla || t.sla_over || t.is_over_sla;
@@ -1692,14 +1716,14 @@ function showTicketDetailModal(ticketId) {
 
     // Use centralised helpers (same as table row rendering)
     var sevLabel = getSeverityLabel(ticket.severity || ticket.createticketlevel || '');
-    var sevClass  = 'custom-badge-sev-' + sevLabel.toLowerCase();
+    var sevClass = 'custom-badge-sev-' + sevLabel.toLowerCase();
 
     var rc = ticket.root_cause || ticket.rootcause || ticket.cause || '-';
 
     var statusCatModal = getStatusCategory(status);
     var statusClass = statusCatModal === 'pending' ? 'custom-badge-pending'
-                    : statusCatModal === 'closed'  ? 'custom-badge-closed'
-                    : 'custom-badge-open';
+        : statusCatModal === 'closed' ? 'custom-badge-closed'
+            : 'custom-badge-open';
 
     var html = '<div style="margin-bottom:16px;">';
     html += '  <h4 style="margin:0 0 6px 0; color:#f0f6fc; font-size:15px; font-weight:600;">' + title + '</h4>';
