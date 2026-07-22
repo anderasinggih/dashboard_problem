@@ -50,17 +50,34 @@ var SEV_UUID_MAJOR = '50c';
 var SEV_UUID_MINOR = '1029';
 
 /**
- * Returns canonical severity label from any raw OWS severity/createticketlevel value.
- * Handles: UUID substrings, text names, numeric codes (1-4).
- * @param {string} rawStr
- * @returns {'Emergency'|'Critical'|'Major'|'Minor'}
+ * Extracts raw text from OWS complex field types (Array of Objects, Objects, or Strings).
+ * Safely unpacks OWS structures like [{ text: "Major", value: "Major" }] or { local: "2026-06-25" }.
+ * @param {any} val
+ * @returns {string}
  */
-function getSeverityLabel(rawStr) {
-    var s = String(rawStr || '').toLowerCase();
+function extractOWSField(val) {
+    if (val === null || val === undefined) return '';
+    if (typeof val === 'string') return val;
+    if (typeof val === 'number' || typeof val === 'boolean') return String(val);
+    if (Array.isArray(val) && val.length > 0) {
+        var item = val[0];
+        if (typeof item === 'object' && item !== null) {
+            return item.text || item.value || item.name || item.label || '';
+        }
+        return String(item);
+    }
+    if (typeof val === 'object') {
+        return val.text || val.value || val.local || val.utc || val.name || val.label || '';
+    }
+    return String(val);
+}
+
+function getSeverityLabel(rawVal) {
+    var s = extractOWSField(rawVal).toLowerCase();
     if (s.indexOf(SEV_UUID_EMERGENCY) !== -1 || s.indexOf('emergency') !== -1 || s === '1') return 'Emergency';
     if (s.indexOf(SEV_UUID_CRITICAL) !== -1 || s.indexOf('critical') !== -1 || s === '2') return 'Critical';
     if (s.indexOf(SEV_UUID_MAJOR) !== -1 || s.indexOf('major') !== -1 || s === '3') return 'Major';
-    return 'Minor'; // default
+    return 'Minor';
 }
 
 /**
@@ -179,33 +196,39 @@ function callOWSPage(startDate, endDate, party, startOffset, onSuccess, onError)
 
 function sanitizeTicket(raw) {
     if (!raw || typeof raw !== 'object') return raw;
-    var sevRaw = raw.severity || raw.createticketlevel || '';
-    var slaStat = raw.slastatus || '';
+    var sevRaw = extractOWSField(raw.severity || raw.createticketlevel || '');
+    var slaStat = extractOWSField(raw.slastatus || '');
     var isOver = raw.over_sla !== undefined && raw.over_sla !== null ? raw.over_sla : (String(slaStat).toLowerCase() === 'sla_violation' || String(slaStat).toLowerCase() === 'over');
 
+    var createTimeStr = extractOWSField(raw.createtime || raw.createfirstoccurtime || '');
+    var closeTimeStr = extractOWSField(raw.closetime || '');
+    var lastUpdateStr = extractOWSField(raw.lastupdatetime || '');
+    var operateTimeStr = extractOWSField(raw.operate_time || '');
+    var respStr = extractOWSField(raw.responsibility || raw.problem_responsible_party || '');
+
     return {
-        orderid: raw.orderid || raw.keycode || '',
+        orderid: raw.orderid || raw.keycode || raw.id || '',
         title: raw.title || '',
-        ticketstatus: raw.ticketstatus || '',
+        ticketstatus: extractOWSField(raw.ticketstatus || raw.status || ''),
         severity: sevRaw,
-        createticketlevel: raw.createticketlevel || '',
-        root_cause: raw.root_cause || raw.analyzecause || '',
-        operate_phase: raw.current_phase || raw.operate_phase || '',
-        current_phase: raw.current_phase || raw.operate_phase || '',
-        responsibility: raw.responsibility || raw.problem_responsible_party || '',
-        createptproblemdes: raw.createptproblemdes || '',
-        createptassignto: raw.createptassignto || '',
-        currentoperator: raw.currentoperator || '',
-        originator: raw.originator || '',
-        createtime: raw.createtime || raw.createfirstoccurtime || '',
-        closetime: raw.closetime || '',
-        lastupdatetime: raw.lastupdatetime || '',
-        operate_time: raw.operate_time || '',
+        createticketlevel: sevRaw,
+        root_cause: extractOWSField(raw.root_cause || raw.analyzecause || ''),
+        operate_phase: extractOWSField(raw.current_phase || raw.operate_phase || ''),
+        current_phase: extractOWSField(raw.current_phase || raw.operate_phase || ''),
+        responsibility: respStr,
+        createptproblemdes: raw.createptproblemdes || raw.procfaultreasondes || '',
+        createptassignto: extractOWSField(raw.createptassignto || ''),
+        currentoperator: extractOWSField(raw.currentoperator || ''),
+        originator: extractOWSField(raw.originator || ''),
+        createtime: createTimeStr,
+        closetime: closeTimeStr,
+        lastupdatetime: lastUpdateStr,
+        operate_time: operateTimeStr,
         aging: raw.aging !== undefined ? raw.aging : null,
         over_sla: isOver,
         slastatus: slaStat,
-        confirmaccept: raw.confirmaccept || '',
-        pt14_submittime: raw.pt14_submittime || ''
+        confirmaccept: extractOWSField(raw.confirmaccept || ''),
+        pt14_submittime: extractOWSField(raw.pt14_submittime || '')
     };
 }
 
