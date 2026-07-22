@@ -1721,24 +1721,23 @@ function showTicketDetailModal(ticketId) {
     var bodyContent = document.getElementById('customModalBodyContent');
     if (!bodyContent) return;
 
-    var status = ticket.ticketstatus || ticket.status || ticket.active_status || 'Open';
-    var title = ticket.title || ticket.problem_name || ticket.description || 'No Title';
-    var desc = ticket.createptproblemdes || ticket.problem_description || 'No Description';
+    var status = ticket.ticketstatus || 'Open';
+    var title = ticket.title || 'No Title';
+    var desc = ticket.createptproblemdes || 'No Description';
     var createTime = ticket.createtime || '-';
     var lastUpdate = ticket.lastupdatetime || '-';
     var closeTime = ticket.closetime || '-';
-    var phase = ticket.operate_phase || ticket.phase || ticket.current_phase || '-';
+    var phase = ticket.current_phase || ticket.operate_phase || '-';
     var assign = ticket.createptassignto || '-';
     var operator = ticket.currentoperator || '-';
     var originator = ticket.originator || '-';
 
-    var agingVal = ticket.aging || ticket.aging_days || ticket.days || calculateAgingDays(ticket.createtime, ticket.closetime, ticket.lastupdatetime, ticket.operate_time, status);
+    var agingVal = ticket.aging !== null && ticket.aging !== undefined ? ticket.aging : calculateAgingDays(ticket.createtime, ticket.closetime, ticket.lastupdatetime, ticket.operate_time, status);
 
-    // Use centralised helpers (same as table row rendering)
     var sevLabel = getSeverityLabel(ticket.severity || ticket.createticketlevel || '');
     var sevClass = 'custom-badge-sev-' + sevLabel.toLowerCase();
 
-    var rc = ticket.root_cause || ticket.rootcause || ticket.cause || '-';
+    var rc = ticket.root_cause || '-';
 
     var statusCatModal = getStatusCategory(status);
     var statusClass = statusCatModal === 'pending' ? 'custom-badge-pending'
@@ -1833,16 +1832,6 @@ function closeTicketDetailModal() {
     }
 }
 
-// Bind functions to window object explicitly to bypass GDE's private scope wrapper
-window.applyDateFilter = applyDateFilter;
-window.resetDateFilter = resetDateFilter;
-window.prevTicketsPage = prevTicketsPage;
-window.nextTicketsPage = nextTicketsPage;
-window.gotoTicketsPage = gotoTicketsPage;
-window.changeTicketsPageSize = changeTicketsPageSize;
-window.showTicketDetailModal = showTicketDetailModal;
-window.closeTicketDetailModal = closeTicketDetailModal;
-
 function startLiveClock() {
     function updateClock() {
         var el = document.querySelector('.custom-dashboard-wrapper .custom-header-subtitle') || document.getElementById('liveTickerClock');
@@ -1874,18 +1863,17 @@ function startLiveClock() {
     updateClock();
     setInterval(updateClock, 1000);
 }
-window.startLiveClock = startLiveClock;
 
 function isTicketAccepted(t) {
     if (!t) return false;
-    var val = t['Accept or Not(Confirm PT)'] || t.accept_or_not_confirm_pt || t.acceptornotconfirmpt || t.accept_or_not || t.acceptornot || t.confirm_status || '';
+    var val = t['Accept or Not(Confirm PT)'] || t.confirmaccept || '';
     val = String(val).toLowerCase();
     return val === 'accept' || val === 'accepted' || val === 'yes' || val === 'true';
 }
 
 function isTicketClosed(t) {
     if (!t) return false;
-    var statusRaw = String(t.ticketstatus || t.status || '').toLowerCase();
+    var statusRaw = String(t.ticketstatus || '').toLowerCase();
     if (statusRaw === 'closed' || statusRaw === 'completed' || statusRaw === 'false' || statusRaw === '0') {
         return true;
     }
@@ -1894,15 +1882,10 @@ function isTicketClosed(t) {
 
 function getConfirmSubmitTime(t) {
     if (!t) return null;
-    var val = t['SubmitTime(Confirm PT)'] || t.submittime_confirm_pt || t.submittimeconfirmpt || t.submit_time_confirm || t.confirm_submit_time || '';
+    var val = t['SubmitTime(Confirm PT)'] || t.pt14_submittime || '';
     if (val) return val;
-    return t.closetime || t.closure_time || t.lastupdatetime || t.operate_time || t.createtime;
+    return t.closetime || t.lastupdatetime || t.operate_time || t.createtime;
 }
-
-window.isTicketAccepted = isTicketAccepted;
-window.isTicketClosed = isTicketClosed;
-window.getConfirmSubmitTime = getConfirmSubmitTime;
-window.startLiveClock = startLiveClock;
 
 function handleTicketSearch(query) {
     var rawList = window.activeFilteredTickets || [];
@@ -1927,6 +1910,18 @@ function handleTicketSearch(query) {
     window.ticketsPagination.currentPage = 1;
     renderCurrentTicketsPage();
 }
-window.handleTicketSearch = handleTicketSearch;
 
-// Theme toggle functions removed
+// Global Explicit Window Exports for GDE Scope Bypass
+window.applyDateFilter = applyDateFilter;
+window.resetDateFilter = resetDateFilter;
+window.prevTicketsPage = prevTicketsPage;
+window.nextTicketsPage = nextTicketsPage;
+window.gotoTicketsPage = gotoTicketsPage;
+window.changeTicketsPageSize = changeTicketsPageSize;
+window.showTicketDetailModal = showTicketDetailModal;
+window.closeTicketDetailModal = closeTicketDetailModal;
+window.startLiveClock = startLiveClock;
+window.isTicketAccepted = isTicketAccepted;
+window.isTicketClosed = isTicketClosed;
+window.getConfirmSubmitTime = getConfirmSubmitTime;
+window.handleTicketSearch = handleTicketSearch;
