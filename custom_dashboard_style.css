@@ -239,13 +239,13 @@
 }
 
 .custom-icon-canceled {
-  background-color: rgba(110, 118, 129, 0.15);
-  color: #8b949e;
-  border: 1px solid rgba(110, 118, 129, 0.3);
+  background-color: rgba(218, 54, 51, 0.15);
+  color: #ff7b72;
+  border: 1px solid rgba(218, 54, 51, 0.4);
 }
 
 .custom-text-muted {
-  color: #8b949e !important;
+  color: #ff7b72 !important;
 }
 
 /* Partner Card Styles */
