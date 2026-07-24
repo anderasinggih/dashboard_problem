@@ -1,0 +1,424 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Problem Management Dashboard - Sandbox</title>
+    <!-- Google Fonts: Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <!-- Load custom styles -->
+    <link rel="stylesheet" href="custom_dashboard_style.css">
+    <!-- Load ECharts from CDN for local rendering -->
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+        body {
+            background-color: #09090b;
+            margin: 0;
+            padding: 16px;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            color: #e4e4e7;
+        }
+        /* Sandbox Indicator Badge */
+        .sandbox-info-banner {
+            background: #18181b;
+            border: 1px solid #27272a;
+            color: #a1a1aa;
+            padding: 10px 16px;
+            border-radius: 8px;
+            margin-bottom: 16px;
+            font-size: 12px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .sandbox-info-banner strong {
+            color: #fafafa;
+        }
+        .sandbox-badge {
+            background: #27272a;
+            color: #58a6ff;
+            font-size: 11px;
+            font-weight: 700;
+            padding: 4px 10px;
+            border-radius: 12px;
+            border: 1px solid #388bfd33;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Sandbox Indicator -->
+    <div class="sandbox-info-banner">
+        <div>
+            🧪 <strong>Local Sandbox Mode:</strong> Membaca data <code>tickets_data.csv</code> via <strong>Local RunScript Engine</strong>. Terisolasi di folder <code>sandbox_local/</code>.
+        </div>
+        <div class="sandbox-badge">Local Engine Active</div>
+    </div>
+
+    <!-- Main Dashboard Wrapper -->
+    <div class="custom-dashboard-wrapper">
+        <!-- Header Bar -->
+        <div class="custom-dashboard-header">
+            <div class="custom-header-info">
+                <h1 class="custom-header-title">PROBLEM MANAGEMENT DASHBOARD</h1>
+                <p class="custom-header-subtitle" id="liveTickerClock">Real-time enterprise monitoring & ticket tracking (Local Sandbox)</p>
+            </div>
+        </div>
+
+        <!-- Date Filter Container Placeholder -->
+        <div id="customFilterContainer"></div>
+
+        <!-- 1. STATISTIC CARDS -->
+        <div class="custom-card-grid">
+            <!-- Card: Total PT -->
+            <div class="custom-stat-card">
+                <div class="custom-stat-left">
+                    <div class="custom-icon-wrapper custom-icon-total">Σ</div>
+                </div>
+                <div class="custom-stat-right">
+                    <div class="custom-stat-title">TOTAL PT</div>
+                    <div class="custom-stat-number" id="statTotal">0</div>
+                </div>
+            </div>
+
+            <!-- Card: Open PT -->
+            <div class="custom-stat-card">
+                <div class="custom-stat-left">
+                    <div class="custom-icon-wrapper custom-icon-open">●</div>
+                </div>
+                <div class="custom-stat-right">
+                    <div class="custom-stat-title">OPEN PT</div>
+                    <div class="custom-stat-number custom-text-danger" id="statOpen">0</div>
+                </div>
+            </div>
+
+            <!-- Card: Pending PT -->
+            <div class="custom-stat-card">
+                <div class="custom-stat-left">
+                    <div class="custom-icon-wrapper custom-icon-pending">◷</div>
+                </div>
+                <div class="custom-stat-right">
+                    <div class="custom-stat-title">PENDING PT</div>
+                    <div class="custom-stat-number custom-text-warning" id="statInProgress">0</div>
+                </div>
+            </div>
+
+            <!-- Card: Closed PT -->
+            <div class="custom-stat-card">
+                <div class="custom-stat-left">
+                    <div class="custom-icon-wrapper custom-icon-closed">✓</div>
+                </div>
+                <div class="custom-stat-right">
+                    <div class="custom-stat-title">CLOSED PT</div>
+                    <div class="custom-stat-number custom-text-success" id="statClosed">0</div>
+                </div>
+            </div>
+
+            <!-- Card: Canceled PT -->
+            <div class="custom-stat-card">
+                <div class="custom-stat-left">
+                    <div class="custom-icon-wrapper custom-icon-canceled">✕</div>
+                </div>
+                <div class="custom-stat-right">
+                    <div class="custom-stat-title">CANCELED PT</div>
+                    <div class="custom-stat-number custom-text-muted" id="statCanceled">0</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 2. PARTNER CARDS -->
+        <div class="custom-card-grid" style="margin-top: 16px;">
+            <!-- Partner Card: Telkom Akses -->
+            <div class="custom-partner-card">
+                <div class="custom-partner-logo">
+                    <span class="custom-logo-telkom-red">Telkom</span><span class="custom-logo-telkom-black">Akses</span>
+                </div>
+                <div class="custom-partner-metrics">
+                    <div class="custom-metric-col">
+                        <div class="custom-metric-label">Open PT</div>
+                        <div class="custom-metric-val" id="taOpen">0</div>
+                    </div>
+                    <div class="custom-metric-col">
+                        <div class="custom-metric-label">Pending PT</div>
+                        <div class="custom-metric-val" id="taPending">0</div>
+                    </div>
+                    <div class="custom-metric-col">
+                        <div class="custom-metric-label">Closed PT</div>
+                        <div class="custom-metric-val" id="taClosed">0</div>
+                    </div>
+                    <div class="custom-metric-col">
+                        <div class="custom-metric-label">Canceled PT</div>
+                        <div class="custom-metric-val" id="taCanceled">0</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Partner Card: Mandau -->
+            <div class="custom-partner-card">
+                <div class="custom-partner-logo">
+                    <span class="custom-logo-mandau">mandau</span>
+                </div>
+                <div class="custom-partner-metrics">
+                    <div class="custom-metric-col">
+                        <div class="custom-metric-label">Open PT</div>
+                        <div class="custom-metric-val" id="mOpen">0</div>
+                    </div>
+                    <div class="custom-metric-col">
+                        <div class="custom-metric-label">Pending PT</div>
+                        <div class="custom-metric-val" id="mPending">0</div>
+                    </div>
+                    <div class="custom-metric-col">
+                        <div class="custom-metric-label">Closed PT</div>
+                        <div class="custom-metric-val" id="mClosed">0</div>
+                    </div>
+                    <div class="custom-metric-col">
+                        <div class="custom-metric-label">Canceled PT</div>
+                        <div class="custom-metric-val" id="mCanceled">0</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Partner Card: Persada -->
+            <div class="custom-partner-card">
+                <div class="custom-partner-logo">
+                    <span class="custom-logo-persada">PERSADA</span>
+                </div>
+                <div class="custom-partner-metrics">
+                    <div class="custom-metric-col">
+                        <div class="custom-metric-label">Open PT</div>
+                        <div class="custom-metric-val" id="pOpen">0</div>
+                    </div>
+                    <div class="custom-metric-col">
+                        <div class="custom-metric-label">Pending PT</div>
+                        <div class="custom-metric-val" id="pPending">0</div>
+                    </div>
+                    <div class="custom-metric-col">
+                        <div class="custom-metric-label">Closed PT</div>
+                        <div class="custom-metric-val" id="pClosed">0</div>
+                    </div>
+                    <div class="custom-metric-col">
+                        <div class="custom-metric-label">Canceled PT</div>
+                        <div class="custom-metric-val" id="pCanceled">0</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Partner Card: Others -->
+            <div class="custom-partner-card">
+                <div class="custom-partner-logo">
+                    <span style="color: #a1a1aa; font-weight: 700;">OTHERS</span>
+                </div>
+                <div class="custom-partner-metrics">
+                    <div class="custom-metric-col">
+                        <div class="custom-metric-label">Open PT</div>
+                        <div class="custom-metric-val" id="othOpen">0</div>
+                    </div>
+                    <div class="custom-metric-col">
+                        <div class="custom-metric-label">Pending PT</div>
+                        <div class="custom-metric-val" id="othPending">0</div>
+                    </div>
+                    <div class="custom-metric-col">
+                        <div class="custom-metric-label">Closed PT</div>
+                        <div class="custom-metric-val" id="othClosed">0</div>
+                    </div>
+                    <div class="custom-metric-col">
+                        <div class="custom-metric-label">Canceled PT</div>
+                        <div class="custom-metric-val" id="othCanceled">0</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 1. SEVERITY OVERVIEW (SLA BASED) PANEL -->
+        <div class="custom-panel-card" style="margin-top: 24px;">
+            <div class="custom-panel-header">
+                <span>1. SEVERITY OVERVIEW (SLA BASED)</span>
+            </div>
+            <div class="custom-panel-body" style="padding: 16px;">
+                <div class="custom-severity-grid">
+                    <!-- EMERGENCY -->
+                    <div class="custom-severity-card custom-border-emergency">
+                        <div class="custom-severity-title custom-text-emergency">EMERGENCY (SLA : 7 Days)</div>
+                        <div class="custom-severity-chart-row">
+                            <div class="custom-chart-container" id="chartEmergency"></div>
+                            <div class="custom-legend-container" id="legendEmergency"></div>
+                        </div>
+                        <table class="custom-severity-table">
+                            <thead>
+                                <tr><th>Total PT</th><th>Pending PT</th><th>Over SLA</th></tr>
+                            </thead>
+                            <tbody>
+                                <tr><td id="emergencyTotal">0</td><td id="emergencyPending" class="custom-text-danger">0</td><td id="emergencyOverSla" class="custom-text-danger">0</td></tr>
+                            </tbody>
+                        </table>
+                        <div class="custom-severity-footer custom-bg-emergency">SLA Time : 7 Days</div>
+                    </div>
+
+                    <!-- CRITICAL -->
+                    <div class="custom-severity-card custom-border-critical">
+                        <div class="custom-severity-title custom-text-critical">CRITICAL (SLA : 15 Days)</div>
+                        <div class="custom-severity-chart-row">
+                            <div class="custom-chart-container" id="chartCritical"></div>
+                            <div class="custom-legend-container" id="legendCritical"></div>
+                        </div>
+                        <table class="custom-severity-table">
+                            <thead>
+                                <tr><th>Total PT</th><th>Pending PT</th><th>Over SLA</th></tr>
+                            </thead>
+                            <tbody>
+                                <tr><td id="criticalTotal">0</td><td id="criticalPending" class="custom-text-danger">0</td><td id="criticalOverSla" class="custom-text-danger">0</td></tr>
+                            </tbody>
+                        </table>
+                        <div class="custom-severity-footer custom-bg-critical">SLA Time : 15 Days</div>
+                    </div>
+
+                    <!-- MAJOR -->
+                    <div class="custom-severity-card custom-border-major">
+                        <div class="custom-severity-title custom-text-major">MAJOR (SLA : 21 Days)</div>
+                        <div class="custom-severity-chart-row">
+                            <div class="custom-chart-container" id="chartMajor"></div>
+                            <div class="custom-legend-container" id="legendMajor"></div>
+                        </div>
+                        <table class="custom-severity-table">
+                            <thead>
+                                <tr><th>Total PT</th><th>Pending PT</th><th>Over SLA</th></tr>
+                            </thead>
+                            <tbody>
+                                <tr><td id="majorTotal">0</td><td id="majorPending" class="custom-text-danger">0</td><td id="majorOverSla" class="custom-text-danger">0</td></tr>
+                            </tbody>
+                        </table>
+                        <div class="custom-severity-footer custom-bg-major">SLA Time : 21 Days</div>
+                    </div>
+
+                    <!-- MINOR -->
+                    <div class="custom-severity-card custom-border-minor">
+                        <div class="custom-severity-title custom-text-minor">MINOR (SLA : 30 Days)</div>
+                        <div class="custom-severity-chart-row">
+                            <div class="custom-chart-container" id="chartMinor"></div>
+                            <div class="custom-legend-container" id="legendMinor"></div>
+                        </div>
+                        <table class="custom-severity-table">
+                            <thead>
+                                <tr><th>Total PT</th><th>Pending PT</th><th>Over SLA</th></tr>
+                            </thead>
+                            <tbody>
+                                <tr><td id="minorTotal">0</td><td id="minorPending" class="custom-text-danger">0</td><td id="minorOverSla" class="custom-text-danger">0</td></tr>
+                            </tbody>
+                        </table>
+                        <div class="custom-severity-footer custom-bg-minor">SLA Time : 30 Days</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 2. PHASE STATUS BY RESPONSIBILITY PARTY PANEL -->
+        <div class="custom-panel-card" style="margin-top: 24px;">
+            <div class="custom-panel-header">
+                <span>2. PHASE STATUS BY RESPONSIBILITY PARTY (Pending)</span>
+            </div>
+            <div class="custom-panel-body" style="padding: 16px; overflow-x: auto;">
+                <!-- Row 1: OVERALL SUMMARY (Full Width Top Row) -->
+                <div style="margin-bottom: 20px;">
+                    <div class="custom-phase-col" style="min-width: 100%;">
+                        <div class="custom-phase-col-header" style="font-weight:700; color:#fafafa; font-size:13px;">OVERALL SUMMARY</div>
+                        <div class="custom-phase-table-wrapper" id="tablePhaseOverall"></div>
+                    </div>
+                </div>
+
+                <!-- Row 2: PARTNERS (4-Column Grid Side-by-Side) -->
+                <div class="custom-phase-grid">
+                    <!-- TELKOM AKSES -->
+                    <div class="custom-phase-col">
+                        <div class="custom-phase-col-header">
+                            <span class="custom-logo-telkom-red">Telkom</span><span class="custom-logo-telkom-black">Akses</span>
+                        </div>
+                        <div class="custom-phase-table-wrapper" id="tablePhaseTelkom"></div>
+                    </div>
+
+                    <!-- MANDAU -->
+                    <div class="custom-phase-col">
+                        <div class="custom-phase-col-header">
+                            <span class="custom-logo-mandau">mandau</span>
+                        </div>
+                        <div class="custom-phase-table-wrapper" id="tablePhaseMandau"></div>
+                    </div>
+
+                    <!-- PERSADA -->
+                    <div class="custom-phase-col">
+                        <div class="custom-phase-col-header">
+                            <span class="custom-logo-persada">PERSADA</span>
+                        </div>
+                        <div class="custom-phase-table-wrapper" id="tablePhasePersada"></div>
+                    </div>
+
+                    <!-- OTHERS -->
+                    <div class="custom-phase-col">
+                        <div class="custom-phase-col-header">
+                            <span style="color: #a1a1aa; font-weight: 700;">OTHERS</span>
+                        </div>
+                        <div class="custom-phase-table-wrapper" id="tablePhaseOthers"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 3. WEEKLY TREND PANEL -->
+        <div class="custom-panel-card" style="margin-top: 24px;">
+            <div class="custom-panel-header">
+                <span>3. WEEKLY TREND</span>
+            </div>
+            <div class="custom-panel-body" style="padding: 16px; overflow-x: auto;">
+                <div id="chartWeeklyTrend" style="width: 100%; min-width: 1200px; height: 380px;"></div>
+            </div>
+        </div>
+
+        <!-- 4. TRENDS & SLA COMPLIANCE PANEL ROW -->
+        <div class="custom-trends-row" style="margin-top: 24px;">
+            <!-- TOP ROOT CAUSE -->
+            <div class="custom-panel-card custom-rootcause-card" style="flex: 1;">
+                <div class="custom-panel-header">
+                    <span>4. TOP ROOT CAUSE (ALL PT)</span>
+                </div>
+                <div class="custom-panel-body" style="padding: 16px;">
+                    <div id="chartTopRootCause" style="width: 100%; height: 280px;"></div>
+                </div>
+            </div>
+
+            <!-- SLA COMPLIANCE BY PARTY -->
+            <div class="custom-panel-card custom-compliance-card" style="flex: 1;">
+                <div class="custom-panel-header">
+                    <span>5. SLA COMPLIANCE BY PARTY</span>
+                </div>
+                <div class="custom-panel-body" style="padding: 12px; overflow-x: auto;">
+                    <div id="tableSlaCompliance"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 6. MAIN LIST PANEL (Problem Ticket List) -->
+        <div class="custom-panel-card" style="margin-top: 24px;">
+            <div class="custom-panel-header">
+                <span>6. PROBLEM TICKET LIST</span>
+            </div>
+            <div class="custom-panel-body">
+                <div id="ticketSearchContainer"></div>
+                <div id="ticketContainer">
+                    <div style="color: #6c757d; padding: 12px;">Memuat data tiket...</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 1. Load Local Sandbox RunScript Engine Mock -->
+    <script src="sandbox_run_script_engine.js"></script>
+
+    <!-- 2. Load Cloned Custom Dashboard Frontend Logic -->
+    <script src="custom_dashboard_script.js"></script>
+
+</body>
+</html>

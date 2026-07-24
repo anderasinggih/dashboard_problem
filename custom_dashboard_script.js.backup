@@ -195,8 +195,41 @@ var _echartsResizeHandlers = {};
 // ─────────────────────────────────────────────────────────────────────────────
 
 var PAGE_LIMIT = 1000;
-var OWS_SUMMARY_SERVICE_ID = '/adc-service/rest/v1/services/gde_dashboard/problem_ticket_dashboard/problem_ticket_getsummarysc';
-// var OWS_LIST_SERVICE_ID = '/adc-service/rest/v1/services/gde_dashboard/problem_ticket_dashboard/problem_ticket_tt_problem_ticket_get_list';
+var OWS_SUMMARY_SERVICE_ID = '/adc-service/rest/v1/services/gde_dashboard/problem_ticket_dashboard/problem_ticket_get_dashboard_summary';
+//var OWS_LIST_SERVICE_ID = '/adc-service/rest/v1/services/dashboard_problem_ticket_test/dashboard_problem_ticket_test/dashboard__problem_ticket';
+var OWS_LIST_SERVICE_ID = '/adc-service/rest/v1/services/gde_dashboard/problem_ticket_dashboard/problem_ticket_tt_problem_ticket_get_list'
+
+function callOWSSummary(startDate, endDate, party, onSuccess, onError) {
+    var requestData = {
+        "startDate": startDate || "2000-01-01 00:00:00",
+        "endDate": endDate || "2099-12-31 23:59:59",
+        "party": party || "ALL"
+    };
+    console.log('[SUMMARY] Fetching summary serviceId=' + OWS_SUMMARY_SERVICE_ID, requestData);
+    MessageProcessor.process({
+        serviceId: OWS_SUMMARY_SERVICE_ID,
+        data: requestData,
+        success: function (res) { onSuccess(res); },
+        error: function (err) { onError(err); }
+    });
+}
+
+function callOWSPage(startDate, endDate, party, startOffset, onSuccess, onError) {
+    var requestData = {
+        "start": startOffset,
+        "limit": PAGE_LIMIT,
+        "startDate": startDate || "2000-01-01 00:00:00",
+        "endDate": endDate || "2099-12-31 23:59:59",
+        "party": party || "ALL"
+    };
+    console.log('[PAGINATION] Fetching page start=' + startOffset, requestData);
+    MessageProcessor.process({
+        serviceId: OWS_LIST_SERVICE_ID,
+        data: requestData,
+        success: function (res) { onSuccess(res); },
+        error: function (err) { onError(err); }
+    });
+}
 
 function sanitizeTicket(raw) {
     if (!raw || typeof raw !== 'object') return raw;
@@ -247,6 +280,7 @@ function extractTickets(res) {
 
     if (!Array.isArray(rawList)) return [];
 
+    // Perform Data Thinning on every item
     var thinned = new Array(rawList.length);
     for (var i = 0; i < rawList.length; i++) {
         thinned[i] = sanitizeTicket(rawList[i]);
@@ -254,20 +288,31 @@ function extractTickets(res) {
     return thinned;
 }
 
-function callOWSSummary(startDate, endDate, party, onSuccess, onError) {
-    var requestData = {
-        "startDate": startDate || "",
-        "endDate": endDate || "",
-        "party": party || "ALL",
-        "start": 0,
-        "limit": 1000
-    };
-    console.log('[SUMMARY] Fetching summary serviceId=' + OWS_SUMMARY_SERVICE_ID, requestData);
-    MessageProcessor.process({
-        serviceId: OWS_SUMMARY_SERVICE_ID,
-        data: requestData,
-        success: function (res) { onSuccess(res); },
-        error: function (err) { onError(err); }
+function fetchAllPages(startDate, endDate, party, onComplete, onError, _accumulated, _offset) {
+    // Internal state
+    var accumulated = _accumulated || [];
+    var offset = _offset || 0;
+
+    if (typeof MessageProcessor === 'undefined') {
+        onError({ message: 'MessageProcessor OWS tidak ditemukan di browser context.' });
+        return;
+    }
+
+    callOWSPage(startDate, endDate, party, offset, function (res) {
+        var page = extractTickets(res);
+        accumulated = accumulated.concat(page);
+        console.log('[PAGINATION] Page start=' + offset + ' returned ' + page.length + ' records. Total so far: ' + accumulated.length);
+
+        if (page.length >= PAGE_LIMIT) {
+            // More pages may exist — fetch next
+            fetchAllPages(startDate, endDate, party, onComplete, onError, accumulated, offset + PAGE_LIMIT);
+        } else {
+            // Last page reached (returned fewer than PAGE_LIMIT)
+            console.log('[PAGINATION] All pages fetched. Grand total: ' + accumulated.length + ' records.');
+            onComplete(accumulated);
+        }
+    }, function (err) {
+        onError(err);
     });
 }
 
@@ -278,98 +323,148 @@ function loadProblemTickets(startDate, endDate, party) {
         var loadingDiv = document.createElement('div');
         loadingDiv.style.color = '#6c757d';
         loadingDiv.style.padding = '12px';
-        loadingDiv.textContent = 'Memuat data dari server OWS...';
+        loadingDiv.textContent = 'Memuat data agregasi dari server OWS...';
         container.appendChild(loadingDiv);
     }
 
     var isFiltered = !!(startDate || endDate || (party && party !== 'ALL'));
 
-    // Panggil RunScript Summary Service (/problem_ticket_getsummarysc)
+    // 1. Panggil Service Agregasi untuk Stat Cards & Partner Cards Atas (Instan < 50ms)
     callOWSSummary(startDate, endDate, party, function (res) {
-        var data = res && res.result ? res.result : (res || {});
-        renderRunScriptFullDashboard(data, isFiltered, party);
+        var summaryList = extractSummaryList(res);
+        parseAndRenderSummary(summaryList, isFiltered, party);
     }, function (err) {
         console.warn('OWS Summary Service Notice:', err);
     });
+
+    // 2. Panggil Service List Tiket untuk merender Container 1-5 (Chart, Heatmap, Trends, List Tabel)
+    fetchAllPages(startDate, endDate, party, function (allTickets) {
+        parseAndRender(allTickets, isFiltered, startDate, endDate, party);
+    }, function (err) {
+        console.error('OWS List fetch error:', err);
+        showError('Gagal memuat data tiket: ' + (err.message || 'Error Service'));
+    });
 }
 
-function renderRunScriptFullDashboard(data, isFiltered, party) {
-    var summary = data.summary || {};
-    var partnerSum = data.partner_summary || [];
-    var dataGrid = data.data_grid || {};
-    var rawRows = dataGrid.rows || [];
-    var rows = extractTickets(rawRows);
+function extractSummaryList(res) {
+    if (!res) return [];
+    if (res.result && res.result._values) return res.result._values;
+    if (res.result && res.result.results) return res.result.results;
+    if (res.results) return res.results;
+    if (res._values) return res._values;
+    if (res.data) return res.data;
+    if (Array.isArray(res)) return res;
+    return [];
+}
 
-    // Save All-Time Unfiltered Summary and Partner Metrics on initial/unfiltered load
-    if (!window.allTimeSummary || !isFiltered) {
-        window.allTimeSummary = summary;
+function parseAndRenderSummary(summaryList, isFiltered, party) {
+    if (!Array.isArray(summaryList)) summaryList = [];
+
+    var grandTotal = 0, openCount = 0, inProgressCount = 0, closedCount = 0, canceledCount = 0;
+    var taOpen = 0, taPending = 0, taClosed = 0, taCanceled = 0;
+    var mOpen = 0, mPending = 0, mClosed = 0, mCanceled = 0;
+    var pOpen = 0, pPending = 0, pClosed = 0, pCanceled = 0;
+    var othOpen = 0, othPending = 0, othClosed = 0, othCanceled = 0;
+
+    for (var i = 0; i < summaryList.length; i++) {
+        var item = summaryList[i];
+        var cnt = parseInt(item.total_count || item.count || 1, 10);
+        if (isNaN(cnt)) cnt = 1;
+
+        var partner = getTicketPartner(item);
+        var statusCat = getStatusCategory(item.ticketstatus || item.status || '');
+
+        grandTotal += cnt;
+
+        if (statusCat === 'open') {
+            openCount += cnt;
+            if (partner === 'Telkom Akses') taOpen += cnt;
+            else if (partner === 'Mandau') mOpen += cnt;
+            else if (partner === 'Persada') pOpen += cnt;
+            else othOpen += cnt;
+        } else if (statusCat === 'pending') {
+            inProgressCount += cnt;
+            if (partner === 'Telkom Akses') taPending += cnt;
+            else if (partner === 'Mandau') mPending += cnt;
+            else if (partner === 'Persada') pPending += cnt;
+            else othPending += cnt;
+        } else if (statusCat === 'closed') {
+            closedCount += cnt;
+            if (partner === 'Telkom Akses') taClosed += cnt;
+            else if (partner === 'Mandau') mClosed += cnt;
+            else if (partner === 'Persada') pClosed += cnt;
+            else othClosed += cnt;
+        } else if (statusCat === 'canceled') {
+            canceledCount += cnt;
+            if (partner === 'Telkom Akses') taCanceled += cnt;
+            else if (partner === 'Mandau') mCanceled += cnt;
+            else if (partner === 'Persada') pCanceled += cnt;
+            else othCanceled += cnt;
+        }
     }
 
-    if (!window.allTimePartnerMetrics || !isFiltered) {
-        var taOpen = 0, taPending = 0, taClosed = 0, taCanceled = 0;
-        var mOpen = 0, mPending = 0, mClosed = 0, mCanceled = 0;
-        var pOpen = 0, pPending = 0, pClosed = 0, pCanceled = 0;
-        var othOpen = 0, othPending = 0, othClosed = 0, othCanceled = 0;
+    setCardValue('statTotal', grandTotal);
+    setCardValue('statOpen', openCount);
+    setCardValue('statInProgress', inProgressCount);
+    setCardValue('statClosed', closedCount);
+    setCardValue('statCanceled', canceledCount);
 
-        if (Array.isArray(rows)) {
-            rows.forEach(function (t) {
-                var partner = getTicketPartner(t);
-                var statusCat = getStatusCategory(t.ticketstatus || t.status || '');
+    setCardValue('taOpen', taOpen); setCardValue('taPending', taPending); setCardValue('taClosed', taClosed); setCardValue('taCanceled', taCanceled);
+    setCardValue('mOpen', mOpen); setCardValue('mPending', mPending); setCardValue('mClosed', mClosed); setCardValue('mCanceled', mCanceled);
+    setCardValue('pOpen', pOpen); setCardValue('pPending', pPending); setCardValue('pClosed', pClosed); setCardValue('pCanceled', pCanceled);
+    setCardValue('othOpen', othOpen); setCardValue('othPending', othPending); setCardValue('othClosed', othClosed); setCardValue('othCanceled', othCanceled);
 
-                if (partner === 'Telkom Akses') {
-                    if (statusCat === 'open') taOpen++;
-                    else if (statusCat === 'pending') taPending++;
-                    else if (statusCat === 'closed') taClosed++;
-                    else if (statusCat === 'canceled') taCanceled++;
-                } else if (partner === 'Mandau') {
-                    if (statusCat === 'open') mOpen++;
-                    else if (statusCat === 'pending') mPending++;
-                    else if (statusCat === 'closed') mClosed++;
-                    else if (statusCat === 'canceled') mCanceled++;
-                } else if (partner === 'Persada') {
-                    if (statusCat === 'open') pOpen++;
-                    else if (statusCat === 'pending') pPending++;
-                    else if (statusCat === 'closed') pClosed++;
-                    else if (statusCat === 'canceled') pCanceled++;
-                } else {
-                    if (statusCat === 'open') othOpen++;
-                    else if (statusCat === 'pending') othPending++;
-                    else if (statusCat === 'closed') othClosed++;
-                    else if (statusCat === 'canceled') othCanceled++;
-                }
+    // Trigger rendering untuk Container 1 (Severity), 2 (Phase), 3 (Trends), 4 (Root Cause), 5 (SLA)
+    renderSeverityDashboard(summaryList);
+    renderPhaseDashboard(summaryList);
+    renderTrendsAndCompliance(summaryList, summaryList, summaryList);
+
+    updatePanelFilterBadges(party);
+}
+
+function parseAndRender(rawTickets, isFiltered, startDate, endDate, party) {
+    try {
+        // rawTickets is already a merged array from fetchAllPages (all pages combined)
+        if (!Array.isArray(rawTickets)) rawTickets = [];
+
+        // Client-side date filter fallback (in case OWS backend has type mismatch issues)
+        var dateFilteredTickets = rawTickets;
+        if (rawTickets.length > 0 && (startDate || endDate)) {
+            var startMs = startDate ? new Date(startDate.replace(/-/g, '/')).getTime() : 0;
+            var endMs = endDate ? new Date(endDate.replace(/-/g, '/')).getTime() : Infinity;
+            dateFilteredTickets = rawTickets.filter(function (t) {
+                if (!t.createtime) return false;
+                var tMs = new Date(t.createtime.replace(/-/g, '/')).getTime();
+                return tMs >= startMs && tMs <= endMs;
             });
         }
 
-        window.allTimePartnerMetrics = {
-            taOpen: taOpen, taPending: taPending, taClosed: taClosed, taCanceled: taCanceled,
-            mOpen: mOpen, mPending: mPending, mClosed: mClosed, mCanceled: mCanceled,
-            pOpen: pOpen, pPending: pPending, pClosed: pClosed, pCanceled: pCanceled,
-            othOpen: othOpen, othPending: othPending, othClosed: othClosed, othCanceled: othCanceled
-        };
+        // Client-side party filter fallback
+        var fullyFilteredTickets = dateFilteredTickets;
+        if (dateFilteredTickets.length > 0 && party && party !== 'ALL') {
+            fullyFilteredTickets = dateFilteredTickets.filter(function (t) {
+                var ticketPartner = getTicketPartner(t);
+                return ticketPartner.toLowerCase() === party.toLowerCase();
+            });
+        }
+
+        console.log('[DEBUG] Parsed. Raw (all pages):', rawTickets.length, '| DateFiltered:', dateFilteredTickets.length, '| FullyFiltered:', fullyFilteredTickets.length);
+
+        // Update all-time stat cards with the COMPLETE dataset (all pages merged)
+        // For unfiltered view: rawTickets = all tickets (accurate grand total)
+        // For filtered view: rawTickets = filtered subset (accurate subset total for header cards)
+        if (!isFiltered) {
+            window.allTicketsData = rawTickets;
+            updateAllTimeCards(rawTickets);
+        }
+
+        // Render list & charts with the current filter applied
+        renderTicketsData(fullyFilteredTickets, dateFilteredTickets);
+        updatePanelFilterBadges(party);
+    } catch (e) {
+        alert('[parseAndRender ERROR]: ' + e.message + '\nStack: ' + e.stack);
+        console.error('[CRITICAL] parseAndRender crashed:', e);
     }
-
-    // 1. Header Stat Cards (Always All-Time Unfiltered)
-    var headerSum = window.allTimeSummary || summary;
-    setCardValue('statTotal', headerSum.total || 0);
-    setCardValue('statOpen', headerSum.open || 0);
-    setCardValue('statInProgress', headerSum.pending || 0);
-    setCardValue('statClosed', headerSum.closed || 0);
-    setCardValue('statCanceled', headerSum.canceled || 0);
-
-    // 2. Partner Breakdown Cards (Always All-Time Unfiltered)
-    var pm = window.allTimePartnerMetrics || {};
-    setCardValue('taOpen', pm.taOpen || 0); setCardValue('taPending', pm.taPending || 0); setCardValue('taClosed', pm.taClosed || 0); setCardValue('taCanceled', pm.taCanceled || 0);
-    setCardValue('mOpen', pm.mOpen || 0); setCardValue('mPending', pm.mPending || 0); setCardValue('mClosed', pm.mClosed || 0); setCardValue('mCanceled', pm.mCanceled || 0);
-    setCardValue('pOpen', pm.pOpen || 0); setCardValue('pPending', pm.pPending || 0); setCardValue('pClosed', pm.pClosed || 0); setCardValue('pCanceled', pm.pCanceled || 0);
-    setCardValue('othOpen', pm.othOpen || 0); setCardValue('othPending', pm.othPending || 0); setCardValue('othClosed', pm.othClosed || 0); setCardValue('othCanceled', pm.othCanceled || 0);
-
-    // 3. Render SELURUH Dashboard (Severity, Phase, Trends, SLA & List Tabel)
-    window.allTicketsData = rows;
-    renderTicketsData(rows, rows);
-    renderSeverityDashboard(rows);
-    renderPhaseDashboard(rows);
-    renderTrendsAndCompliance(rows, rows, rows);
-    updatePanelFilterBadges(party);
 }
 
 function updatePanelFilterBadges(party) {
@@ -408,6 +503,69 @@ function updatePanelFilterBadges(party) {
             }
         }
     }
+}
+
+function updateAllTimeCards(tickets) {
+    if (!tickets || tickets.length === 0) {
+        setCardValue('statTotal', 0);
+        setCardValue('statOpen', 0);
+        setCardValue('statInProgress', 0);
+        setCardValue('statClosed', 0);
+        setCardValue('statCanceled', 0);
+        setCardValue('taOpen', 0); setCardValue('taPending', 0); setCardValue('taClosed', 0); setCardValue('taCanceled', 0);
+        setCardValue('mOpen', 0); setCardValue('mPending', 0); setCardValue('mClosed', 0); setCardValue('mCanceled', 0);
+        setCardValue('pOpen', 0); setCardValue('pPending', 0); setCardValue('pClosed', 0); setCardValue('pCanceled', 0);
+        setCardValue('othOpen', 0); setCardValue('othPending', 0); setCardValue('othClosed', 0); setCardValue('othCanceled', 0);
+        return;
+    }
+
+    var openCount = 0, inProgressCount = 0, closedCount = 0, canceledCount = 0;
+    var taOpen = 0, taPending = 0, taClosed = 0, taCanceled = 0;
+    var mOpen = 0, mPending = 0, mClosed = 0, mCanceled = 0;
+    var pOpen = 0, pPending = 0, pClosed = 0, pCanceled = 0;
+    var othOpen = 0, othPending = 0, othClosed = 0, othCanceled = 0;
+
+    for (var i = 0; i < tickets.length; i++) {
+        var item = tickets[i];
+        var partner = getTicketPartner(item);
+        var statusCat = getStatusCategory(item.ticketstatus || item.status || '');
+
+        if (statusCat === 'open') {
+            openCount++;
+            if (partner === 'Telkom Akses') taOpen++;
+            else if (partner === 'Mandau') mOpen++;
+            else if (partner === 'Persada') pOpen++;
+            else othOpen++;
+        } else if (statusCat === 'pending') {
+            inProgressCount++;
+            if (partner === 'Telkom Akses') taPending++;
+            else if (partner === 'Mandau') mPending++;
+            else if (partner === 'Persada') pPending++;
+            else othPending++;
+        } else if (statusCat === 'closed') {
+            closedCount++;
+            if (partner === 'Telkom Akses') taClosed++;
+            else if (partner === 'Mandau') mClosed++;
+            else if (partner === 'Persada') pClosed++;
+            else othClosed++;
+        } else if (statusCat === 'canceled') {
+            canceledCount++;
+            if (partner === 'Telkom Akses') taCanceled++;
+            else if (partner === 'Mandau') mCanceled++;
+            else if (partner === 'Persada') pCanceled++;
+            else othCanceled++;
+        }
+    }
+
+    setCardValue('statTotal', tickets.length);
+    setCardValue('statOpen', openCount);
+    setCardValue('statInProgress', inProgressCount);
+    setCardValue('statClosed', closedCount);
+    setCardValue('statCanceled', canceledCount);
+    setCardValue('taOpen', taOpen); setCardValue('taPending', taPending); setCardValue('taClosed', taClosed); setCardValue('taCanceled', taCanceled);
+    setCardValue('mOpen', mOpen); setCardValue('mPending', mPending); setCardValue('mClosed', mClosed); setCardValue('mCanceled', mCanceled);
+    setCardValue('pOpen', pOpen); setCardValue('pPending', pPending); setCardValue('pClosed', pClosed); setCardValue('pCanceled', pCanceled);
+    setCardValue('othOpen', othOpen); setCardValue('othPending', othPending); setCardValue('othClosed', othClosed); setCardValue('othCanceled', othCanceled);
 }
 
 // Global pagination state
@@ -1017,11 +1175,11 @@ function renderPhasePartner(containerId, phaseRows) {
 
     var html = '<table class="custom-phase-table" style="table-layout: fixed; width: 100%;">';
     html += '<colgroup>';
-    html += '  <col style="width: 110px;">'; // Phase name
-    html += '  <col style="width: 40px;">';  // 0-7
-    html += '  <col style="width: 40px;">';  // >7
-    html += '  <col style="width: 55px;">';  // Total PT
-    html += '  <col style="width: 75px;">';  // Avg Aging (Days)
+    html += '  <col style="width: 140px;">'; // Phase name
+    html += '  <col style="width: 55px;">';  // 0-7
+    html += '  <col style="width: 55px;">';  // >7
+    html += '  <col style="width: 70px;">';  // Total PT
+    html += '  <col style="width: 100px;">'; // Avg Aging
     html += '</colgroup>';
     html += '<thead>';
     html += '<tr>';
@@ -1639,7 +1797,6 @@ function initDateFilterDOM() {
         '        <option value="Telkom Akses">Telkom Akses</option>' +
         '        <option value="Mandau">Mandau</option>' +
         '        <option value="Persada">Persada</option>' +
-        '        <option value="Others">Others</option>' +
         '      </select>' +
         '    </div>' +
         '    <div class="custom-filter-actions">' +
