@@ -469,9 +469,7 @@ function getStatusCategory(rawStatusOrTicket, rawBusinessStatus) {
         return 'closed';
     }
 
-    // 3. PENDING PT (Kriteria Spesifik dari User):
-    // Membaca businessstatus yang berisi WIP, NEW, ASSIGNED, dan PENDING
-    // Baik berupa ID UUID Production/Dev maupun string labelnya!
+    // 3. PENDING PT (Strict 22 Business Status UUIDs)
     var pendingUuidsAndLabels = [
         // Real Production UUIDs dari mappingan businesstatus production.csv
         'bb12992f-e165-11f0-aa35-0255ac1218d9', // Pending for Approval
@@ -486,7 +484,7 @@ function getStatusCategory(rawStatusOrTicket, rawBusinessStatus) {
         'bb12993f-e165-11f0-aa35-0255ac1218d9', // Pending for BO Accept
         'bb129940-e165-11f0-aa35-0255ac1218d9', // Pending for BO Resolve
         'bb12991c-e165-11f0-aa35-0255ac1218d9', // Pending for Confirmation
-        'bb129925-e165-11f0-aa35-0255ac1218d9', // Pending for Excute
+        'bb129925-e165-11f0-aa35-0255ac1218d9', // Pending for Execute
         'bb12992d-e165-11f0-aa35-0255ac1218d9', // Pending for Implementation
         'bb129942-e165-11f0-aa35-0255ac1218d9', // Pending for Review Improvement Plan
         'bb129944-e165-11f0-aa35-0255ac1218d9', // Pending for requester confirm
@@ -510,7 +508,11 @@ function getStatusCategory(rawStatusOrTicket, rawBusinessStatus) {
         return 'pending';
     }
 
-    // 4. OPEN PT (Sisa tiket running di luar status Pending di atas)
+    // 4. OPEN PT (Tiket running)
+    if (ts === 'running' || ts === 'open') {
+        return 'open';
+    }
+
     return 'open';
 }
 
@@ -813,9 +815,9 @@ function renderRunScriptFullDashboard(data, isFiltered, party) {
                 computedSum.canceled++;
             } else {
                 computedSum.total++;
-                if (cat === 'open') computedSum.open++;
-                else if (cat === 'pending') computedSum.pending++;
-                else if (cat === 'closed') computedSum.closed++;
+                if (cat === 'open' || cat === 'pending') computedSum.open++;
+                if (cat === 'pending') computedSum.pending++;
+                if (cat === 'closed') computedSum.closed++;
             }
             var sp = String(t.slapaused || '').toLowerCase();
             if (sp === 'yes' || sp === 'true' || sp === '1') computedSum.paused++;
