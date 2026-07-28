@@ -1,0 +1,67 @@
+﻿ active, id, keycode, change_time, optionid, optionlabel
+ true, bb129946-e165-11f0-aa35-0255ac1218d9, BusinessInReview,	 1766648749782, BusinessInReview, In Review
+ true, bb12992f-e165-11f0-aa35-0255ac1218d9, BusinessStatus Pending for Approval,	 1766648749782, BusinessStatus Pending for Approval, Pending for Approval
+ true, bb129928-e165-11f0-aa35-0255ac1218d9, BusinessStatus Pending for Assessment,	 1766648749782, BusinessStatus Pending for Assessment, Pending for Assessment
+ true, bb129941-e165-11f0-aa35-0255ac1218d9, BusinessStatus Pending for Validation,	 1766648749782, BusinessStatus Pending for Validation, Pending for Validation
+ true, bb129931-e165-11f0-aa35-0255ac1218d9, BusinessStatus Submitted,	 1766648749782, BusinessStatus Submitted, Submitted
+ true, bb12994b-e165-11f0-aa35-0255ac1218d9, BusinessStatusAbortException,	 1766648749782, BusinessStatusAbortException, Abort Exception
+ true, bb12992b-e165-11f0-aa35-0255ac1218d9, BusinessStatusAccepted,	 1766648749782, BusinessStatusAccepted, Accepted
+ true, bb12993e-e165-11f0-aa35-0255ac1218d9, BusinessStatusAssigned,	 1766648749782, BusinessStatusAssigned, Assigned
+ true, bb12991f-e165-11f0-aa35-0255ac1218d9, BusinessStatusBORejectClosed,	 1766648749782, BusinessStatusBORejectClosed, BO Reject Closed
+ true, bb129949-e165-11f0-aa35-0255ac1218d9, BusinessStatusBuildandTestApprove,	 1766648749782, BusinessStatusBuildandTestApprove, Build and Test Approve
+ true, bb12993d-e165-11f0-aa35-0255ac1218d9, BusinessStatusBuildandTestInProgress,	 1766648749782, BusinessStatusBuildandTestInProgress, Build and Test In Progress
+ true, 972f3578-e172-11f0-bac9-0255ac1218ed, BusinessStatusCR Created,	 1766654272746, BusinessStatusCR Created, CR Created
+ true, 972f5c89-e172-11f0-bac9-0255ac1218ed, BusinessStatusCR Handled,	 1766654272747, BusinessStatusCR Handled, CR Handled
+ true, 972f839a-e172-11f0-bac9-0255ac1218ed, BusinessStatusCR Implemented,	 1766654272748, BusinessStatusCR Implemented, CR Implemented
+ true, 972faaab-e172-11f0-bac9-0255ac1218ed, BusinessStatusCR L1 Approved,	 1766654272749, BusinessStatusCR L1 Approved, CR L1 Approved
+ true, 972fd1bc-e172-11f0-bac9-0255ac1218ed, BusinessStatusCR L2 Approved,	 1766654272750, BusinessStatusCR L2 Approved, CR L2 Approved
+ true, 972ff8cd-e172-11f0-bac9-0255ac1218ed, BusinessStatusCR L3 Approved,	 1766654272751, BusinessStatusCR L3 Approved, CR L3 Approved
+ true, 97301fde-e172-11f0-bac9-0255ac1218ed, BusinessStatusCR Plan Confirmed,	 1766654272752, BusinessStatusCR Plan Confirmed, CR Plan Confirmed
+ true, bb129930-e165-11f0-aa35-0255ac1218d9, BusinessStatusCancel,	 1766648749782, BusinessStatusCancel, Canceled
+ true, bb129922-e165-11f0-aa35-0255ac1218d9, BusinessStatusClosed,	 1766648749782, BusinessStatusClosed, Closed
+ true, bb129937-e165-11f0-aa35-0255ac1218d9, BusinessStatusCompleted,	 1766648749782, BusinessStatusCompleted, Completed
+ true, bb12991b-e165-11f0-aa35-0255ac1218d9, BusinessStatusConditionalAccepted,	 1766648749782, BusinessStatusConditionalAccepted, Conditional Accepted
+ true, bb129947-e165-11f0-aa35-0255ac1218d9, BusinessStatusDispatched,	 1766648749782, BusinessStatusDispatched, Dispatched
+ true, bb129918-e165-11f0-aa35-0255ac1218d9, BusinessStatusFinished,	 1766648749782, BusinessStatusFinished, Finished
+ true, 973046ef-e172-11f0-bac9-0255ac1218ed, BusinessStatusImplementation Confirmed,	 1766654272753, BusinessStatusImplementation Confirmed, Implementation Confirmed
+ true, bb12992c-e165-11f0-aa35-0255ac1218d9, BusinessStatusImplementationApprove,	 1766648749782, BusinessStatusImplementationApprove, Implementation Approve
+ true, bb129932-e165-11f0-aa35-0255ac1218d9, BusinessStatusImplementationInProgress,	 1766648749782, BusinessStatusImplementationInProgress, Implementation In Progress
+ true, bb129938-e165-11f0-aa35-0255ac1218d9, BusinessStatusInAssessment,	 1766648749782, BusinessStatusInAssessment, In Assessment
+ true, bb129943-e165-11f0-aa35-0255ac1218d9, BusinessStatusInComplete,	 1766648749782, BusinessStatusInComplete, In Complete
+ true, bb129935-e165-11f0-aa35-0255ac1218d9, BusinessStatusInProcess,	 1766648749782, BusinessStatusInProcess, In Process
+ true, bb12993b-e165-11f0-aa35-0255ac1218d9, BusinessStatusInProgress,	 1766648749782, BusinessStatusInProgress, In Progress
+ true, bb129920-e165-11f0-aa35-0255ac1218d9, BusinessStatusIninvestigation,	 1766648749782, BusinessStatusIninvestigation, In investigation
+ true, bb129926-e165-11f0-aa35-0255ac1218d9, BusinessStatusInitialized,	 1766648749782, BusinessStatusInitialized, Initialized
+ true, bb129929-e165-11f0-aa35-0255ac1218d9, BusinessStatusInresolution,	 1766648749782, BusinessStatusInresolution, In resolution
+ true, bb129915-e165-11f0-aa35-0255ac1218d9, BusinessStatusLeaved,	 1766648749782, BusinessStatusLeaved, Leaved
+ true, bb129919-e165-11f0-aa35-0255ac1218d9, BusinessStatusMerged,	 1766648749782, BusinessStatusMerged, Merged
+ true, bb12992e-e165-11f0-aa35-0255ac1218d9, BusinessStatusNew,	 1766648749782, BusinessStatusNew, New
+ true, bb129948-e165-11f0-aa35-0255ac1218d9, BusinessStatusOpenIssue,	 1766648749782, BusinessStatusOpenIssue, Open Issue
+ true, bb129917-e165-11f0-aa35-0255ac1218d9, BusinessStatusPIR,	 1766648749782, BusinessStatusPIR, PIR
+ true, bb12991d-e165-11f0-aa35-0255ac1218d9, BusinessStatusPending,	 1766648749782, BusinessStatusPending, Pending
+ true, bb12993a-e165-11f0-aa35-0255ac1218d9, BusinessStatusPendingForAnalyze,	 1766648749782, BusinessStatusPendingForAnalyze, Pending for Analyze
+ true, bb129916-e165-11f0-aa35-0255ac1218d9, BusinessStatusPendingForHandle,	 1766648749782, BusinessStatusPendingForHandle, Pending for Handle
+ true, bb12993c-e165-11f0-aa35-0255ac1218d9, BusinessStatusPendingForReview,	 1766648749782, BusinessStatusPendingForReview, Pending for Review
+ true, bb129923-e165-11f0-aa35-0255ac1218d9, BusinessStatusPendingforAnalyzePlan,	 1766648749782, BusinessStatusPendingforAnalyzePlan, Pending for Analyze Plan
+ true, bb129927-e165-11f0-aa35-0255ac1218d9, BusinessStatusPendingforApprovePlan,	 1766648749782, BusinessStatusPendingforApprovePlan, Pending for Approve Plan
+ true, bb12993f-e165-11f0-aa35-0255ac1218d9, BusinessStatusPendingforBOAccept,	 1766648749782, BusinessStatusPendingforBOAccept, Pending for BO Accept
+ true, bb129940-e165-11f0-aa35-0255ac1218d9, BusinessStatusPendingforBOResolve,	 1766648749782, BusinessStatusPendingforBOResolve, Pending for BO Resolve
+ true, bb12991c-e165-11f0-aa35-0255ac1218d9, BusinessStatusPendingforConfirmation,	 1766648749782, BusinessStatusPendingforConfirmation, Pending for Confirmation
+ true, bb129925-e165-11f0-aa35-0255ac1218d9, BusinessStatusPendingforExcute,	 1766648749782, BusinessStatusPendingforExcute, Pending for Excute
+ true, bb12992d-e165-11f0-aa35-0255ac1218d9, BusinessStatusPendingforImplementation,	 1766648749782, BusinessStatusPendingforImplementation, Pending for Implementation
+ true, bb129942-e165-11f0-aa35-0255ac1218d9, BusinessStatusPendingforReviewImprovementPlan,	 1766648749782, BusinessStatusPendingforReviewImprovementPlan, Pending for Review Improvement Plan
+ true, bb129944-e165-11f0-aa35-0255ac1218d9, BusinessStatusPendingforrequesterconfirm,	 1766648749782, BusinessStatusPendingforrequesterconfirm, Pending for requester confirm
+ true, bb129936-e165-11f0-aa35-0255ac1218d9, BusinessStatusProcessTicket,	 1766648749782, BusinessStatusProcessTicket, Process Ticket
+ true, bb129945-e165-11f0-aa35-0255ac1218d9, BusinessStatusRejected,	 1766648749782, BusinessStatusRejected, Rejected
+ true, bb129934-e165-11f0-aa35-0255ac1218d9, BusinessStatusResovled,	 1766648749782, BusinessStatusResovled, Resolved
+ true, bb129924-e165-11f0-aa35-0255ac1218d9, BusinessStatusReview,	 1766648749782, BusinessStatusReview, Review
+ true, bb129933-e165-11f0-aa35-0255ac1218d9, BusinessStatusScheduled,	 1766648749782, BusinessStatusScheduled, Scheduled
+ true, 97306e00-e172-11f0-bac9-0255ac1218ed, BusinessStatusSolution Designed,	 1766654272754, BusinessStatusSolution Designed, Solution Designed
+ true, 97309511-e172-11f0-bac9-0255ac1218ed, BusinessStatusSolution Reviewed,	 1766654272755, BusinessStatusSolution Reviewed, Solution Reviewed
+ true, bb12991e-e165-11f0-aa35-0255ac1218d9, BusinessStatusSubTicketCompleted,	 1766648749782, BusinessStatusSubTicketCompleted, SubProcess Completed
+ true, bb12994c-e165-11f0-aa35-0255ac1218d9, BusinessStatusTerminateException,	 1766648749782, BusinessStatusTerminateException, Terminate Exception
+ true, bb12994a-e165-11f0-aa35-0255ac1218d9, BusinessStatusUnbooked,	 1766648749782, BusinessStatusUnbooked, Unbooked
+ true, bb129939-e165-11f0-aa35-0255ac1218d9, BusinessStatusUnscheduled,	 1766648749782, BusinessStatusUnscheduled, Unscheduled
+ true, bb12991a-e165-11f0-aa35-0255ac1218d9, BusinessStatusWIP,	 1766648749782, BusinessStatusWIP, WIP
+ true, bb12992a-e165-11f0-aa35-0255ac1218d9, RFInAuthorization,	 1766648749782, RFInAuthorization, Authorization
+ true, bb129921-e165-11f0-aa35-0255ac1218d9, TaskBypassed,	 1766648749782, TaskBypassed, Bypassed

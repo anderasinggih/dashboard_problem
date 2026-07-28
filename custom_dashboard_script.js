@@ -431,21 +431,98 @@ function getRootCauseLabel(rawStr) {
 }
 
 /**
- * Returns canonical status category from raw ticketstatus field value.
- * @param {string} rawStr
+ * Returns canonical status category from raw ticket object or status/businessstatus strings.
+ * @param {string|object} rawStatusOrTicket
+ * @param {string} [rawBusinessStatus]
  * @returns {'open'|'pending'|'closed'|'canceled'|'unknown'}
  */
-function getStatusCategory(rawStr) {
-    var s = String(rawStr || '').toLowerCase();
-    if (s === 'canceled' || s === 'cancelled' || s === 'rejected') return 'canceled';
-    if (s === 'closed' || s === 'completed') return 'closed';
-    if (s === 'pending' || s === 'in progress') return 'pending';
+function getStatusCategory(rawStatusOrTicket, rawBusinessStatus) {
+    var ts = '';
+    var bs = '';
+
+    if (rawStatusOrTicket && typeof rawStatusOrTicket === 'object') {
+        ts = String(rawStatusOrTicket.ticketstatus || rawStatusOrTicket.status || '').toLowerCase();
+        bs = String(rawStatusOrTicket.businessstatus || rawStatusOrTicket.businessstate || rawStatusOrTicket.business_status || '').toLowerCase();
+    } else {
+        ts = String(rawStatusOrTicket || '').toLowerCase();
+        bs = String(rawBusinessStatus || '').toLowerCase();
+    }
+
+    // 1. CANCELED (Strict Production UUIDs & labels)
+    if (ts === 'canceled' || ts === 'cancelled' || ts === 'rejected' ||
+        bs === 'bb129930-e165-11f0-aa35-0255ac1218d9' || // Canceled (Production)
+        bs === 'bb12994b-e165-11f0-aa35-0255ac1218d9' || // Abort Exception (Production)
+        bs === 'b1fcdece-e15e-11f0-a47f-0255ac120028' || // Canceled (Dev)
+        bs === 'b1fcdee9-e15e-11f0-a47f-0255ac120028' || // Abort Exception (Dev)
+        bs === 'canceled' || bs === 'rejected') {
+        return 'canceled';
+    }
+    
+    // 2. CLOSED (Strict Production UUIDs & labels)
+    if (ts === 'closed' || ts === 'completed' ||
+        bs === 'bb129922-e165-11f0-aa35-0255ac1218d9' || // Closed (Production)
+        bs === 'bb129937-e165-11f0-aa35-0255ac1218d9' || // Completed (Production)
+        bs === 'bb12991f-e165-11f0-aa35-0255ac1218d9' || // BO Reject Closed (Production)
+        bs === 'b1fcdec0-e15e-11f0-a47f-0255ac120028' || // Closed (Dev)
+        bs === 'b1fcdebd-e15e-11f0-a47f-0255ac120028' || // BO Reject Closed (Dev)
+        bs === 'completed' || bs === 'closed') {
+        return 'closed';
+    }
+
+    // 3. PENDING PT (Kriteria Spesifik dari User):
+    // Membaca businessstatus yang berisi WIP, NEW, ASSIGNED, dan PENDING
+    // Baik berupa ID UUID Production/Dev maupun string labelnya!
+    var pendingUuidsAndLabels = [
+        // Real Production UUIDs dari mappingan businesstatus production.csv
+        'bb12992f-e165-11f0-aa35-0255ac1218d9', // Pending for Approval
+        'bb129928-e165-11f0-aa35-0255ac1218d9', // Pending for Assessment
+        'bb129941-e165-11f0-aa35-0255ac1218d9', // Pending for Validation
+        'bb12991d-e165-11f0-aa35-0255ac1218d9', // Pending
+        'bb12993a-e165-11f0-aa35-0255ac1218d9', // Pending for Analyze
+        'bb129916-e165-11f0-aa35-0255ac1218d9', // Pending for Handle
+        'bb12993c-e165-11f0-aa35-0255ac1218d9', // Pending for Review
+        'bb129923-e165-11f0-aa35-0255ac1218d9', // Pending for Analyze Plan
+        'bb129927-e165-11f0-aa35-0255ac1218d9', // Pending for Approve Plan
+        'bb12993f-e165-11f0-aa35-0255ac1218d9', // Pending for BO Accept
+        'bb129940-e165-11f0-aa35-0255ac1218d9', // Pending for BO Resolve
+        'bb12991c-e165-11f0-aa35-0255ac1218d9', // Pending for Confirmation
+        'bb129925-e165-11f0-aa35-0255ac1218d9', // Pending for Excute
+        'bb12992d-e165-11f0-aa35-0255ac1218d9', // Pending for Implementation
+        'bb129942-e165-11f0-aa35-0255ac1218d9', // Pending for Review Improvement Plan
+        'bb129944-e165-11f0-aa35-0255ac1218d9', // Pending for requester confirm
+        'bb12991a-e165-11f0-aa35-0255ac1218d9', // BusinessStatusWIP
+        'bb12992e-e165-11f0-aa35-0255ac1218d9', // BusinessStatusNew
+        'bb12993e-e165-11f0-aa35-0255ac1218d9', // BusinessStatusAssigned
+        'bb12993b-e165-11f0-aa35-0255ac1218d9', // BusinessStatusInProgress
+        'bb12993d-e165-11f0-aa35-0255ac1218d9', // BusinessStatusBuildandTestInProgress
+        'bb129932-e165-11f0-aa35-0255ac1218d9', // BusinessStatusImplementationInProgress
+
+        // Dev / Testing UUIDs (yang muncul di data riil)
+        'b1fcdedc-e15e-11f0-a47f-0255ac120028', // Assigned (Dev)
+        'b1fcdeb8-e15e-11f0-a47f-0255ac120028', // In Progress / Analyze (Dev)
+        'b1fcdecc-e15e-11f0-a47f-0255ac120028', // Rejected (Dev)
+        'b1fcdecd-e15e-11f0-a47f-0255ac120028', // Pending Approval (Dev)
+        'b1fcdec6-e15e-11f0-a47f-0255ac120028', // Pending Assessment (Dev)
+        'b1fcdedf-e15e-11f0-a47f-0255ac120028'  // Pending Validation (Dev)
+    ];
+
+    if (pendingUuidsAndLabels.indexOf(bs) !== -1) {
+        return 'pending';
+    }
+
+    // 4. OPEN PT (Sisa tiket running di luar status Pending di atas)
     return 'open';
 }
 
 /**
  * Returns the ISO-8601 week label (e.g. 'W28') for a given date string.
  * Returns null if the date string is missing or invalid — callers must check for null.
+ * @param {string} dateStr
+ * @returns {string|null}
+ */
+/**
+ * Returns the custom week label (e.g. 'W30') for a given date string based on Thursday-to-Wednesday cycle.
+ * (e.g., 23 - 29 July 2026 = Week 30)
  * @param {string} dateStr
  * @returns {string|null}
  */
@@ -459,17 +536,20 @@ function getWeekLabel(dateStr) {
     var dy = parseInt(parts[2], 10);
     var d = new Date(yr, mo, dy);
     if (isNaN(d.getTime())) return null;
-    // ISO-8601: week starts Monday, Thursday determines the year
-    var dayNum = d.getDay() || 7;
-    d.setDate(d.getDate() + 4 - dayNum);
-    var yearStart = new Date(d.getFullYear(), 0, 1);
-    var weekNo = Math.ceil((((d - yearStart) / 86400000) + 1) / 7);
+
+    // Custom Thursday-to-Wednesday Cycle:
+    // Shift date by +3 days (Thursday becomes Sunday of current week calculation)
+    var shifted = new Date(d.getFullYear(), d.getMonth(), d.getDate() + 3);
+    var dayNum = shifted.getDay() || 7;
+    shifted.setDate(shifted.getDate() + 4 - dayNum);
+    var yearStart = new Date(shifted.getFullYear(), 0, 1);
+    var weekNo = Math.ceil((((shifted - yearStart) / 86400000) + 1) / 7);
     return 'W' + weekNo;
 }
 
 /**
- * Returns a human-readable date range string (e.g. '14 Jul - 20 Jul 2026') for a week label.
- * @param {string} wLabel  e.g. 'W28'
+ * Returns a human-readable Thursday-to-Wednesday date range string (e.g. '23 Jul - 29 Jul 2026') for a week label.
+ * @param {string} wLabel  e.g. 'W30'
  * @param {Array}  tickets used to infer the year from ticket create dates
  * @returns {string}
  */
@@ -487,10 +567,13 @@ function getWeekRangeString(wLabel, tickets) {
             }
         }
     }
+    // Calculate Thursday of Week 1 for the year
     var jan4 = new Date(year, 0, 4);
     var jan4Day = jan4.getDay() || 7;
     var mondayOfW1 = new Date(jan4.getTime() - (jan4Day - 1) * 86400000);
-    var startOfWeek = new Date(mondayOfW1.getTime() + (num - 1) * 7 * 86400000);
+    // Shift Monday to Thursday (-4 days from ISO week start)
+    var thursdayOfW1 = new Date(mondayOfW1.getTime() - 4 * 86400000);
+    var startOfWeek = new Date(thursdayOfW1.getTime() + (num - 1) * 7 * 86400000);
     var endOfWeek = new Date(startOfWeek.getTime() + 6 * 86400000);
     var mo = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
     return startOfWeek.getDate() + ' ' + mo[startOfWeek.getMonth()] + ' - ' +
@@ -539,6 +622,7 @@ function sanitizeTicket(raw) {
         orderid: raw.orderid || raw.keycode || raw.id || '',
         title: raw.title || '',
         ticketstatus: statusStr,
+        businessstatus: extractOWSField(raw.businessstatus || raw.businessstate || raw.business_status || ''),
         severity: sevRaw,
         createticketlevel: sevRaw,
         root_cause: extractOWSField(raw.root_cause || raw.analyzecause || ''),
@@ -558,6 +642,17 @@ function sanitizeTicket(raw) {
         target_sla_days: targetSlaDays,
         slastatus: slaStat,
         confirmaccept: extractOWSField(raw.confirmaccept || ''),
+        tt10_createtime: extractOWSField(raw.tt10_createtime || ''),
+        tt10_submittime: extractOWSField(raw.tt10_submittime || ''),
+        tt11_createtime: extractOWSField(raw.tt11_createtime || ''),
+        tt11_submittime: extractOWSField(raw.tt11_submittime || ''),
+        tt12_createtime: extractOWSField(raw.tt12_createtime || ''),
+        tt12_submittime: extractOWSField(raw.tt12_submittime || ''),
+        pt10_createtime: extractOWSField(raw.pt10_createtime || ''),
+        pt10_submittime: extractOWSField(raw.pt10_submittime || ''),
+        pt12_createtime: extractOWSField(raw.pt12_createtime || ''),
+        pt12_submittime: extractOWSField(raw.pt12_submittime || ''),
+        pt14_createtime: extractOWSField(raw.pt14_createtime || ''),
         pt14_submittime: extractOWSField(raw.pt14_submittime || ''),
         slapaused: extractOWSField(raw.slapaused || raw.slapausing || raw.sla_suspend_state || ''),
         slapausereason: extractOWSField(raw.slapausereason || raw.pause_reason || raw.exemptreason || '')
@@ -709,16 +804,31 @@ function renderRunScriptFullDashboard(data, isFiltered, party) {
     var rawRows = dataGrid.rows || [];
     var rows = extractTickets(rawRows);
 
+    // Always compute robust summary directly from extracted rows if rows exist
+    if (Array.isArray(rows) && rows.length > 0) {
+        var computedSum = { total: 0, open: 0, pending: 0, closed: 0, canceled: 0, paused: 0 };
+        rows.forEach(function (t) {
+            var cat = getStatusCategory(t);
+            if (cat === 'canceled') {
+                computedSum.canceled++;
+            } else {
+                computedSum.total++;
+                if (cat === 'open') computedSum.open++;
+                else if (cat === 'pending') computedSum.pending++;
+                else if (cat === 'closed') computedSum.closed++;
+            }
+            var sp = String(t.slapaused || '').toLowerCase();
+            if (sp === 'yes' || sp === 'true' || sp === '1') computedSum.paused++;
+        });
+        summary = computedSum;
+        console.log('=== DEBUG BUSINESS STATUS METRICS ===');
+        console.log('Computed Summary:', computedSum);
+        console.log('Sample Ticket 0 businessstatus:', rows[0] ? rows[0].businessstatus : 'undefined');
+        console.log('Sample Ticket 0 Keys:', rows[0] ? Object.keys(rows[0]) : []);
+    }
+
     // Save All-Time Unfiltered Summary on initial load
     if (!window.allTimeSummary || !isFiltered) {
-        var pausedCount = summary.paused || 0;
-        if (!pausedCount && Array.isArray(rows)) {
-            rows.forEach(function (t) {
-                var sp = String(t.slapaused || '').toLowerCase();
-                if (sp === 'yes' || sp === 'true' || sp === '1') pausedCount++;
-            });
-        }
-        summary.paused = pausedCount;
         window.allTimeSummary = summary;
     }
 
@@ -735,7 +845,7 @@ function renderRunScriptFullDashboard(data, isFiltered, party) {
         if (Array.isArray(rows)) {
             rows.forEach(function (t) {
                 var partner = getTicketPartner(t);
-                var statusCat = getStatusCategory(t.ticketstatus || t.status || '');
+                var statusCat = getStatusCategory(t);
                 if (!partnerMetrics[partner]) {
                     partnerMetrics[partner] = { open: 0, pending: 0, closed: 0, canceled: 0 };
                 }
@@ -748,8 +858,18 @@ function renderRunScriptFullDashboard(data, isFiltered, party) {
         window.allTimePartnerMetrics = partnerMetrics;
     }
 
+    console.log('=== DEBUG OWS DASHBOARD RESPONSE ===');
+    console.log('Raw Server Response Data:', data);
+    console.log('Extracted Summary:', summary);
+    console.log('Extracted Rows Count:', rows ? rows.length : 0);
+    if (rows && rows.length > 0) {
+        console.log('Sample Row 0:', rows[0]);
+    }
+
     // 1. Header Stat Cards (Reflects Filtered Summary when Filter is Active)
     var headerSum = isFiltered ? summary : (window.allTimeSummary || summary);
+    console.log('Header Stat Values to Render:', headerSum);
+
     setCardValue('statTotal', headerSum.total !== undefined ? headerSum.total : (rows.length || 0));
     setCardValue('statOpen', headerSum.open !== undefined ? headerSum.open : 0);
     setCardValue('statInProgress', headerSum.pending !== undefined ? headerSum.pending : 0);
@@ -950,14 +1070,27 @@ window.ticketsPagination = {
 function renderSearchBar() {
     var container = document.getElementById('ticketSearchContainer');
     if (!container) return;
-    if (!document.getElementById('customTicketSearchInput')) {
-        var html = '<div style="padding: 12px 16px; border-bottom: 1px solid #27272a; display: flex; gap: 10px; align-items: center;">';
-        html += '  <input type="text" id="customTicketSearchInput" placeholder="Search by Ticket ID, Title, Operator..." ';
-        html += '    style="flex: 1; background-color: #0d0d10; border: 1px solid #27272a; border-radius: 6px; padding: 8px 12px; color: #e4e4e7; font-size: 13px; outline: none; transition: border-color 0.2s;" ';
-        html += '    oninput="handleTicketSearch(this.value)">';
-        html += '</div>';
-        container.innerHTML = html;
-    }
+    var selectedPhase = window.selectedPhaseFilter || 'ALL';
+    var selectedQuery = (document.getElementById('customTicketSearchInput')?.value || '');
+
+    var html = '<div style="padding: 12px 16px; border-bottom: 1px solid #27272a; display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">';
+    html += '  <input type="text" id="customTicketSearchInput" placeholder="Search by Ticket ID, Title, Operator..." ';
+    html += '    value="' + selectedQuery + '" ';
+    html += '    style="flex: 1; min-width: 200px; background-color: #0d0d10; border: 1px solid #27272a; border-radius: 6px; padding: 8px 12px; color: #e4e4e7; font-size: 13px; outline: none; transition: border-color 0.2s;" ';
+    html += '    oninput="handleTicketSearchFilter()">';
+    html += '  <select id="customTicketPhaseFilter" onchange="handleTicketSearchFilter()" ';
+    html += '    style="background-color: #0d0d10; border: 1px solid #27272a; border-radius: 6px; padding: 8px 12px; color: #e4e4e7; font-size: 13px; outline: none; cursor: pointer;">';
+    html += '    <option value="ALL" ' + (selectedPhase === 'ALL' ? 'selected' : '') + '>All Phases</option>';
+    html += '    <option value="1. Create PT" ' + (selectedPhase === '1. Create PT' ? 'selected' : '') + '>1. Create PT</option>';
+    html += '    <option value="2. Handle Analyze PT" ' + (selectedPhase === '2. Handle Analyze PT' ? 'selected' : '') + '>2. Handle Analyze PT</option>';
+    html += '    <option value="3. Analyze PT" ' + (selectedPhase === '3. Analyze PT' ? 'selected' : '') + '>3. Analyze PT</option>';
+    html += '    <option value="4. Handle Implement PT" ' + (selectedPhase === '4. Handle Implement PT' ? 'selected' : '') + '>4. Handle Implement PT</option>';
+    html += '    <option value="5. Implement PT" ' + (selectedPhase === '5. Implement PT' ? 'selected' : '') + '>5. Implement PT</option>';
+    html += '    <option value="6. Confirm PT" ' + (selectedPhase === '6. Confirm PT' ? 'selected' : '') + '>6. Confirm PT</option>';
+    html += '    <option value="7. Closed PT" ' + (selectedPhase === '7. Closed PT' ? 'selected' : '') + '>7. Closed PT</option>';
+    html += '  </select>';
+    html += '</div>';
+    container.innerHTML = html;
 }
 
 function renderTicketsData(tickets, dateFilteredTickets) {
@@ -997,12 +1130,27 @@ function renderCurrentTicketsPage() {
     var pag = window.ticketsPagination;
     var tickets = pag.tickets || [];
 
+    var selectedPhase = window.selectedPhaseFilter || 'ALL';
+    var selectedQuery = (document.getElementById('customTicketSearchInput')?.value || '');
+
     var searchHtml =
-        '<div style="padding: 12px 16px; border-bottom: 1px solid #27272a; display: flex; gap: 10px; align-items: center;">' +
+        '<div style="padding: 12px 16px; border-bottom: 1px solid #27272a; display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">' +
         '  <input type="text" id="customTicketSearchInput" placeholder="Search by Ticket ID, Title, Operator..." ' +
-        '    value="' + (document.getElementById('customTicketSearchInput')?.value || '') + '" ' +
-        '    style="flex: 1; background-color: #0d0d10; border: 1px solid #27272a; border-radius: 6px; padding: 8px 12px; color: #e4e4e7; font-size: 13px; outline: none;" ' +
-        '    oninput="handleTicketSearch(this.value)">' +
+        '    value="' + selectedQuery + '" ' +
+        '    style="flex: 1; min-width: 200px; background-color: #0d0d10; border: 1px solid #27272a; border-radius: 6px; padding: 8px 12px; color: #e4e4e7; font-size: 13px; outline: none;" ' +
+        '    oninput="handleTicketSearchFilter()">' +
+        '  <select id="customTicketPhaseFilter" onchange="handleTicketSearchFilter()" ' +
+        '    style="background-color: #0d0d10; border: 1px solid #27272a; border-radius: 6px; padding: 8px 12px; color: #e4e4e7; font-size: 13px; outline: none; cursor: pointer;">' +
+        '    <option value="ALL" ' + (selectedPhase === 'ALL' ? 'selected' : '') + '>All Phases</option>' +
+        '    <option value="1. Create PT" ' + (selectedPhase === '1. Create PT' ? 'selected' : '') + '>1. Create PT</option>' +
+        '    <option value="2. Handle Analyze PT" ' + (selectedPhase === '2. Handle Analyze PT' ? 'selected' : '') + '>2. Handle Analyze PT</option>' +
+        '    <option value="3. Analyze PT" ' + (selectedPhase === '3. Analyze PT' ? 'selected' : '') + '>3. Analyze PT</option>' +
+        '    <option value="4. Handle Implement PT" ' + (selectedPhase === '4. Handle Implement PT' ? 'selected' : '') + '>4. Handle Implement PT</option>' +
+        '    <option value="5. Implement PT" ' + (selectedPhase === '5. Implement PT' ? 'selected' : '') + '>5. Implement PT</option>' +
+        '    <option value="6. Confirm PT" ' + (selectedPhase === '6. Confirm PT' ? 'selected' : '') + '>6. Confirm PT</option>' +
+        '    <option value="7. Closed PT" ' + (selectedPhase === '7. Closed PT' ? 'selected' : '') + '>7. Closed PT</option>' +
+        '    <option value="8. Canceled PT" ' + (selectedPhase === '8. Canceled PT' ? 'selected' : '') + '>8. Canceled PT</option>' +
+        '  </select>' +
         '</div>';
 
     if (tickets.length === 0) {
@@ -1037,8 +1185,28 @@ function renderCurrentTicketsPage() {
         var id = item.orderid || item.id || item.code || 'TCK';
         var phase = item.current_phase || '-';
 
-        // Calculate aging days dynamically from timestamps if not pre-calculated in DB
-        var agingVal = item.aging || item.aging_days || item.days || calculateAgingDays(item.createtime, item.closetime, item.lastupdatetime, item.operate_time, status);
+        // Map Status — uses getStatusCategory() helper
+        var statusCat = getStatusCategory(item);
+        
+        // Phase-specific start aging date calculation
+        var phaseRaw = String(item.current_phase || item.state || '').toLowerCase();
+        var phaseStartTime = item.createtime;
+        if (statusCat === 'closed' || statusCat === 'canceled') {
+            phaseStartTime = item.createtime;
+        } else if (phaseRaw.indexOf('handle analyze') !== -1) {
+            phaseStartTime = item.tt10_submittime || item.tt11_createtime || item.createtime;
+        } else if (phaseRaw.indexOf('analyze') !== -1) {
+            phaseStartTime = item.tt11_submittime || item.tt12_createtime || item.tt10_submittime || item.createtime;
+        } else if (phaseRaw.indexOf('handle implement') !== -1) {
+            phaseStartTime = item.tt12_submittime || item.pt10_createtime || item.tt11_submittime || item.createtime;
+        } else if (phaseRaw.indexOf('implement') !== -1) {
+            phaseStartTime = item.pt10_submittime || item.pt12_createtime || item.tt12_submittime || item.createtime;
+        } else if (phaseRaw.indexOf('confirm') !== -1) {
+            phaseStartTime = item.pt12_submittime || item.pt14_createtime || item.pt10_submittime || item.createtime;
+        }
+
+        var agingVal = parseFloat(calculateAgingDays(phaseStartTime, item.closetime, item.lastupdatetime, item.operate_time, status));
+        if (isNaN(agingVal) || agingVal < 0) agingVal = parseFloat(item.aging || 0);
 
         var partner = getTicketPartner(item);
 
@@ -1047,12 +1215,13 @@ function renderCurrentTicketsPage() {
         var sevClass = 'custom-badge-sev-' + sevLabel.toLowerCase();
 
         // Map Status — uses getStatusCategory() helper
-        var statusCat = getStatusCategory(status);
+        var statusCat = getStatusCategory(item);
         var statusClass = statusCat === 'open' ? 'custom-badge-open'
             : statusCat === 'pending' ? 'custom-badge-pending'
                 : statusCat === 'closed' ? 'custom-badge-closed'
                     : statusCat === 'canceled' ? 'custom-badge-canceled'
                         : 'custom-badge-open';
+        var statusLabelText = String(statusCat || 'open').toUpperCase();
 
         var displayNo = startIdx + i + 1;
         var rc = item.root_cause || item.rootcause || item.cause || '-';
@@ -1065,7 +1234,7 @@ function renderCurrentTicketsPage() {
         html += '<td style="font-weight: 600; text-transform: uppercase;">' + rc + '</td>';
         html += '<td>' + phase + '</td>';
         html += '<td style="font-weight: 600;">' + parseFloat(agingVal).toFixed(1) + ' Days</td>';
-        html += '<td><span class="custom-badge-status ' + statusClass + '">' + status + '</span></td>';
+        html += '<td><span class="custom-badge-status ' + statusClass + '">' + statusLabelText + '</span></td>';
         html += '</tr>';
     }
 
@@ -1401,7 +1570,7 @@ function renderPhaseDashboard(tickets) {
 
     if (tickets && tickets.length > 0) {
         tickets.forEach(function (t) {
-            var statusCat = getStatusCategory(t.ticketstatus || t.status || '');
+            var statusCat = getStatusCategory(t);
             var phase = '1. Create PT';
 
             if (statusCat === 'closed') {
@@ -1428,7 +1597,23 @@ function renderPhaseDashboard(tickets) {
             }
 
             var statusRaw = String(t.ticketstatus || t.status || '').toLowerCase();
-            var aging = parseFloat(t.aging || t.aging_days || t.days || calculateAgingDays(t.createtime, t.closetime, t.lastupdatetime, t.operate_time, statusRaw));
+            
+            // Phase-specific start aging date calculation
+            var phaseStartTime = t.createtime;
+            if (phase === '2. Handle Analyze PT') {
+                phaseStartTime = t.tt10_submittime || t.tt11_createtime || t.createtime;
+            } else if (phase === '3. Analyze PT') {
+                phaseStartTime = t.tt11_submittime || t.tt12_createtime || t.tt10_submittime || t.createtime;
+            } else if (phase === '4. Handle Implement PT') {
+                phaseStartTime = t.tt12_submittime || t.pt10_createtime || t.tt11_submittime || t.createtime;
+            } else if (phase === '5. Implement PT') {
+                phaseStartTime = t.pt10_submittime || t.pt12_createtime || t.tt12_submittime || t.createtime;
+            } else if (phase === '6. Confirm PT') {
+                phaseStartTime = t.pt12_submittime || t.pt14_createtime || t.pt10_submittime || t.createtime;
+            }
+
+            var aging = parseFloat(calculateAgingDays(phaseStartTime, t.closetime, t.lastupdatetime, t.operate_time, statusRaw));
+            if (isNaN(aging) || aging < 0) aging = parseFloat(t.aging || 0);
 
             var partner = getTicketPartner(t);
             var targetPartner = categories.indexOf(partner) !== -1 ? partner : 'Others';
@@ -2458,35 +2643,78 @@ function getConfirmSubmitTime(t) {
 
 var _searchDebounceTimer = null;
 
-function handleTicketSearch(query) {
+function handleTicketSearchFilter() {
     if (_searchDebounceTimer) {
         clearTimeout(_searchDebounceTimer);
     }
     _searchDebounceTimer = setTimeout(function () {
-        executeTicketSearch(query);
+        executeTicketSearchFilter();
     }, 300);
 }
 
-function executeTicketSearch(query) {
+function executeTicketSearchFilter() {
+    var searchEl = document.getElementById('customTicketSearchInput');
+    var phaseEl = document.getElementById('customTicketPhaseFilter');
+
+    var query = searchEl ? searchEl.value.trim().toLowerCase() : '';
+    var phase = phaseEl ? phaseEl.value : 'ALL';
+    window.selectedPhaseFilter = phase;
+
     var rawList = window.activeFilteredTickets || [];
-    if (!query || !query.trim()) {
-        window.ticketsPagination.tickets = rawList;
-    } else {
-        var q = query.trim().toLowerCase();
-        window.ticketsPagination.tickets = rawList.filter(function (t) {
+
+    var filtered = rawList.filter(function (t) {
+        // 1. Phase Filter Check
+        if (phase !== 'ALL') {
+            var statusCat = getStatusCategory(t);
+            var tPhase = '1. Create PT';
+
+            if (statusCat === 'closed') {
+                tPhase = '7. Closed PT';
+            } else if (statusCat === 'canceled') {
+                tPhase = '8. Canceled PT';
+            } else {
+                var isRejected = (String(t.confirmaccept || t['Accept or Not(Confirm PT)'] || '').toLowerCase().indexOf('reject') !== -1);
+                var phaseRaw = String(t.current_phase || t.state || '').toLowerCase();
+
+                if (isRejected) {
+                    tPhase = '5. Implement PT';
+                } else if (phaseRaw.indexOf('confirm') !== -1) {
+                    tPhase = '6. Confirm PT';
+                } else if (phaseRaw.indexOf('handle analyze') !== -1) {
+                    tPhase = '2. Handle Analyze PT';
+                } else if (phaseRaw.indexOf('analyze') !== -1) {
+                    tPhase = '3. Analyze PT';
+                } else if (phaseRaw.indexOf('handle implement') !== -1) {
+                    tPhase = '4. Handle Implement PT';
+                } else if (phaseRaw.indexOf('implement') !== -1) {
+                    tPhase = '5. Implement PT';
+                }
+            }
+
+            if (tPhase !== phase) return false;
+        }
+
+        // 2. Keyword Search Check
+        if (query) {
+            var matchFound = false;
             for (var key in t) {
                 if (t.hasOwnProperty(key)) {
                     var val = t[key];
                     if (val !== null && val !== undefined) {
-                        if (String(val).toLowerCase().indexOf(q) !== -1) {
-                            return true;
+                        if (String(val).toLowerCase().indexOf(query) !== -1) {
+                            matchFound = true;
+                            break;
                         }
                     }
                 }
             }
-            return false;
-        });
-    }
+            if (!matchFound) return false;
+        }
+
+        return true;
+    });
+
+    window.ticketsPagination.tickets = filtered;
     window.ticketsPagination.currentPage = 1;
     renderCurrentTicketsPage();
 }
@@ -2504,7 +2732,8 @@ window.startLiveClock = startLiveClock;
 window.isTicketAccepted = isTicketAccepted;
 window.isTicketClosed = isTicketClosed;
 window.getConfirmSubmitTime = getConfirmSubmitTime;
-window.handleTicketSearch = handleTicketSearch;
+window.handleTicketSearch = handleTicketSearchFilter;
+window.handleTicketSearchFilter = handleTicketSearchFilter;
 
 // ─────────────────────────────────────────────────────────────────────────────
 // PAGE NAVIGATION & PARTY CONFIGURATION PAGE HANDLERS

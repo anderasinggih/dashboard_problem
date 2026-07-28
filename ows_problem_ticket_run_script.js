@@ -291,23 +291,11 @@ if (party !== "") {
 // 1. SUMMARY STAT CARDS TQL (All-Time Unfiltered Overview)
 summaryTql =
     "select " +
-    "sum(case when lower(pt.ticketstatus) = 'canceled' or lower(pt.ticketstatus) = 'cancelled' or lower(pt.ticketstatus) = 'rejected' then 0 else 1 end) as total, " +
-    "sum(case " +
-    "when (lower(pt.ticketstatus) = 'closed' or lower(pt.ticketstatus) = 'completed') " +
-    "and (lower(pt.confirmaccept) = 'accept' or lower(pt.confirmaccept) = 'accepted' or lower(pt.confirmaccept) = 'yes' or lower(pt.confirmaccept) = 'true') " +
-    "then 1 else 0 end) as closed, " +
-    "sum(case " +
-    "when lower(pt.ticketstatus) = 'canceled' or lower(pt.ticketstatus) = 'cancelled' or lower(pt.ticketstatus) = 'rejected' " +
-    "then 1 else 0 end) as canceled, " +
-    "sum(case " +
-    "when lower(pt.ticketstatus) = 'pending' or lower(pt.ticketstatus) = 'in progress' " +
-    "then 1 else 0 end) as pending, " +
-    "sum(case " +
-    "when (lower(pt.ticketstatus) = 'closed' or lower(pt.ticketstatus) = 'completed') " +
-    "and (lower(pt.confirmaccept) = 'accept' or lower(pt.confirmaccept) = 'accepted' or lower(pt.confirmaccept) = 'yes' or lower(pt.confirmaccept) = 'true') " +
-    "then 0 " +
-    "when lower(pt.ticketstatus) = 'canceled' or lower(pt.ticketstatus) = 'cancelled' or lower(pt.ticketstatus) = 'rejected' " +
-    "then 0 else 1 end) as open, " +
+    "sum(case when lower(pt.ticketstatus) in ('canceled','cancelled','rejected') then 0 else 1 end) as total, " +
+    "sum(case when lower(pt.ticketstatus) in ('closed','completed') then 1 else 0 end) as closed, " +
+    "sum(case when lower(pt.ticketstatus) in ('canceled','cancelled','rejected') then 1 else 0 end) as canceled, " +
+    "sum(case when lower(pt.ticketstatus) in ('pending','in progress') then 1 else 0 end) as pending, " +
+    "sum(case when lower(pt.ticketstatus) in ('running','open') then 1 else 0 end) as open, " +
     "sum(case when lower(pt.slapaused) = 'yes' or lower(pt.slapaused) = 'true' or pt.slapaused = '1' then 1 else 0 end) as paused " +
     "from " + modelUri + " pt " + whereClause;
 
@@ -389,6 +377,7 @@ alldataGridTql =
     "pt.orderid as orderid, " +
     "pt.title as title, " +
     "pt.ticketstatus as ticketstatus, " +
+    "pt.businessstatus as businessstatus, " +
     "pt.createticketlevel as createticketlevel, " +
     "pt.current_phase as current_phase, " +
     "pt.operate_phase as operate_phase, " +
@@ -397,12 +386,23 @@ alldataGridTql =
     "pt.closetime as closetime, " +
     "pt.lastupdatetime as lastupdatetime, " +
     "pt.operate_time as operate_time, " +
+    "pt.tt10_createtime as tt10_createtime, " +
+    "pt.tt10_submittime as tt10_submittime, " +
+    "pt.tt11_createtime as tt11_createtime, " +
+    "pt.tt11_submittime as tt11_submittime, " +
+    "pt.tt12_createtime as tt12_createtime, " +
+    "pt.tt12_submittime as tt12_submittime, " +
+    "pt.pt10_createtime as pt10_createtime, " +
+    "pt.pt10_submittime as pt10_submittime, " +
+    "pt.pt12_createtime as pt12_createtime, " +
+    "pt.pt12_submittime as pt12_submittime, " +
+    "pt.pt14_createtime as pt14_createtime, " +
+    "pt.pt14_submittime as pt14_submittime, " +
     "pt.root_cause as root_cause, " +
     "pt.createptproblemdes as createptproblemdes, " +
     "pt.currentoperator as currentoperator, " +
     "pt.originator as originator, " +
     "pt.confirmaccept as confirmaccept, " +
-    "pt.pt14_submittime as pt14_submittime, " +
     "pt.slastatus as slastatus, " +
     "pt.slapaused as slapaused, " +
     "pt.slapausereason as slapausereason " +

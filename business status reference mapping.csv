@@ -1,0 +1,21 @@
+﻿active,id,keycode,change_time,optionid,optionlabel
+true,b1fcdee4-e15e-11f0-a47f-0255ac120028,BusinessInReview,	1766645728177,BusinessInReview,In Review
+true,b1fcdecd-e15e-11f0-a47f-0255ac120028,BusinessStatus Pending for Approval,	1766645728177,BusinessStatus Pending for Approval,Pending for Approval
+true,b1fcdec6-e15e-11f0-a47f-0255ac120028,BusinessStatus Pending for Assessment,	1766645728177,BusinessStatus Pending for Assessment,Pending for Assessment
+true,b1fcdedf-e15e-11f0-a47f-0255ac120028,BusinessStatus Pending for Validation,	1766645728177,BusinessStatus Pending for Validation,Pending for Validation
+true,b1fcdecf-e15e-11f0-a47f-0255ac120028,BusinessStatus Submitted,	1766645728177,BusinessStatus Submitted,Submitted
+true,b1fcdee9-e15e-11f0-a47f-0255ac120028,BusinessStatusAbortException,	1766645728177,BusinessStatusAbortException,Abort Exception
+true,b1fcdec9-e15e-11f0-a47f-0255ac120028,BusinessStatusAccepted,	1766645728177,BusinessStatusAccepted,Accepted
+true,b1fcdedc-e15e-11f0-a47f-0255ac120028,BusinessStatusAssigned,	1766645728177,BusinessStatusAssigned,Assigned
+true,b1fcdebd-e15e-11f0-a47f-0255ac120028,BusinessStatusBORejectClosed,	1766645728177,BusinessStatusBORejectClosed,BO Reject Closed
+true,b1fcdee7-e15e-11f0-a47f-0255ac120028,BusinessStatusBuildandTestApprove,	1766645728177,BusinessStatusBuildandTestApprove,Build and Test Approve
+true,b1fcdedb-e15e-11f0-a47f-0255ac120028,BusinessStatusBuildandTestInProgress,	1766645728177,BusinessStatusBuildandTestInProgress,Build and Test In Progress
+true,8c3b1956-e172-11f0-a47f-0255ac120028,BusinessStatusCR Created,	1766654254369,BusinessStatusCR Created,CR Created
+true,8c3b4067-e172-11f0-a47f-0255ac120028,BusinessStatusCR Handled,	1766654254370,BusinessStatusCR Handled,CR Handled
+true,8c3b6778-e172-11f0-a47f-0255ac120028,BusinessStatusCR Implemented,	1766654254371,BusinessStatusCR Implemented,CR Implemented
+true,8c3b8e89-e172-11f0-a47f-0255ac120028,BusinessStatusCR L1 Approved,	1766654254372,BusinessStatusCR L1 Approved,CR L1 Approved
+true,8c3bb59a-e172-11f0-a47f-0255ac120028,BusinessStatusCR L2 Approved,	1766654254373,BusinessStatusCR L2 Approved,CR L2 Approved
+true,8c3bdcab-e172-11f0-a47f-0255ac120028,BusinessStatusCR L3 Approved,	1766654254374,BusinessStatusCR L3 Approved,CR L3 Approved
+true,8c3c03bc-e172-11f0-a47f-0255ac120028,BusinessStatusCR Plan Confirmed,	1766654254375,BusinessStatusCR Plan Confirmed,CR Plan Confirmed
+true,b1fcdece-e15e-11f0-a47f-0255ac120028,BusinessStatusCancel,	1766645728177,BusinessStatusCancel,Canceled
+true,b1fcdec0-e15e-11f0-a47f-0255ac120028,BusinessStatusClosed,	1766645728177,BusinessStatusClosed,Closed

@@ -1,113 +1,199 @@
-# TECHNICAL DOCUMENTATION: PROBLEM TICKET DASHBOARD DATA MAPPING & BUSINESS LOGIC
+# 📊 LOKASI MAPPING, LOGIKA, DAN ATURAN DASHBOARD PROBLEM TICKET (OWS)
 
-Dokumen ini berisi dokumentasi teknis lengkap mengenai **sumber data (data mapping)**, **pemetaan kolom OWS**, dan **logika bisnis (business logic)** yang digunakan pada aplikasi **Problem Ticket Dashboard (Huawei OWS / GDE Studio)**. Dokumen ini ditujukan sebagai panduan bagi developer selanjutnya.
-
----
-
-## 1. Arsitektur Komunikasi Data & Service API
-
-Dashboard ini menggunakan pendekatan **Parallel Hybrid Mode** untuk menjamin kecepatan *page load* serta kelengkapan data visualisasi:
-
-1. **Summary Service (`OWS_SUMMARY_SERVICE_ID`)**:
-   - **Endpoint ID**: `/adc-service/rest/v1/services/gde_dashboard/problem_ticket_dashboard/problem_ticket_get_dashboard_summary`
-   - **Fungsi**: Mengambil data hitungan agregasi statistik (*count*) secara cepat (< 50ms) dari backend OWS untuk mengisi kartu statistik bagian atas (*Header Cards*).
-   - **Parameter Request**: `startDate`, `endDate`, `party`.
-
-2. **List Service (`OWS_LIST_SERVICE_ID`)**:
-   - **Endpoint ID**: `/adc-service/rest/v1/services/dashboard_problem_ticket_test/dashboard_problem_ticket_test/dashboard__problem_ticket`
-   - **Fungsi**: Mengunduh seluruh baris detail tiket secara bertahap (*pagination batching* 1000 record per request) untuk digunakan oleh ECharts, Heatmap Aging, dan Tabel Detail Tiket.
-   - **Parameter Request**: `start` (offset), `limit` (1000), `startDate`, `endDate`, `party`.
+Dokumen ini berisi dokumentasi lengkap mengenai logika arsitektur, pemetaan status bisnis, aturan agregasi, serta formula perhitungan aging per phase pada **Problem Ticket Dashboard OWS**.
 
 ---
 
-## 2. Pemetaan Field JSON API OWS (Data Mapping)
+## 1. 📌 LOGIKA PENGELOMPOKAN STATUS UTAMA (STAT CARDS)
 
-Karena payload JSON dari database OWS sering membungkus nilai dalam bentuk *Array of Objects* atau *Nested Objects*, setiap field diproses menggunakan helper sanitasi `extractOWSField()`.
+Sistem mengelompokkan tiket ke dalam 4 kategori utama berdasarkan nilai pada kolom **`ticketstatus`** (kolom status makro) dan **`businessstatus`** (kolom ID UUID status bisnis produksi dari `/Bpm/msup_options/msup_options_businessstatus`).
 
-| Nama Field Dashboard | Kolom Database OWS (JSON API) | Kolom Export Excel / CSV | Tipe Data & Format Contoh | Keterangan / Fungsi |
-| :--- | :--- | :--- | :--- | :--- |
-| **Ticket ID** | `orderid` / `keycode` / `id` | `Ticket ID` | String (`"PT202607170001"`) | Identifier unik tiket |
-| **Title / Summary** | `title` | `Title` | String (`"Trouble Link FO..."`) | Judul atau deskripsi singkat tiket |
-| **Ticket Status** | `ticketstatus` / `status` | `Ticket Status` | String (`"Running"`, `"Closed"`, `"Canceled"`) | Status utama siklus tiket |
-| **Current Phase** | `operate_phase` / `current_phase` | `Current Phase` | String (`"1. Create PT"`, `"6. Confirm PT"`) | Tahapan proses tiket berjalan |
-| **Severity / Level** | `createticketlevel` / `severity` | `Ticket Level(Create PT)` | String / UUID (`"508"`, `"Emergency"`, `"Critical"`) | Tingkat keparahan tiket |
-| **Responsibility** | `responsibility` / `problem_responsible_party` | `Problem Responsible Party` | String (`"Telkom Akses"`, `"Huawei"`, `"Mandau"`) | Pihak yang bertanggung jawab |
-| **Confirm Accept** | `confirmaccept` | `Accept or Not(Confirm PT)` | String (`"Accept"`, `"Reject"`, `"Yes"`, `"No"`) | Nilai persetujuan di fase konfirmasi |
-| **Confirm Submit Time**| `pt14_submittime` | `SubmitTime(Confirm PT)` | String (`"2026-07-17 14:00:00"`) | Timestamp waktu konfirmasi disubmit |
-| **Root Cause** | `root_cause` / `analyzecause` | `Root Cause` | String (`"Fiber Cut"`, `"Power Issue"`) | Penyebab utama masalah |
-| **Create Time** | `createtime` / `createfirstoccurtime` | `Created At` | String (`"2026-07-01 08:30:00"`) | Waktu tiket dibuat |
-| **Close Time** | `closetime` / `lastupdatetime` | `Closure Time` | String (`"2026-07-05 10:00:00"`) | Waktu tiket ditutup |
-| **SLA Status** | `slastatus` / `over_sla` | `SLA Status` | String / Boolean (`"SLA_VIOLATION"`, `true`) | Indikator pelanggaran SLA |
+| Kategori Dashboard | Status Ticket (`ticketstatus`) | Business Status UUID (`businessstatus`) | Pengaruh Terhadap TOTAL PT |
+| :--- | :--- | :--- | :--- |
+| **🔴 CANCELED PT** | `canceled`, `cancelled`, `rejected` | `bb129930-e165-11f0-aa35-0255ac1218d9` (*Canceled*)<br>`bb12994b-e165-11f0-aa35-0255ac1218d9` (*Abort Exception*) | **DI-EXCLUDE** (Dikeluarkan dari Total PT) |
+| **🟣 CLOSED PT** | `closed`, `completed` | `bb129922-e165-11f0-aa35-0255ac1218d9` (*Closed*)<br>`bb129937-e165-11f0-aa35-0255ac1218d9` (*Completed*)<br>`bb12991f-e165-11f0-aa35-0255ac1218d9` (*BO Reject Closed*) | Termasuk dalam Total PT |
+| **🟠 PENDING PT** | `running` | 22 Status Penanganan (Lihat Tabel Detail Section 2) | Termasuk dalam Total PT |
+| **🟢 OPEN PT** | `running` | Seluruh `businessstatus` aktif di luar 22 status Pending & Canceled (misal: *In Review*, *Submitted*, *Accepted*, *CR*, dsb) | Termasuk dalam Total PT |
+
+> **Formula Total PT:**
+> $$\mathbf{\text{TOTAL PT}} = \text{OPEN PT} + \text{PENDING PT} + \text{CLOSED PT} \quad (\text{Tanpa Canceled PT})$$
 
 ---
 
-## 3. Logika Bisnis Utama (Business Logic)
+## 2. 📋 DAFTAR DETAIL BUSINESS STATUS KATEGORI PENDING PT
 
-### A. Strict Rules Status Tiket Closed (`isTicketClosed`)
-Suatu tiket **HANYA** dikategorikan sebagai **Closed PT (Selesai)** apabila memenuhi **dua kondisi ganda** secara bersamaan:
-1. `ticketstatus` bernilai `'Closed'` atau `'Completed'`.
-2. `confirmaccept` bernilai `'Accept'`, `'Accepted'`, `'Yes'`, atau `'True'`.
+Seluruh tiket berstatus **`ticketstatus = 'running'`** yang memiliki nilai **`businessstatus`** pada daftar 22 UUID di bawah ini dikategorikan sebagai **PENDING PT**:
 
-```javascript
-// Implementasi pada custom_dashboard_script.js
-var statusCat = getStatusCategory(t.ticketstatus || t.status || '');
-var isClosed = (statusCat === 'closed');
+| No | Label Status (*optionlabel*) | Nama Kode (*keycode*) | ID UUID Resmi Production |
+| :---: | :--- | :--- | :--- |
+| 1 | **Pending for Approval** | `BusinessStatus Pending for Approval` | `bb12992f-e165-11f0-aa35-0255ac1218d9` |
+| 2 | **Pending for Assessment** | `BusinessStatus Pending for Assessment` | `bb129928-e165-11f0-aa35-0255ac1218d9` |
+| 3 | **Pending for Validation** | `BusinessStatus Pending for Validation` | `bb129941-e165-11f0-aa35-0255ac1218d9` |
+| 4 | **Pending** | `BusinessStatusPending` | `bb12991d-e165-11f0-aa35-0255ac1218d9` |
+| 5 | **Pending for Analyze** | `BusinessStatusPendingForAnalyze` | `bb12993a-e165-11f0-aa35-0255ac1218d9` |
+| 6 | **Pending for Handle** | `BusinessStatusPendingForHandle` | `bb129916-e165-11f0-aa35-0255ac1218d9` |
+| 7 | **Pending for Review** | `BusinessStatusPendingForReview` | `bb12993c-e165-11f0-aa35-0255ac1218d9` |
+| 8 | **Pending for Analyze Plan** | `BusinessStatusPendingforAnalyzePlan` | `bb129923-e165-11f0-aa35-0255ac1218d9` |
+| 9 | **Pending for Approve Plan** | `BusinessStatusPendingforApprovePlan` | `bb129927-e165-11f0-aa35-0255ac1218d9` |
+| 10 | **Pending for BO Accept** | `BusinessStatusPendingforBOAccept` | `bb12993f-e165-11f0-aa35-0255ac1218d9` |
+| 11 | **Pending for BO Resolve** | `BusinessStatusPendingforBOResolve` | `bb129940-e165-11f0-aa35-0255ac1218d9` |
+| 12 | **Pending for Confirmation** | `BusinessStatusPendingforConfirmation` | `bb12991c-e165-11f0-aa35-0255ac1218d9` |
+| 13 | **Pending for Execute** | `BusinessStatusPendingforExcute` | `bb129925-e165-11f0-aa35-0255ac1218d9` |
+| 14 | **Pending for Implementation** | `BusinessStatusPendingforImplementation` | `bb12992d-e165-11f0-aa35-0255ac1218d9` |
+| 15 | **Pending for Review Improvement Plan** | `BusinessStatusPendingforReviewImprovementPlan` | `bb129942-e165-11f0-aa35-0255ac1218d9` |
+| 16 | **Pending for requester confirm** | `BusinessStatusPendingforrequesterconfirm` | `bb129944-e165-11f0-aa35-0255ac1218d9` |
+| 17 | **WIP** | `BusinessStatusWIP` | `bb12991a-e165-11f0-aa35-0255ac1218d9` |
+| 18 | **New** | `BusinessStatusNew` | `bb12992e-e165-11f0-aa35-0255ac1218d9` |
+| 19 | **Assigned** | `BusinessStatusAssigned` | `bb12993e-e165-11f0-aa35-0255ac1218d9` |
+| 20 | **In Progress** | `BusinessStatusInProgress` | `bb12993b-e165-11f0-aa35-0255ac1218d9` |
+| 21 | **Build and Test In Progress** | `BusinessStatusBuildandTestInProgress` | `bb12993d-e165-11f0-aa35-0255ac1218d9` |
+| 22 | **Implementation In Progress** | `BusinessStatusImplementationInProgress` | `bb129932-e165-11f0-aa35-0255ac1218d9` |
+
+---
+
+## 3. ⏳ LOGIKA PERHITUNGAN AGING PER PHASE (PHASE STATUS BY RESPONSIBILITY PARTY)
+
+Aging pada tabel **Phase Status by Responsibility Party** tidak dihitung dari waktu awal tiket dibuat (`createtime`), melainkan dihitung berdasarkan **waktu masuk (*Start Aging Date*) dari masing-masing phase penanganan**:
+
+| Nama Phase | Tanggal Mulai Hitung Aging (*Start Aging Date*) | Kolom Timestamp OWS |
+| :--- | :--- | :--- |
+| **1. Create PT** | Waktu tiket pertama kali dibuat | `createtime` |
+| **2. Handle Analyze PT** | Waktu tiket masuk ke tahap Handle Analyze | `tt10_submittime` / `tt11_createtime` |
+| **3. Analyze PT** | Waktu tiket masuk ke tahap Analyze PT | `tt11_submittime` / `tt12_createtime` |
+| **4. Handle Implement PT** | Waktu tiket masuk ke tahap Handle Implement | `tt12_submittime` / `pt10_createtime` |
+| **5. Implement PT** | Waktu tiket masuk ke tahap Implement PT | `pt10_submittime` / `pt12_createtime` |
+| **6. Confirm PT** | Waktu tiket masuk ke tahap Confirm PT | `pt12_submittime` / `pt14_createtime` |
+| **7. Closed PT** | Durasi total sejak tiket dibuat hingga ditutup | `createtime` $\rightarrow$ `closetime` |
+| **8. Canceled PT** | Durasi total sejak tiket dibuat hingga dibatalkan | `createtime` $\rightarrow$ `lastupdatetime` |
+
+> **Kategori Bucket Aging per Phase:**
+> - **`0-7 Days`**: Aging $\le 7$ hari.
+> - **`>7 Days`**: Aging $> 7$ hari.
+> - **`Avg Aging (Days)`**: $\frac{\sum \text{Durasi Hari pada Phase tersebut}}{\text{Total Tiket pada Phase tersebut}}$.
+
+---
+
+## 4. 🗓️ ATURAN SIKLUS MINGGUAN (WEEKLY PERIOD)
+
+Dashboard menggunakan **Siklus Mingguan Operasional (Kamis s/d Rabu)**:
+- **Hari Mulai Minggu:** Kamis (*Thursday*).
+- **Hari Akhir Minggu:** Rabu (*Wednesday*).
+- **Contoh Penamaan Label:** Rentang **23 Juli 2026 – 29 Juli 2026** dihitung secara otomatis sebagai **Week 30 (`W30`)**.
+
+---
+
+## 5. 🔍 TQL QUERY VALIDASI DATA PADA DATABASE OWS
+
+Berikut adalah TQL Query lengkap yang bisa Anda gunakan langsung untuk memvalidasi jumlah data di database OWS:
+
+### A. Validasi PENDING PT (Production UUIDs)
+```sql
+select count(1) as total_pending
+from "/ProblemTicket/ProblemTicket/pt_problemticket" pt
+where pt.businessstatus in (
+    'bb12992f-e165-11f0-aa35-0255ac1218d9', -- Pending for Approval
+    'bb129928-e165-11f0-aa35-0255ac1218d9', -- Pending for Assessment
+    'bb129941-e165-11f0-aa35-0255ac1218d9', -- Pending for Validation
+    'bb12991d-e165-11f0-aa35-0255ac1218d9', -- Pending
+    'bb12993a-e165-11f0-aa35-0255ac1218d9', -- Pending for Analyze
+    'bb129916-e165-11f0-aa35-0255ac1218d9', -- Pending for Handle
+    'bb12993c-e165-11f0-aa35-0255ac1218d9', -- Pending for Review
+    'bb129923-e165-11f0-aa35-0255ac1218d9', -- Pending for Analyze Plan
+    'bb129927-e165-11f0-aa35-0255ac1218d9', -- Pending for Approve Plan
+    'bb12993f-e165-11f0-aa35-0255ac1218d9', -- Pending for BO Accept
+    'bb129940-e165-11f0-aa35-0255ac1218d9', -- Pending for BO Resolve
+    'bb12991c-e165-11f0-aa35-0255ac1218d9', -- Pending for Confirmation
+    'bb129925-e165-11f0-aa35-0255ac1218d9', -- Pending for Excute
+    'bb12992d-e165-11f0-aa35-0255ac1218d9', -- Pending for Implementation
+    'bb129942-e165-11f0-aa35-0255ac1218d9', -- Pending for Review Improvement Plan
+    'bb129944-e165-11f0-aa35-0255ac1218d9', -- Pending for requester confirm
+    'bb12991a-e165-11f0-aa35-0255ac1218d9', -- WIP
+    'bb12992e-e165-11f0-aa35-0255ac1218d9', -- New
+    'bb12993e-e165-11f0-aa35-0255ac1218d9', -- Assigned
+    'bb12993b-e165-11f0-aa35-0255ac1218d9', -- In Progress
+    'bb12993d-e165-11f0-aa35-0255ac1218d9', -- Build and Test In Progress
+    'bb129932-e165-11f0-aa35-0255ac1218d9'  -- Implementation In Progress
+)
 ```
 
-### B. Reject Loop Rule (Pengembalian Fase Tiket)
-Jika tiket disubmit di fase Konfirmasi (`Confirm PT`), tetapi hasilnya **Ditolak (Reject)** oleh penanggung jawab:
-- **Logika**: Tiket secara otomatis dikembalikan (*looping*) ke **Phase 5: Implement PT**.
-- **Kondisi Code**:
-  ```javascript
-  var isRejected = (String(t.confirmaccept || '').toLowerCase().indexOf('reject') !== -1);
-  if (isRejected) {
-      phase = '5. Implement PT';
-  }
-  ```
+### B. Validasi PENDING PT (Lingkungan Sandbox / Dev UUIDs)
+```sql
+select count(1) as total_pending_dev
+from "/ProblemTicket/ProblemTicket/pt_problemticket" pt
+where pt.businessstatus in (
+    'b1fcdedc-e15e-11f0-a47f-0255ac120028', -- Assigned (Dev)
+    'b1fcdeb8-e15e-11f0-a47f-0255ac120028', -- In Progress / Analyze (Dev)
+    'b1fcdecc-e15e-11f0-a47f-0255ac120028', -- Rejected (Dev)
+    'b1fcdecd-e15e-11f0-a47f-0255ac120028', -- Pending Approval (Dev)
+    'b1fcdec6-e15e-11f0-a47f-0255ac120028', -- Pending Assessment (Dev)
+    'b1fcdedf-e15e-11f0-a47f-0255ac120028'  -- Pending Validation (Dev)
+)
+```
 
-### C. Pemetaan Responsibilitas Partner (`getTicketPartner`)
-Pengelompokan partner penanggung jawab dikategorikan berdasarkan pencocokan substring nama party:
-- **Telkom Akses**: String mengandung kata `'telkom'` atau `'akses'`.
-- **Mandau**: String mengandung kata `'mandau'`.
-- **Persada**: String mengandung kata `'persada'`.
-- **Others**: Semua nama party/vendor di luar tiga partner di atas (misal Huawei, Subcontractor lain).
+### C. Validasi OPEN PT
+```sql
+select count(1) as total_open
+from "/ProblemTicket/ProblemTicket/pt_problemticket" pt
+where lower(pt.ticketstatus) = 'running'
+  and pt.businessstatus not in (
+    'bb12992f-e165-11f0-aa35-0255ac1218d9', 'bb129928-e165-11f0-aa35-0255ac1218d9',
+    'bb129941-e165-11f0-aa35-0255ac1218d9', 'bb12991d-e165-11f0-aa35-0255ac1218d9',
+    'bb12993a-e165-11f0-aa35-0255ac1218d9', 'bb129916-e165-11f0-aa35-0255ac1218d9',
+    'bb12993c-e165-11f0-aa35-0255ac1218d9', 'bb129923-e165-11f0-aa35-0255ac1218d9',
+    'bb129927-e165-11f0-aa35-0255ac1218d9', 'bb12993f-e165-11f0-aa35-0255ac1218d9',
+    'bb129940-e165-11f0-aa35-0255ac1218d9', 'bb12991c-e165-11f0-aa35-0255ac1218d9',
+    'bb129925-e165-11f0-aa35-0255ac1218d9', 'bb12992d-e165-11f0-aa35-0255ac1218d9',
+    'bb129942-e165-11f0-aa35-0255ac1218d9', 'bb129944-e165-11f0-aa35-0255ac1218d9',
+    'bb12991a-e165-11f0-aa35-0255ac1218d9', 'bb12992e-e165-11f0-aa35-0255ac1218d9',
+    'bb12993e-e165-11f0-aa35-0255ac1218d9', 'bb12993b-e165-11f0-aa35-0255ac1218d9',
+    'bb12993d-e165-11f0-aa35-0255ac1218d9', 'bb129932-e165-11f0-aa35-0255ac1218d9',
+    'b1fcdedc-e15e-11f0-a47f-0255ac120028', 'b1fcdeb8-e15e-11f0-a47f-0255ac120028',
+    'b1fcdecc-e15e-11f0-a47f-0255ac120028', 'b1fcdecd-e15e-11f0-a47f-0255ac120028',
+    'b1fcdec6-e15e-11f0-a47f-0255ac120028', 'b1fcdedf-e15e-11f0-a47f-0255ac120028',
+    'bb129930-e165-11f0-aa35-0255ac1218d9', 'bb12994b-e165-11f0-aa35-0255ac1218d9',
+    'b1fcdece-e15e-11f0-a47f-0255ac120028', 'b1fcdee9-e15e-11f0-a47f-0255ac120028'
+  )
+```
 
-### D. Perhitungan Umur Tiket / Aging Days (`calculateAgingDays`)
-Perhitungan umur tiket dalam satuan hari (`Days`):
-- **Tiket Masih Running/Open**: `Aging = (Waktu Sekarang - Waktu Create)`
-- **Tiket Sudah Closed/Completed**: `Aging = (Waktu Close - Waktu Create)`
-- **Formula**: `diffMs / (1000 * 60 * 60 * 24)`
+### D. Validasi CLOSED PT
+```sql
+select count(1) as total_closed
+from "/ProblemTicket/ProblemTicket/pt_problemticket" pt
+where lower(pt.ticketstatus) in ('closed', 'completed')
+   or pt.businessstatus in (
+    'bb129922-e165-11f0-aa35-0255ac1218d9',
+    'bb129937-e165-11f0-aa35-0255ac1218d9',
+    'bb12991f-e165-11f0-aa35-0255ac1218d9',
+    'b1fcdec0-e15e-11f0-a47f-0255ac120028',
+    'b1fcdebd-e15e-11f0-a47f-0255ac120028'
+   )
+```
 
-### E. Penyederhanaan Aging Bucket (Heatmap & Stacked Bar)
-Kategori umur tiket pada tabel *Phase Status* disederhanakan menjadi 2 rentang utama:
-1. **0 - 7 Hari (`b1`)**: Tiket dalam rentang waktu penanganan standar.
-2. **> 7 Hari (`b2`)**: Tiket yang mengalami keterlambatan penanganan (> 7 hari).
+### E. Validasi CANCELED PT
+```sql
+select count(1) as total_canceled
+from "/ProblemTicket/ProblemTicket/pt_problemticket" pt
+where lower(pt.ticketstatus) in ('canceled', 'cancelled', 'rejected')
+   or pt.businessstatus in (
+    'bb129930-e165-11f0-aa35-0255ac1218d9',
+    'bb12994b-e165-11f0-aa35-0255ac1218d9',
+    'b1fcdece-e15e-11f0-a47f-0255ac120028',
+    'b1fcdee9-e15e-11f0-a47f-0255ac120028'
+   )
+```
 
-### F. SLA Severity Target & Production UUID Mapping
-Penetapan target SLA dan pemetaan UUID resmi OWS Production berdasarkan Severity Tiket (`createticketlevel`):
-- **Emergency**: UUID `eb0eb4fd-e4ad-11f0-9270-0255ac12120e` | Target SLA **7 Hari**
-- **Critical**: UUID `9acc3211-e172-11f0-bac9-0255ac1218ed` | Target SLA **15 Hari**
-- **Major**: UUID `9acc3212-e172-11f0-bac9-0255ac1218ed` | Target SLA **21 Hari**
-- **Minor**: UUID `9acc3216-e172-11f0-bac9-0255ac1218ed` | Target SLA **30 Hari**
+### F. Validasi TOTAL PT (Excluding Canceled)
+```sql
+select count(1) as total_pt_valid
+from "/ProblemTicket/ProblemTicket/pt_problemticket" pt
+where not (
+    lower(pt.ticketstatus) in ('canceled', 'cancelled', 'rejected')
+    or pt.businessstatus in (
+        'bb129930-e165-11f0-aa35-0255ac1218d9',
+        'bb12994b-e165-11f0-aa35-0255ac1218d9',
+        'b1fcdece-e15e-11f0-a47f-0255ac120028',
+        'b1fcdee9-e15e-11f0-a47f-0255ac120028'
+    )
+)
+```
 
----
-
-## 4. Struktur Komponen Dashboard
-
-Dashboard terdiri dari 7 section utama + Header Cards:
-1. **Header Stat Cards (5 Cards 1 Row)**: Menampilkan TOTAL PT, OPEN PT, PENDING PT, CLOSED PT, dan PAUSED PT secara instan dalam 1 baris.
-2. **Section 1: Severity Overview (SLA Based)**: Donut Chart ECharts per tingkat keparahan beserta breakdown Root Cause & SLA Compliance.
-3. **Section 2: Phase Status by Responsibility Party (Pending)**: Tabel Heatmap & Stacked Bar progress tiket per fase (1-8) dan per partner penanggung jawab.
-4. **Section 3: Partner PT Status Summary**: Ringkasan status tiket (Open, Pending, Closed, Canceled) per partner (Telkom Akses, Persada, Mandau, Others).
-5. **Section 4 & 5: Top Root Cause & SLA Compliance**: Pie Chart sebaran Root Cause utama dan tabel pencapaian SLA Compliance.
-6. **Section 6: SLA Pause Reason**: Grid card statistik alasan pause SLA (SLA Pause Reason) beserta badge filter vendor.
-7. **Section 7: Problem Ticket List Table**: Tabel interaktif daftar tiket lengkap dengan fitur pencarian (Debounce 300ms), filter partner, pagination, dan pop-up detail modal tiket.
-
----
-
-## 5. Kontak & Pemeliharaan Kodingan
-
-- **File Script Utama**: `custom_dashboard_script.js`
-- **File Styling Utama**: `custom_dashboard_style.css`
-- **File HTML Container**: `HTML_Panel` / `index.html`
-- **File Aturan OWS**: `OWS_STRICT_RULES_AND_OPTIMIZATION.md`
