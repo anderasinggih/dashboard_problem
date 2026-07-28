@@ -486,7 +486,7 @@ function getStatusCategory(rawStatusOrTicket, rawBusinessStatus) {
         'bb12993f-e165-11f0-aa35-0255ac1218d9', // Pending for BO Accept
         'bb129940-e165-11f0-aa35-0255ac1218d9', // Pending for BO Resolve
         'bb12991c-e165-11f0-aa35-0255ac1218d9', // Pending for Confirmation
-        'bb129925-e165-11f0-aa35-0255ac1218d9', // Pending for Execute
+        'bb129925-e165-11f0-aa35-0255ac1218d9', // Pending for Excute
         'bb12992d-e165-11f0-aa35-0255ac1218d9', // Pending for Implementation
         'bb129942-e165-11f0-aa35-0255ac1218d9', // Pending for Review Improvement Plan
         'bb129944-e165-11f0-aa35-0255ac1218d9', // Pending for requester confirm
@@ -510,11 +510,7 @@ function getStatusCategory(rawStatusOrTicket, rawBusinessStatus) {
         return 'pending';
     }
 
-    // 4. OPEN PT (Semua tiket running di luar Closed & Canceled)
-    if (ts === 'running' || ts === 'open') {
-        return 'open';
-    }
-
+    // 4. OPEN PT (Sisa tiket running di luar status Pending di atas)
     return 'open';
 }
 
