@@ -1580,12 +1580,9 @@ function renderPhaseDashboard(tickets) {
             } else if (statusCat === 'canceled') {
                 phase = '8. Canceled PT';
             } else {
-                var isRejected = (String(t.confirmaccept || t['Accept or Not(Confirm PT)'] || '').toLowerCase().indexOf('reject') !== -1);
                 var phaseRaw = String(t.current_phase || t.state || '').toLowerCase();
 
-                if (isRejected) {
-                    phase = '5. Implement PT';
-                } else if (phaseRaw.indexOf('confirm') !== -1) {
+                if (phaseRaw.indexOf('confirm') !== -1) {
                     phase = '6. Confirm PT';
                 } else if (phaseRaw.indexOf('handle analyze') !== -1) {
                     phase = '2. Handle Analyze PT';
@@ -2675,12 +2672,9 @@ function executeTicketSearchFilter() {
             } else if (statusCat === 'canceled') {
                 tPhase = '8. Canceled PT';
             } else {
-                var isRejected = (String(t.confirmaccept || t['Accept or Not(Confirm PT)'] || '').toLowerCase().indexOf('reject') !== -1);
                 var phaseRaw = String(t.current_phase || t.state || '').toLowerCase();
 
-                if (isRejected) {
-                    tPhase = '5. Implement PT';
-                } else if (phaseRaw.indexOf('confirm') !== -1) {
+                if (phaseRaw.indexOf('confirm') !== -1) {
                     tPhase = '6. Confirm PT';
                 } else if (phaseRaw.indexOf('handle analyze') !== -1) {
                     tPhase = '2. Handle Analyze PT';
