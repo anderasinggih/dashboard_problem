@@ -1,0 +1,277 @@
+<div class="custom-dashboard-wrapper">
+  <!-- Page View 1: Main Dashboard -->
+  <div id="pageDashboardView" class="custom-page-view">
+    <!-- Header Bar -->
+    <div class="custom-dashboard-header">
+      <div class="custom-header-info">
+        <h1 class="custom-header-title">PROBLEM MANAGEMENT DASHBOARD</h1>
+        <p class="custom-header-subtitle" id="liveTickerClock">Real-time enterprise monitoring & ticket tracking</p>
+      </div>
+    </div>
+
+    <!-- Date Filter Container Placeholder (Injected via JS to bypass OWS Sanitizer crash) -->
+    <div id="customFilterContainer"></div>
+
+  <!-- 1. STATISTIC CARDS — 2 rows grid (3 cards per row) -->
+  <div class="custom-stat-card-grid">
+    <!-- Card: Total PT -->
+    <div class="custom-stat-card">
+      <div class="custom-stat-left">
+        <div class="custom-icon-wrapper custom-icon-total">Σ</div>
+      </div>
+      <div class="custom-stat-right">
+        <div class="custom-stat-title">TOTAL PT</div>
+        <div class="custom-stat-number" id="statTotal">0</div>
+      </div>
+    </div>
+
+    <!-- Card: Open PT -->
+    <div class="custom-stat-card">
+      <div class="custom-stat-left">
+        <div class="custom-icon-wrapper custom-icon-open">●</div>
+      </div>
+      <div class="custom-stat-right">
+        <div class="custom-stat-title">OPEN PT</div>
+        <div class="custom-stat-number custom-text-danger" id="statOpen">0</div>
+      </div>
+    </div>
+
+    <!-- Card: Pending PT -->
+    <div class="custom-stat-card">
+      <div class="custom-stat-left">
+        <div class="custom-icon-wrapper custom-icon-pending">◷</div>
+      </div>
+      <div class="custom-stat-right">
+        <div class="custom-stat-title">PENDING PT</div>
+        <div class="custom-stat-number custom-text-warning" id="statInProgress">0</div>
+      </div>
+    </div>
+
+    <!-- Card: Closed PT -->
+    <div class="custom-stat-card">
+      <div class="custom-stat-left">
+        <div class="custom-icon-wrapper custom-icon-closed">✓</div>
+      </div>
+      <div class="custom-stat-right">
+        <div class="custom-stat-title">CLOSED PT</div>
+        <div class="custom-stat-number custom-text-success" id="statClosed">0</div>
+      </div>
+    </div>
+
+    <!-- Card: Canceled PT -->
+    <div class="custom-stat-card">
+      <div class="custom-stat-left">
+        <div class="custom-icon-wrapper custom-icon-canceled">✕</div>
+      </div>
+      <div class="custom-stat-right">
+        <div class="custom-stat-title">CANCELED PT</div>
+        <div class="custom-stat-number custom-text-muted" id="statCanceled">0</div>
+      </div>
+    </div>
+
+    <!-- Card: Paused PT -->
+    <div class="custom-stat-card">
+      <div class="custom-stat-left">
+        <div class="custom-icon-wrapper" style="background: rgba(139,92,246,0.15); color: #a78bfa;">⏸</div>
+      </div>
+      <div class="custom-stat-right">
+        <div class="custom-stat-title">PAUSED PT</div>
+        <div class="custom-stat-number" style="color: #a78bfa;" id="statPaused">0</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 2. DYNAMIC PARTNER CARDS CONTAINER (Injected via JS based on PartyManager) -->
+  <div class="custom-card-grid" style="margin-top: 16px;" id="partnerCardsContainer">
+    <div style="color: #a1a1aa; padding: 12px; font-size: 13px;">Memuat data party...</div>
+  </div>
+
+  <!-- 1. SEVERITY OVERVIEW (SLA BASED) -->
+  <div class="custom-panel-card" style="margin-top: 24px;">
+    <div class="custom-panel-header">
+      <span>1. SEVERITY OVERVIEW (SLA BASED)</span>
+    </div>
+    <div class="custom-panel-body" style="padding: 16px;">
+      <div class="custom-severity-grid">
+        <!-- EMERGENCY CARD -->
+        <div class="custom-severity-card custom-border-emergency">
+          <div class="custom-severity-title custom-text-emergency">EMERGENCY (SLA : 7 Days)</div>
+          <div class="custom-severity-chart-row">
+            <div class="custom-chart-container" id="chartEmergency"></div>
+            <div class="custom-legend-container" id="legendEmergency"></div>
+          </div>
+          <table class="custom-severity-table">
+            <thead>
+              <tr>
+                <th>Total PT</th>
+                <th>Pending PT</th>
+                <th>Over SLA</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td id="emergencyTotal">0</td>
+                <td id="emergencyPending">0</td>
+                <td id="emergencyOver" class="custom-text-danger">0</td>
+              </tr>
+            </tbody>
+          </table>
+          <div class="custom-severity-footer custom-bg-emergency">SLA Time : 7 Days</div>
+        </div>
+
+        <!-- CRITICAL CARD -->
+        <div class="custom-severity-card custom-border-critical">
+          <div class="custom-severity-title custom-text-critical">CRITICAL (SLA : 15 Days)</div>
+          <div class="custom-severity-chart-row">
+            <div class="custom-chart-container" id="chartCritical"></div>
+            <div class="custom-legend-container" id="legendCritical"></div>
+          </div>
+          <table class="custom-severity-table">
+            <thead>
+              <tr>
+                <th>Total PT</th>
+                <th>Pending PT</th>
+                <th>Over SLA</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td id="criticalTotal">0</td>
+                <td id="criticalPending">0</td>
+                <td id="criticalOver" class="custom-text-danger">0</td>
+              </tr>
+            </tbody>
+          </table>
+          <div class="custom-severity-footer custom-bg-critical">SLA Time : 15 Days</div>
+        </div>
+
+        <!-- MAJOR CARD -->
+        <div class="custom-severity-card custom-border-major">
+          <div class="custom-severity-title custom-text-major">MAJOR (SLA : 21 Days)</div>
+          <div class="custom-severity-chart-row">
+            <div class="custom-chart-container" id="chartMajor"></div>
+            <div class="custom-legend-container" id="legendMajor"></div>
+          </div>
+          <table class="custom-severity-table">
+            <thead>
+              <tr>
+                <th>Total PT</th>
+                <th>Pending PT</th>
+                <th>Over SLA</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td id="majorTotal">0</td>
+                <td id="majorPending">0</td>
+                <td id="majorOver" class="custom-text-danger">0</td>
+              </tr>
+            </tbody>
+          </table>
+          <div class="custom-severity-footer custom-bg-major">SLA Time : 21 Days</div>
+        </div>
+
+        <!-- MINOR CARD -->
+        <div class="custom-severity-card custom-border-minor">
+          <div class="custom-severity-title custom-text-minor">MINOR (SLA : 30 Days)</div>
+          <div class="custom-severity-chart-row">
+            <div class="custom-chart-container" id="chartMinor"></div>
+            <div class="custom-legend-container" id="legendMinor"></div>
+          </div>
+          <table class="custom-severity-table">
+            <thead>
+              <tr>
+                <th>Total PT</th>
+                <th>Pending PT</th>
+                <th>Over SLA</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td id="minorTotal">0</td>
+                <td id="minorPending">0</td>
+                <td id="minorOver" class="custom-text-danger">0</td>
+              </tr>
+            </tbody>
+          </table>
+          <div class="custom-severity-footer custom-bg-minor">SLA Time : 30 Days</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+
+
+  <!-- 3. PHASE STATUS BY RESPONSIBILITY PARTY (Pending) -->
+  <div class="custom-panel-card" style="margin-top: 24px;">
+    <div class="custom-panel-header">
+      <span>2. PHASE STATUS BY RESPONSIBILITY PARTY (Pending)</span>
+    </div>
+    <div class="custom-panel-body" style="padding: 16px; overflow-x: auto;">
+      <!-- Row 1: OVERALL SUMMARY (Full width) -->
+      <div style="margin-bottom: 20px;">
+        <div class="custom-phase-col" style="min-width: 100%;">
+          <div class="custom-phase-col-header">
+            <span class="custom-phase-col-title" style="font-weight: 700; color: #f0f6fc; font-size: 13px;">OVERALL SUMMARY</span>
+          </div>
+          <div class="custom-phase-table-wrapper" id="tablePhaseOverall">
+            <div style="color: #8b949e; padding: 10px; font-size: 12px;">Memuat data summary...</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Row 2: PARTNERS (Dynamically rendered via JS based on PartyManager) -->
+      <div class="custom-phase-grid" id="phasePartnersGrid">
+        <div style="color: #8b949e; padding: 10px; font-size: 12px;">Memuat data phase partner...</div>
+      </div>
+    </div>
+  </div>
+  <!-- 3. WEEKLY TREND ROW -->
+  <div class="custom-panel-card" style="margin-top: 24px;">
+    <div class="custom-panel-header">
+      <span>3. WEEKLY TREND</span>
+    </div>
+    <div class="custom-panel-body" style="padding: 16px; overflow-x: auto;">
+      <div id="chartWeeklyTrend" style="width: 100%; min-width: 1200px; height: 380px;"></div>
+    </div>
+  </div>
+
+  <!-- 4. TRENDS & SLA COMPLIANCE PANEL ROW -->
+  <div class="custom-trends-row" style="margin-top: 24px;">
+    <!-- TOP ROOT CAUSE -->
+    <div class="custom-panel-card custom-rootcause-card" style="flex: 1;">
+      <div class="custom-panel-header">
+        <span>4. TOP ROOT CAUSE (ALL PT)</span>
+      </div>
+      <div class="custom-panel-body" style="padding: 16px;">
+        <div id="chartTopRootCause" style="width: 100%; height: 280px;"></div>
+      </div>
+    </div>
+
+    <!-- SLA COMPLIANCE BY PARTY -->
+    <div class="custom-panel-card custom-compliance-card" style="flex: 1;">
+      <div class="custom-panel-header">
+        <span>5. SLA COMPLIANCE BY PARTY</span>
+      </div>
+      <div class="custom-panel-body" style="padding: 12px; overflow-x: auto;">
+        <div id="tableSlaCompliance">
+          <div style="color: #a1a1aa; padding: 10px; font-size: 12px;">Memuat data kepatuhan...</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 2. MAIN LIST PANEL (Problem Ticket List) -->
+  <div class="custom-panel-card" style="margin-top: 24px;">
+    <div class="custom-panel-header">
+      <span>6. PROBLEM TICKET LIST</span>
+    </div>
+    <div class="custom-panel-body">
+      <div id="ticketSearchContainer"></div>
+      <div id="ticketContainer">
+        <div style="color: #6c757d; padding: 10px;">Memuat data tiket...</div>
+      </div>
+    </div>
+  </div>
+  </div> <!-- End #pageDashboardView -->
+</div> <!-- End .custom-dashboard-wrapper -->

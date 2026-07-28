@@ -103,9 +103,9 @@ function formatWeekLabel(weekKey) {
     return year + "-W" + week;
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
+// -----------------------------------------------------------------------------
 // MAIN EXECUTION LOGIC
-// ─────────────────────────────────────────────────────────────────────────────
+// -----------------------------------------------------------------------------
 
 var input = _message.Input;
 var startDate;
@@ -249,16 +249,49 @@ if (endTime !== "") {
 }
 if (party !== "") {
     if (party.toLowerCase() === 'others') {
-        whereClause += " and (pt.responsibility is null or (lower(pt.responsibility) not like '%telkom%' and lower(pt.responsibility) not like '%akses%' and lower(pt.responsibility) not like '%mandau%' and lower(pt.responsibility) not like '%persada%'))";
+        // Query active registered parties & raw mappings from OWS DB model
+        var registeredPartyValues = [];
+        try {
+            var configModelUri = "\"/ProblemTicket/ProblemTicket/problem_ticket_dashboard_party_config\"";
+            var configTql = "select pt.party_name as party_name, pt.raw_id as raw_id from " + configModelUri + " pt where (pt.is_active is null or upper(pt.is_active) != 'NO')";
+            var configRows = queryByTql(configTql, {}, 0, 500);
+            for (var cIdx = 0; cIdx < configRows.length; cIdx++) {
+                var cRow = configRows[cIdx];
+                if (cRow.party_name && normalizeText(cRow.party_name) !== "") {
+                    registeredPartyValues.push(normalizeText(cRow.party_name).toLowerCase());
+                }
+                if (cRow.raw_id && normalizeText(cRow.raw_id) !== "") {
+                    registeredPartyValues.push(normalizeText(cRow.raw_id).toLowerCase());
+                }
+            }
+        } catch (eConfig) {
+            console.error('Config fetch error in TQL:', eConfig);
+        }
+
+        if (registeredPartyValues.length === 0) {
+            // No parties registered: ALL tickets belong to Others
+            whereClause += " and 1 = 1";
+        } else {
+            // Exclude registered parties and raw UUID mappings
+            whereClause += " and (pt.responsibility is null or pt.responsibility = ''";
+            for (var pIdx = 0; pIdx < registeredPartyValues.length; pIdx++) {
+                var paramKey = "reg_p_" + pIdx;
+                parameters[paramKey] = registeredPartyValues[pIdx];
+                whereClause += " and lower(pt.responsibility) != $" + paramKey;
+                whereClause += " and lower(pt.responsibility) not like '%' || $" + paramKey + " || '%'";
+            }
+            whereClause += ")";
+        }
     } else {
-        whereClause += " and pt.responsibility = $!party";
+        parameters.party_like = "%" + party + "%";
+        whereClause += " and (pt.responsibility = $!party or pt.responsibility like $!party_like)";
     }
 }
 
 // 1. SUMMARY STAT CARDS TQL (All-Time Unfiltered Overview)
 summaryTql =
     "select " +
-    "count(1) as total, " +
+    "sum(case when lower(pt.ticketstatus) = 'canceled' or lower(pt.ticketstatus) = 'cancelled' or lower(pt.ticketstatus) = 'rejected' then 0 else 1 end) as total, " +
     "sum(case " +
     "when (lower(pt.ticketstatus) = 'closed' or lower(pt.ticketstatus) = 'completed') " +
     "and (lower(pt.confirmaccept) = 'accept' or lower(pt.confirmaccept) = 'accepted' or lower(pt.confirmaccept) = 'yes' or lower(pt.confirmaccept) = 'true') " +
@@ -274,8 +307,9 @@ summaryTql =
     "and (lower(pt.confirmaccept) = 'accept' or lower(pt.confirmaccept) = 'accepted' or lower(pt.confirmaccept) = 'yes' or lower(pt.confirmaccept) = 'true') " +
     "then 0 " +
     "when lower(pt.ticketstatus) = 'canceled' or lower(pt.ticketstatus) = 'cancelled' or lower(pt.ticketstatus) = 'rejected' " +
-    "then 0 else 1 end) as open " +
-    "from " + modelUri + " pt where 1 = 1";
+    "then 0 else 1 end) as open, " +
+    "sum(case when lower(pt.slapaused) = 'yes' or lower(pt.slapaused) = 'true' or pt.slapaused = '1' then 1 else 0 end) as paused " +
+    "from " + modelUri + " pt " + whereClause;
 
 // 2. SEVERITY OVERVIEW TQL (SLA Based: Emergency, Critical, Major, Minor)
 severityTql =
@@ -369,7 +403,9 @@ alldataGridTql =
     "pt.originator as originator, " +
     "pt.confirmaccept as confirmaccept, " +
     "pt.pt14_submittime as pt14_submittime, " +
-    "pt.slastatus as slastatus " +
+    "pt.slastatus as slastatus, " +
+    "pt.slapaused as slapaused, " +
+    "pt.slapausereason as slapausereason " +
     "from " + modelUri + " pt " +
     whereClause + " " +
     "order by pt.createtime desc";
@@ -390,7 +426,7 @@ try {
     try { weeklyRows = queryByTql(weeklyTrendTql, parameters, 0, 500); } catch (e6) { console.error('weeklyTrendTql error:', e6); weeklyRows = []; }
     try { partyOptionRows = queryByTql(partyOptionsTql, { start_time: startTime, end_time: endTime }, 0, 500); } catch (e7) { console.error('partyOptionsTql error:', e7); partyOptionRows = []; }
     try { dataGridTotalRows = queryByTql(dataGridTotalTql, parameters, 0, 1); } catch (e8) { console.error('dataGridTotalTql error:', e8); dataGridTotalRows = []; }
-    try { alldataGridRows = queryByTql(alldataGridTql, parameters, dataStart, dataLimit); } catch (e9) { console.error('alldataGridTql error:', e9); alldataGridRows = []; }
+    try { alldataGridRows = queryByTql(alldataGridTql, parameters, dataStart, dataLimit); } catch (e9) { console.error('alldataGridRows error:', e9); alldataGridRows = []; }
 } catch (error) {
     throw new ScriptError(
         "Failed to query Problem Ticket dashboard data: " + error.message
@@ -404,7 +440,8 @@ summary = {
     open: toNumber(summaryRow.open),
     pending: toNumber(summaryRow.pending),
     closed: toNumber(summaryRow.closed),
-    canceled: toNumber(summaryRow.canceled)
+    canceled: toNumber(summaryRow.canceled),
+    paused: toNumber(summaryRow.paused)
 };
 
 dataGridTotalRow = dataGridTotalRows.length > 0 ? dataGridTotalRows[0] : {};

@@ -1,17 +1,20 @@
 <div class="custom-dashboard-wrapper">
-  <!-- Header Bar -->
-  <div class="custom-dashboard-header">
-    <div class="custom-header-info">
-      <h1 class="custom-header-title">PROBLEM MANAGEMENT DASHBOARD</h1>
-      <p class="custom-header-subtitle" id="liveTickerClock">Real-time enterprise monitoring & ticket tracking</p>
+  <!-- Page View 1: Main Dashboard -->
+  <div id="pageDashboardView" class="custom-page-view">
+    <!-- Header Bar -->
+    <div class="custom-dashboard-header">
+      <div class="custom-header-info">
+        <h1 class="custom-header-title">PROBLEM MANAGEMENT DASHBOARD</h1>
+        <p class="custom-header-subtitle" id="liveTickerClock">Real-time enterprise monitoring & ticket tracking</p>
+      </div>
+      <div id="customHeaderControlsPlaceholder"></div>
     </div>
-  </div>
 
-  <!-- Date Filter Container Placeholder (Injected via JS to bypass OWS Sanitizer crash) -->
-  <div id="customFilterContainer"></div>
+    <!-- Date Filter Container Placeholder (Injected via JS to bypass OWS Sanitizer crash) -->
+    <div id="customFilterContainer"></div>
 
-  <!-- 1. STATISTIC CARDS -->
-  <div class="custom-card-grid">
+  <!-- 1. STATISTIC CARDS — Single row grid (5 cards) -->
+  <div class="custom-stat-card-grid">
     <!-- Card: Total PT -->
     <div class="custom-stat-card">
       <div class="custom-stat-left">
@@ -56,119 +59,21 @@
       </div>
     </div>
 
-    <!-- Card: Canceled PT -->
+    <!-- Card: Paused PT -->
     <div class="custom-stat-card">
       <div class="custom-stat-left">
-        <div class="custom-icon-wrapper custom-icon-canceled">✕</div>
+        <div class="custom-icon-wrapper" style="background: rgba(139,92,246,0.15); color: #a78bfa;">⏸</div>
       </div>
       <div class="custom-stat-right">
-        <div class="custom-stat-title">CANCELED PT</div>
-        <div class="custom-stat-number custom-text-muted" id="statCanceled">0</div>
+        <div class="custom-stat-title">PAUSED PT</div>
+        <div class="custom-stat-number" style="color: #a78bfa;" id="statPaused">0</div>
       </div>
     </div>
   </div>
 
-  <!-- 2. PARTNER CARDS -->
-  <div class="custom-card-grid" style="margin-top: 16px;">
-    <!-- Partner Card: Telkom Akses -->
-    <div class="custom-partner-card">
-      <div class="custom-partner-logo">
-        <span class="custom-logo-telkom-red">Telkom</span><span class="custom-logo-telkom-black">Akses</span>
-      </div>
-      <div class="custom-partner-metrics">
-        <div class="custom-metric-col">
-          <div class="custom-metric-label">Open PT</div>
-          <div class="custom-metric-val" id="taOpen">0</div>
-        </div>
-        <div class="custom-metric-col">
-          <div class="custom-metric-label">Pending PT</div>
-          <div class="custom-metric-val" id="taPending">0</div>
-        </div>
-        <div class="custom-metric-col">
-          <div class="custom-metric-label">Closed PT</div>
-          <div class="custom-metric-val" id="taClosed">0</div>
-        </div>
-        <div class="custom-metric-col">
-          <div class="custom-metric-label">Canceled PT</div>
-          <div class="custom-metric-val" id="taCanceled">0</div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Partner Card: Mandau -->
-    <div class="custom-partner-card">
-      <div class="custom-partner-logo">
-        <span class="custom-logo-mandau">mandau</span>
-      </div>
-      <div class="custom-partner-metrics">
-        <div class="custom-metric-col">
-          <div class="custom-metric-label">Open PT</div>
-          <div class="custom-metric-val" id="mOpen">0</div>
-        </div>
-        <div class="custom-metric-col">
-          <div class="custom-metric-label">Pending PT</div>
-          <div class="custom-metric-val" id="mPending">0</div>
-        </div>
-        <div class="custom-metric-col">
-          <div class="custom-metric-label">Closed PT</div>
-          <div class="custom-metric-val" id="mClosed">0</div>
-        </div>
-        <div class="custom-metric-col">
-          <div class="custom-metric-label">Canceled PT</div>
-          <div class="custom-metric-val" id="mCanceled">0</div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Partner Card: Persada -->
-    <div class="custom-partner-card">
-      <div class="custom-partner-logo">
-        <span class="custom-logo-persada">PERSADA</span>
-      </div>
-      <div class="custom-partner-metrics">
-        <div class="custom-metric-col">
-          <div class="custom-metric-label">Open PT</div>
-          <div class="custom-metric-val" id="pOpen">0</div>
-        </div>
-        <div class="custom-metric-col">
-          <div class="custom-metric-label">Pending PT</div>
-          <div class="custom-metric-val" id="pPending">0</div>
-        </div>
-        <div class="custom-metric-col">
-          <div class="custom-metric-label">Closed PT</div>
-          <div class="custom-metric-val" id="pClosed">0</div>
-        </div>
-        <div class="custom-metric-col">
-          <div class="custom-metric-label">Canceled PT</div>
-          <div class="custom-metric-val" id="pCanceled">0</div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Partner Card: Others -->
-    <div class="custom-partner-card">
-      <div class="custom-partner-logo">
-        <span style="color: #a1a1aa; letter-spacing: 2px; font-weight: 800;">OTHERS</span>
-      </div>
-      <div class="custom-partner-metrics">
-        <div class="custom-metric-col">
-          <div class="custom-metric-label">Open PT</div>
-          <div class="custom-metric-val" id="othOpen">0</div>
-        </div>
-        <div class="custom-metric-col">
-          <div class="custom-metric-label">Pending PT</div>
-          <div class="custom-metric-val" id="othPending">0</div>
-        </div>
-        <div class="custom-metric-col">
-          <div class="custom-metric-label">Closed PT</div>
-          <div class="custom-metric-val" id="othClosed">0</div>
-        </div>
-        <div class="custom-metric-col">
-          <div class="custom-metric-label">Canceled PT</div>
-          <div class="custom-metric-val" id="othCanceled">0</div>
-        </div>
-      </div>
-    </div>
+  <!-- 2. DYNAMIC PARTNER CARDS CONTAINER (Injected via JS based on PartyManager) -->
+  <div class="custom-card-grid" style="margin-top: 16px;" id="partnerCardsContainer">
+    <div style="color: #a1a1aa; padding: 12px; font-size: 13px;">Memuat data party...</div>
   </div>
 
   <!-- 1. SEVERITY OVERVIEW (SLA BASED) -->
@@ -305,48 +210,9 @@
         </div>
       </div>
 
-      <!-- Row 2: PARTNERS (Side-by-side grid) -->
-      <div class="custom-phase-grid">
-        <!-- COLUMN 2: TELKOM AKSES -->
-        <div class="custom-phase-col">
-          <div class="custom-phase-col-header">
-            <span class="custom-logo-telkom-red" style="font-weight: 700; font-size: 14px;">Telkom</span><span
-              class="custom-logo-telkom-black" style="font-weight: 700; font-size: 14px;">Akses</span>
-          </div>
-          <div class="custom-phase-table-wrapper" id="tablePhaseTelkom">
-            <div style="color: #8b949e; padding: 10px; font-size: 12px;">Memuat data Telkom Akses...</div>
-          </div>
-        </div>
-
-        <!-- COLUMN 3: MANDAU -->
-        <div class="custom-phase-col">
-          <div class="custom-phase-col-header">
-            <span class="custom-logo-mandau" style="font-size: 14px; font-weight: 700;">mandau</span>
-          </div>
-          <div class="custom-phase-table-wrapper" id="tablePhaseMandau">
-            <div style="color: #8b949e; padding: 10px; font-size: 12px;">Memuat data Mandau...</div>
-          </div>
-        </div>
-
-        <!-- COLUMN 4: PERSADA -->
-        <div class="custom-phase-col">
-          <div class="custom-phase-col-header">
-            <span class="custom-logo-persada" style="font-size: 14px; font-weight: 800;">PERSADA</span>
-          </div>
-          <div class="custom-phase-table-wrapper" id="tablePhasePersada">
-            <div style="color: #8b949e; padding: 10px; font-size: 12px;">Memuat data Persada...</div>
-          </div>
-        </div>
-
-        <!-- COLUMN 5: OTHERS -->
-        <div class="custom-phase-col">
-          <div class="custom-phase-col-header">
-            <span style="color: #a1a1aa; font-size: 14px; font-weight: 800; letter-spacing: 2px;">OTHERS</span>
-          </div>
-          <div class="custom-phase-table-wrapper" id="tablePhaseOthers">
-            <div style="color: #8b949e; padding: 10px; font-size: 12px;">Memuat data Others...</div>
-          </div>
-        </div>
+      <!-- Row 2: PARTNERS (Dynamically rendered via JS based on PartyManager) -->
+      <div class="custom-phase-grid" id="phasePartnersGrid">
+        <div style="color: #8b949e; padding: 10px; font-size: 12px;">Memuat data phase partner...</div>
       </div>
     </div>
   </div>
@@ -385,10 +251,22 @@
     </div>
   </div>
 
-  <!-- 2. MAIN LIST PANEL (Problem Ticket List) -->
+  <!-- 6. SLA PAUSE REASON CARD -->
   <div class="custom-panel-card" style="margin-top: 24px;">
     <div class="custom-panel-header">
-      <span>6. PROBLEM TICKET LIST</span>
+      <span>6. SLA PAUSE REASON</span>
+    </div>
+    <div class="custom-panel-body" style="padding: 16px;">
+      <div id="slaPauseReasonContainer">
+        <div style="color: #8b949e; padding: 10px; font-size: 12px;">Memuat data SLA pause reason...</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 7. MAIN LIST PANEL (Problem Ticket List) -->
+  <div class="custom-panel-card" style="margin-top: 24px;">
+    <div class="custom-panel-header">
+      <span>7. PROBLEM TICKET LIST</span>
     </div>
     <div class="custom-panel-body">
       <div id="ticketSearchContainer"></div>
@@ -397,4 +275,5 @@
       </div>
     </div>
   </div>
-</div>
+  </div> <!-- End #pageDashboardView -->
+</div> <!-- End .custom-dashboard-wrapper -->

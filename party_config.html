@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Party Management Configuration — OWS Dashboard</title>
+    <link rel="stylesheet" href="custom_dashboard_style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.min.js"></script>
+</head>
+<body style="background-color: #09090b; margin: 0; padding: 0;">
+
+    <div class="custom-dashboard-wrapper" style="min-height: 100vh; background-color: #09090b; color: #e4e4e7;">
+        <div class="custom-dashboard-header">
+            <div class="custom-header-info">
+                <h1 class="custom-header-title">PARTY MANAGEMENT CONFIGURATION</h1>
+                <p class="custom-header-subtitle" id="liveTickerClock">Daftarkan Party resmi enterprise. Party yang belum terdaftar otomatis dikelompokkan ke OTHERS.</p>
+            </div>
+            <div id="backNavContainer"></div>
+        </div>
+
+        <div class="custom-config-container">
+            <div class="custom-config-grid">
+                <!-- Card 1: Daftar Party Resmi Aktif -->
+                <div class="custom-config-card">
+                    <div class="custom-config-header">
+                        <span>Daftar Party Resmi Terdaftar</span>
+                        <span class="custom-badge custom-bg-success" id="activePartiesCount">0 Registered</span>
+                    </div>
+                    <div class="custom-config-body">
+                        <div class="custom-party-tag-list" id="registeredPartiesTagList">
+                            <div style="color: #a1a1aa; font-size: 13px;">Memuat daftar party...</div>
+                        </div>
+
+                        <div style="margin-top: 16px; border-top: 1px solid #27272a; padding-top: 16px;" id="addPartyFormSection">
+                            <div style="color: #a1a1aa; font-size: 13px;">Memuat form...</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Card 2: Auto-Detected Parties dari Database OWS -->
+                <div class="custom-config-card">
+                    <div class="custom-config-header">
+                        <span>Auto-Detected Responsibility dari OWS DB</span>
+                        <div id="scanBtnContainer"></div>
+                    </div>
+                    <div class="custom-config-body" style="padding: 0;">
+                        <div id="autoDetectPartiesContainer">
+                            <div style="color: #a1a1aa; padding: 16px; font-size: 13px;">Memindai responsibility di database...</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="custom_dashboard_script.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            if (typeof renderPartyConfigPage === 'function') {
+                renderPartyConfigPage();
+            }
+            if (typeof startLiveClock === 'function') {
+                startLiveClock();
+            }
+        });
+    </script>
+</body>
+</html>

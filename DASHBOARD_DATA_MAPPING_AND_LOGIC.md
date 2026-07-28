@@ -83,24 +83,25 @@ Kategori umur tiket pada tabel *Phase Status* disederhanakan menjadi 2 rentang u
 1. **0 - 7 Hari (`b1`)**: Tiket dalam rentang waktu penanganan standar.
 2. **> 7 Hari (`b2`)**: Tiket yang mengalami keterlambatan penanganan (> 7 hari).
 
-### F. SLA Severity Target
-Penetapan target SLA berdasarkan Severity Tiket:
-- **Emergency**: Target SLA **7 Hari**
-- **Critical**: Target SLA **15 Hari**
-- **Major**: Target SLA **21 Hari**
-- **Minor**: Target SLA **30 Hari**
+### F. SLA Severity Target & Production UUID Mapping
+Penetapan target SLA dan pemetaan UUID resmi OWS Production berdasarkan Severity Tiket (`createticketlevel`):
+- **Emergency**: UUID `eb0eb4fd-e4ad-11f0-9270-0255ac12120e` | Target SLA **7 Hari**
+- **Critical**: UUID `9acc3211-e172-11f0-bac9-0255ac1218ed` | Target SLA **15 Hari**
+- **Major**: UUID `9acc3212-e172-11f0-bac9-0255ac1218ed` | Target SLA **21 Hari**
+- **Minor**: UUID `9acc3216-e172-11f0-bac9-0255ac1218ed` | Target SLA **30 Hari**
 
 ---
 
 ## 4. Struktur Komponen Dashboard
 
-Dashboard terdiri dari 6 kontainer utama:
-1. **Header Stat Cards**: Menampilkan Total PT, Open PT, Pending PT, Closed PT, Canceled PT secara instan.
-2. **Container 1: Severity Overview (SLA Based)**: Donut Chart ECharts per tingkat keparahan beserta breakdown Root Cause & SLA Compliance.
-3. **Container 2: Phase Status by Responsibility Party**: Tabel Heatmap & Stacked Bar progress tiket per fase dan per partner penanggung jawab.
-4. **Container 3 & 4: Weekly Trend & Top Root Cause**: Bar chart tren mingguan tiket open/closed dan Pie chart sebaran root cause.
-5. **Container 5: SLA Compliance Rate**: Tabel pencapaian SLA mingguan (Compliance %) per partner.
-6. **Container 6: Problem Ticket List Table**: Tabel interaktif daftar tiket lengkap dengan fitur pencarian (Debounce 300ms), filter partner, pagination, dan pop-up detail modal tiket.
+Dashboard terdiri dari 7 section utama + Header Cards:
+1. **Header Stat Cards (5 Cards 1 Row)**: Menampilkan TOTAL PT, OPEN PT, PENDING PT, CLOSED PT, dan PAUSED PT secara instan dalam 1 baris.
+2. **Section 1: Severity Overview (SLA Based)**: Donut Chart ECharts per tingkat keparahan beserta breakdown Root Cause & SLA Compliance.
+3. **Section 2: Phase Status by Responsibility Party (Pending)**: Tabel Heatmap & Stacked Bar progress tiket per fase (1-8) dan per partner penanggung jawab.
+4. **Section 3: Partner PT Status Summary**: Ringkasan status tiket (Open, Pending, Closed, Canceled) per partner (Telkom Akses, Persada, Mandau, Others).
+5. **Section 4 & 5: Top Root Cause & SLA Compliance**: Pie Chart sebaran Root Cause utama dan tabel pencapaian SLA Compliance.
+6. **Section 6: SLA Pause Reason**: Grid card statistik alasan pause SLA (SLA Pause Reason) beserta badge filter vendor.
+7. **Section 7: Problem Ticket List Table**: Tabel interaktif daftar tiket lengkap dengan fitur pencarian (Debounce 300ms), filter partner, pagination, dan pop-up detail modal tiket.
 
 ---
 

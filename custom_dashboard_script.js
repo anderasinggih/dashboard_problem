@@ -17,24 +17,314 @@
 })();
 
 // ─────────────────────────────────────────────────────────────────────────────
-// 01. DOMAIN & DATA HELPERS
 // ─────────────────────────────────────────────────────────────────────────────
+// DYNAMIC PARTY MANAGEMENT SYSTEM (PartyManager)
+// ─────────────────────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
+// OWS CENTRALIZED PARTY MANAGEMENT SYSTEM (PartyManager)
+// Service Endpoint: /gde_dashboard/problem_ticket_dashboard/problem_ticket_problem_ticket_dashboard_party_config
+// ─────────────────────────────────────────────────────────────────────────────
+var OWS_PARTY_CONFIG_GET_SERVICE = '/adc-service/rest/v1/services/gde_dashboard/problem_ticket_dashboard/problem_ticket_problem_ticket_dashboard_party_config_get_list';
+var OWS_PARTY_CONFIG_GET_SINGLE_SERVICE = '/adc-service/rest/v1/services/gde_dashboard/problem_ticket_dashboard/problem_ticket_problem_ticket_dashboard_party_config_get';
+var OWS_PARTY_CONFIG_CREATE_SERVICE = '/adc-service/rest/v1/services/gde_dashboard/problem_ticket_dashboard/problem_ticket_problem_ticket_dashboard_party_config_create';
+var OWS_PARTY_CONFIG_UPDATE_SERVICE = '/adc-service/rest/v1/services/gde_dashboard/problem_ticket_dashboard/problem_ticket_problem_ticket_dashboard_party_config_update';
+var OWS_PARTY_CONFIG_DELETE_SERVICE = '/adc-service/rest/v1/services/gde_dashboard/problem_ticket_dashboard/problem_ticket_problem_ticket_dashboard_party_config_delete';
+var OWS_PARTY_CONFIG_BATCH_DELETE_SERVICE = '/adc-service/rest/v1/services/gde_dashboard/problem_ticket_dashboard/problem_ticket_problem_ticket_dashboard_party_config_delete';
+
+var _memoryParties = null;
+var _memoryPartyMappings = null;
+var _memoryDbRecords = {}; // Maps partyName or rawId to DB record object for deletion
+
+window.PartyManager = {
+    STORAGE_KEY: 'ows_registered_parties',
+    MAPPING_STORAGE_KEY: 'ows_party_mappings',
+
+    // Sync with OWS Database Model via get_list service
+    fetchFromOwsDb: function (onComplete) {
+        if (typeof MessageProcessor === 'undefined' || !MessageProcessor.process) {
+            if (typeof onComplete === 'function') onComplete();
+            return;
+        }
+
+        var processResponse = function (res) {
+            try {
+                var rows = [];
+                if (res && res.result && res.result._values) rows = res.result._values;
+                else if (res && res.result && res.result.results) rows = res.result.results;
+                else if (res && res.result && Array.isArray(res.result)) rows = res.result;
+                else if (res && res.results) rows = res.results;
+                else if (res && res._values) rows = res._values;
+                else if (res && res.data) rows = res.data;
+                else if (Array.isArray(res)) rows = res;
+
+                var parties = [];
+                var mappings = {};
+                _memoryDbRecords = {};
+
+                rows.forEach(function (r) {
+                    var partyName = String(r.party_name || r.partyName || r.name || '').trim();
+                    var rawId = String(r.raw_id || r.rawId || r.rawid || '').trim();
+                    // Prioritise Sequence Primary Key pt_party_id
+                    var recordId = r.pt_party_id !== undefined && r.pt_party_id !== null ? r.pt_party_id : (r.ptPartyId !== undefined ? r.ptPartyId : r.id);
+
+                    var isAct = r.is_active || r.isActive;
+                    var actBool = r.active;
+
+                    // Skip deactivated records
+                    if (isAct !== undefined && String(isAct).toUpperCase() === 'NO') return;
+                    if (actBool !== undefined && (actBool === false || String(actBool).toLowerCase() === 'false')) return;
+
+                    if (partyName) {
+                        if (parties.indexOf(partyName) === -1) {
+                            parties.push(partyName);
+                        }
+                        if (recordId) {
+                            _memoryDbRecords[partyName.toLowerCase()] = recordId;
+                        }
+                    }
+                    if (rawId && partyName) {
+                        mappings[rawId.toLowerCase()] = partyName;
+                        if (recordId) {
+                            _memoryDbRecords[rawId.toLowerCase()] = recordId;
+                        }
+                    }
+                });
+
+                _memoryParties = parties;
+                _memoryPartyMappings = mappings;
+
+                try {
+                    if (typeof localStorage !== 'undefined') {
+                        localStorage.setItem('ows_registered_parties', JSON.stringify(parties));
+                        localStorage.setItem('ows_party_mappings', JSON.stringify(mappings));
+                    }
+                } catch (e) { }
+
+                console.log('[PartyManager] OWS DB Sync Success. Parties:', parties, 'Mappings:', mappings);
+            } catch (err) {
+                console.warn('[PartyManager] Error parsing OWS DB response:', err);
+            }
+            if (typeof onComplete === 'function') onComplete();
+        };
+
+        // Call get_list endpoint primary
+        MessageProcessor.process({
+            serviceId: OWS_PARTY_CONFIG_GET_SERVICE,
+            data: { start: 0, limit: 1000 },
+            success: processResponse,
+            error: function (err) {
+                console.warn('[PartyManager] get_list service error, fallback to get:', err);
+                // Fallback try get endpoint if get_list is unavailable
+                MessageProcessor.process({
+                    serviceId: OWS_PARTY_CONFIG_GET_SINGLE_SERVICE,
+                    data: { start: 0, limit: 1000 },
+                    success: processResponse,
+                    error: function (err2) {
+                        console.warn('[PartyManager] OWS DB Sync error (using local cache):', err2);
+                        if (typeof onComplete === 'function') onComplete();
+                    }
+                });
+            }
+        });
+    },
+
+    getRegisteredParties: function () {
+        if (_memoryParties && Array.isArray(_memoryParties)) {
+            return _memoryParties.slice();
+        }
+        try {
+            var stored = typeof localStorage !== 'undefined' ? localStorage.getItem(this.STORAGE_KEY) : null;
+            if (stored !== null) {
+                var parsed = JSON.parse(stored);
+                if (Array.isArray(parsed)) {
+                    _memoryParties = parsed;
+                    return parsed.slice();
+                }
+            }
+        } catch (e) {
+            console.warn('[PartyManager] localStorage read error:', e);
+        }
+        _memoryParties = [];
+        return [];
+    },
+
+    getPartyMappings: function () {
+        if (_memoryPartyMappings && typeof _memoryPartyMappings === 'object') {
+            return Object.assign({}, _memoryPartyMappings);
+        }
+        try {
+            var stored = typeof localStorage !== 'undefined' ? localStorage.getItem(this.MAPPING_STORAGE_KEY) : null;
+            if (stored) {
+                var parsed = JSON.parse(stored);
+                if (parsed && typeof parsed === 'object') {
+                    _memoryPartyMappings = parsed;
+                    return Object.assign({}, parsed);
+                }
+            }
+        } catch (e) {
+            console.warn('[PartyManager] Mapping read error:', e);
+        }
+        _memoryPartyMappings = {};
+        return {};
+    },
+
+    setMapping: function (rawId, displayName) {
+        if (!rawId || !displayName) return false;
+        var cleanRaw = String(rawId).trim();
+        var cleanDisplay = String(displayName).trim();
+        if (!cleanRaw || !cleanDisplay) return false;
+
+        var mappings = this.getPartyMappings();
+        mappings[cleanRaw.toLowerCase()] = cleanDisplay;
+        _memoryPartyMappings = mappings;
+        window.allTimePartnerMetrics = null; // Clear cached partner metrics
+
+        try {
+            if (typeof localStorage !== 'undefined') {
+                localStorage.setItem(this.MAPPING_STORAGE_KEY, JSON.stringify(mappings));
+            }
+        } catch (e) { }
+
+        // Insert mapping into OWS DB Model
+        if (typeof MessageProcessor !== 'undefined' && MessageProcessor.process) {
+            MessageProcessor.process({
+                serviceId: OWS_PARTY_CONFIG_CREATE_SERVICE,
+                data: {
+                    raw_id: cleanRaw,
+                    party_name: cleanDisplay,
+                    is_active: 'YES'
+                },
+                success: function (res) {
+                    console.log('[PartyManager] DB Mapping Save Success:', res);
+                    window.allTimePartnerMetrics = null;
+                },
+                error: function (err) {
+                    console.warn('[PartyManager] DB Mapping Save Notice:', err);
+                }
+            });
+        }
+        return true;
+    },
+
+    addParty: function (name) {
+        if (!name || typeof name !== 'string') return false;
+        var cleanName = name.trim();
+        if (!cleanName) return false;
+
+        var parties = this.getRegisteredParties();
+        var exists = parties.some(function (p) { return p.toLowerCase() === cleanName.toLowerCase(); });
+        if (!exists) {
+            parties.push(cleanName);
+            _memoryParties = parties.slice();
+            window.allTimePartnerMetrics = null; // Clear cached partner metrics
+
+            try {
+                if (typeof localStorage !== 'undefined') {
+                    localStorage.setItem(this.STORAGE_KEY, JSON.stringify(parties));
+                }
+            } catch (e) { }
+
+            // Insert new party into OWS DB Model
+            if (typeof MessageProcessor !== 'undefined' && MessageProcessor.process) {
+                MessageProcessor.process({
+                    serviceId: OWS_PARTY_CONFIG_CREATE_SERVICE,
+                    data: {
+                        party_name: cleanName,
+                        is_active: 'YES'
+                    },
+                    success: function (res) {
+                        console.log('[PartyManager] DB Party Add Success:', res);
+                        window.allTimePartnerMetrics = null;
+                    },
+                    error: function (err) {
+                        console.warn('[PartyManager] DB Party Add Notice:', err);
+                    }
+                });
+            }
+            return true;
+        }
+        return false;
+    },
+
+    removeParty: function (name) {
+        if (!name) return false;
+        var cleanName = String(name).trim().toLowerCase();
+        var parties = this.getRegisteredParties();
+        var initialLen = parties.length;
+        parties = parties.filter(function (p) { return p.toLowerCase() !== cleanName; });
+
+        if (parties.length !== initialLen) {
+            _memoryParties = parties.slice();
+            window.allTimePartnerMetrics = null; // Clear cached partner metrics
+
+            try {
+                if (typeof localStorage !== 'undefined') {
+                    localStorage.setItem(this.STORAGE_KEY, JSON.stringify(parties));
+                }
+            } catch (e) { }
+
+            // Delete record permanently via single delete service
+            var recId = _memoryDbRecords[cleanName];
+            if (typeof MessageProcessor !== 'undefined' && MessageProcessor.process) {
+                var deletePayload = {
+                    pt_party_id: recId || '',
+                    party_name: cleanName
+                };
+                MessageProcessor.process({
+                    serviceId: OWS_PARTY_CONFIG_DELETE_SERVICE,
+                    data: deletePayload,
+                    success: function (res) {
+                        console.log('[PartyManager] OWS DB Batch Delete Success:', res);
+                        window.allTimePartnerMetrics = null;
+                        PartyManager.fetchFromOwsDb(function () {
+                            if (typeof renderPartyConfigPage === 'function') {
+                                renderPartyConfigPage();
+                            }
+                        });
+                    },
+                    error: function (err) {
+                        console.warn('[PartyManager] OWS DB Batch Delete Notice:', err);
+                    }
+                });
+            }
+            return true;
+        }
+        return false;
+    }
+};
 
 function getTicketPartner(item) {
     if (!item) return 'Others';
     var rawParty = String(item.responsibility || item.problem_responsible_party || '').trim();
     if (!rawParty) return 'Others';
 
-    var lower = rawParty.toLowerCase();
-    if (lower.indexOf('telkom') !== -1 || lower.indexOf('akses') !== -1) {
-        return 'Telkom Akses';
-    } else if (lower.indexOf('mandau') !== -1) {
-        return 'Mandau';
-    } else if (lower.indexOf('persada') !== -1) {
-        return 'Persada';
-    } else {
-        return 'Others';
+    var lowerRaw = rawParty.toLowerCase();
+    var mappings = PartyManager.getPartyMappings();
+
+    // 1. Direct mapping check (e.g. UUID -> Official Display Name)
+    if (mappings[lowerRaw]) {
+        return mappings[lowerRaw];
     }
+
+    // 2. Substring check against mapped raw_id / UUID keys
+    var mapKeys = Object.keys(mappings);
+    for (var k = 0; k < mapKeys.length; k++) {
+        var key = mapKeys[k];
+        if (key && lowerRaw.indexOf(key.toLowerCase()) !== -1) {
+            return mappings[key];
+        }
+    }
+
+    // 3. Registered party name substring check
+    var registeredParties = PartyManager.getRegisteredParties();
+    for (var i = 0; i < registeredParties.length; i++) {
+        var reg = registeredParties[i];
+        var regLower = reg.toLowerCase();
+        if (lowerRaw.indexOf(regLower) !== -1 || regLower.indexOf(lowerRaw) !== -1) {
+            return reg;
+        }
+    }
+    return 'Others';
 }
 
 function calculateAgingDays(createTimeStr, closeTimeStr, lastUpdateTimeStr, operateTimeStr, ticketstatus) {
@@ -80,21 +370,42 @@ function extractOWSField(val) {
     if (Array.isArray(val) && val.length > 0) {
         var item = val[0];
         if (typeof item === 'object' && item !== null) {
-            return item.text || item.value || item.name || item.label || '';
+            return item.text || item.value || item.name || item.label || item.id || item.code || item.keycode || item.val || '';
         }
         return String(item);
     }
     if (typeof val === 'object') {
-        return val.text || val.value || val.local || val.utc || val.name || val.label || '';
+        return val.text || val.value || val.local || val.utc || val.name || val.label || val.id || val.code || val.keycode || val.val || '';
     }
     return String(val);
 }
 
 function getSeverityLabel(rawVal) {
-    var s = extractOWSField(rawVal).toLowerCase();
-    if (s.indexOf(SEV_UUID_EMERGENCY) !== -1 || s.indexOf('emergency') !== -1 || s === '1') return 'Emergency';
-    if (s.indexOf(SEV_UUID_CRITICAL) !== -1 || s.indexOf('critical') !== -1 || s === '2') return 'Critical';
-    if (s.indexOf(SEV_UUID_MAJOR) !== -1 || s.indexOf('major') !== -1 || s === '3') return 'Major';
+    var valStr = extractOWSField(rawVal);
+    if (!valStr) return 'Minor';
+
+    var s = String(valStr).toLowerCase().trim();
+
+    // 1. EMERGENCY (9 tickets in prod: eb0eb4fd-e4ad-11f0-9270-0255ac12120e)
+    if (s.indexOf('eb0eb4fd') !== -1 || s.indexOf('606516bb') !== -1 || s.indexOf('emergenc') !== -1 || s === '7' || s === 'p1' || s.indexOf('level 1') !== -1 || s.indexOf('level1') !== -1) {
+        return 'Emergency';
+    }
+
+    // 2. CRITICAL (33 tickets in prod: 9acc3211-e172-11f0-bac9-0255ac1218ed)
+    if (s.indexOf('9acc3211') !== -1 || s.indexOf('8fb52507') !== -1 || s.indexOf('2507') !== -1 || s.indexOf('critic') !== -1 || s === '1' || s === 'p2' || s.indexOf('level 2') !== -1 || s.indexOf('level2') !== -1) {
+        return 'Critical';
+    }
+
+    // 3. MAJOR (1614 tickets in prod: 9acc3212-e172-11f0-bac9-0255ac1218ed)
+    if (s.indexOf('9acc3212') !== -1 || s.indexOf('8fb52508') !== -1 || s.indexOf('2508') !== -1 || s.indexOf('major') !== -1 || s === '2' || s === 'p3' || s.indexOf('level 3') !== -1 || s.indexOf('level3') !== -1 || s === 'high') {
+        return 'Major';
+    }
+
+    // 4. MINOR (154 tickets in prod: 9acc3216-e172-11f0-bac9-0255ac1218ed)
+    if (s.indexOf('9acc3216') !== -1 || s.indexOf('8fb5250c') !== -1 || s.indexOf('250c') !== -1 || s.indexOf('minor') !== -1 || s === '6' || s === 'p4' || s.indexOf('level 4') !== -1 || s.indexOf('level4') !== -1 || s === 'low' || s === 'medium') {
+        return 'Minor';
+    }
+
     return 'Minor';
 }
 
@@ -126,11 +437,10 @@ function getRootCauseLabel(rawStr) {
  */
 function getStatusCategory(rawStr) {
     var s = String(rawStr || '').toLowerCase();
-    if (s === 'running' || s === 'open' || s === 'true' || s === '1') return 'open';
-    if (s === 'pending' || s === 'in progress') return 'pending';
     if (s === 'canceled' || s === 'cancelled' || s === 'rejected') return 'canceled';
-    if (s === 'closed' || s === 'completed' || s === 'false' || s === '0') return 'closed';
-    return 'unknown';
+    if (s === 'closed' || s === 'completed') return 'closed';
+    if (s === 'pending' || s === 'in progress') return 'pending';
+    return 'open';
 }
 
 /**
@@ -198,11 +508,19 @@ var PAGE_LIMIT = 1000;
 var OWS_SUMMARY_SERVICE_ID = '/adc-service/rest/v1/services/gde_dashboard/problem_ticket_dashboard/problem_ticket_getsummarysc';
 // var OWS_LIST_SERVICE_ID = '/adc-service/rest/v1/services/gde_dashboard/problem_ticket_dashboard/problem_ticket_tt_problem_ticket_get_list';
 
+function getSlaTargetDays(sevRaw) {
+    var sev = getSeverityLabel(sevRaw);
+    if (sev === 'Emergency') return 7;
+    if (sev === 'Critical') return 15;
+    if (sev === 'Major') return 21;
+    return 30; // Minor
+}
+
 function sanitizeTicket(raw) {
     if (!raw || typeof raw !== 'object') return raw;
     var sevRaw = extractOWSField(raw.severity || raw.createticketlevel || '');
     var slaStat = extractOWSField(raw.slastatus || '');
-    var isOver = raw.over_sla !== undefined && raw.over_sla !== null ? raw.over_sla : (String(slaStat).toLowerCase() === 'sla_violation' || String(slaStat).toLowerCase() === 'over');
+    var statusStr = extractOWSField(raw.ticketstatus || raw.status || '');
 
     var createTimeStr = extractOWSField(raw.createtime || raw.createfirstoccurtime || '');
     var closeTimeStr = extractOWSField(raw.closetime || '');
@@ -210,15 +528,22 @@ function sanitizeTicket(raw) {
     var operateTimeStr = extractOWSField(raw.operate_time || '');
     var respStr = extractOWSField(raw.responsibility || raw.problem_responsible_party || '');
 
+    var agingDays = raw.aging !== undefined && raw.aging !== null ? Number(raw.aging) : calculateAgingDays(createTimeStr, closeTimeStr, lastUpdateStr, operateTimeStr, statusStr);
+    var targetSlaDays = getSlaTargetDays(sevRaw);
+
+    var isOver = raw.over_sla !== undefined && raw.over_sla !== null 
+        ? (raw.over_sla === true || String(raw.over_sla).toLowerCase() === 'true' || String(raw.over_sla) === '1')
+        : (String(slaStat).toLowerCase() === 'sla_violation' || String(slaStat).toLowerCase() === 'over' || agingDays > targetSlaDays);
+
     return {
         orderid: raw.orderid || raw.keycode || raw.id || '',
         title: raw.title || '',
-        ticketstatus: extractOWSField(raw.ticketstatus || raw.status || ''),
+        ticketstatus: statusStr,
         severity: sevRaw,
         createticketlevel: sevRaw,
         root_cause: extractOWSField(raw.root_cause || raw.analyzecause || ''),
-        operate_phase: extractOWSField(raw.current_phase || raw.operate_phase || ''),
-        current_phase: extractOWSField(raw.current_phase || raw.operate_phase || ''),
+        operate_phase: extractOWSField(raw.current_phase || ''),
+        current_phase: extractOWSField(raw.current_phase || ''),
         responsibility: respStr,
         createptproblemdes: raw.createptproblemdes || raw.procfaultreasondes || '',
         createptassignto: extractOWSField(raw.createptassignto || ''),
@@ -228,11 +553,14 @@ function sanitizeTicket(raw) {
         closetime: closeTimeStr,
         lastupdatetime: lastUpdateStr,
         operate_time: operateTimeStr,
-        aging: raw.aging !== undefined ? raw.aging : null,
+        aging: agingDays,
         over_sla: isOver,
+        target_sla_days: targetSlaDays,
         slastatus: slaStat,
         confirmaccept: extractOWSField(raw.confirmaccept || ''),
-        pt14_submittime: extractOWSField(raw.pt14_submittime || '')
+        pt14_submittime: extractOWSField(raw.pt14_submittime || ''),
+        slapaused: extractOWSField(raw.slapaused || raw.slapausing || raw.sla_suspend_state || ''),
+        slapausereason: extractOWSField(raw.slapausereason || raw.pause_reason || raw.exemptreason || '')
     };
 }
 
@@ -255,20 +583,102 @@ function extractTickets(res) {
 }
 
 function callOWSSummary(startDate, endDate, party, onSuccess, onError) {
-    var requestData = {
-        "startDate": startDate || "",
-        "endDate": endDate || "",
-        "party": party || "ALL",
-        "start": 0,
-        "limit": 1000
-    };
-    console.log('[SUMMARY] Fetching summary serviceId=' + OWS_SUMMARY_SERVICE_ID, requestData);
-    MessageProcessor.process({
-        serviceId: OWS_SUMMARY_SERVICE_ID,
-        data: requestData,
-        success: function (res) { onSuccess(res); },
-        error: function (err) { onError(err); }
-    });
+    var mappedParty = party || "ALL";
+    var mappings = PartyManager.getPartyMappings();
+    var rawIds = [];
+    if (party && party !== 'ALL') {
+        Object.keys(mappings).forEach(function (rawId) {
+            if (mappings[rawId].toLowerCase() === party.toLowerCase()) {
+                rawIds.push(rawId);
+            }
+        });
+        if (rawIds.length > 0) {
+            mappedParty = rawIds[0]; // Send raw UUID if mapped
+        }
+    }
+
+    var allRows = [];
+    var totalRecords = 0;
+    var firstResponseData = null;
+
+    function updateLoadingStatus(fetched, total) {
+        var container = document.querySelector('#ticketContainer');
+        if (container) {
+            var loadingDiv = container.querySelector('.custom-loading-msg');
+            if (!loadingDiv) {
+                container.innerHTML = '';
+                loadingDiv = document.createElement('div');
+                loadingDiv.className = 'custom-loading-msg';
+                loadingDiv.style.color = '#6c757d';
+                loadingDiv.style.padding = '12px';
+                container.appendChild(loadingDiv);
+            }
+            if (total && total > 0) {
+                loadingDiv.textContent = 'Memuat data dari server OWS (' + fetched + ' / ' + total + ' tiket)...';
+            } else if (fetched > 0) {
+                loadingDiv.textContent = 'Memuat data dari server OWS (' + fetched + ' tiket)...';
+            } else {
+                loadingDiv.textContent = 'Memuat data dari server OWS...';
+            }
+        }
+    }
+
+    function fetchPage(startOffset) {
+        var requestData = {
+            "startDate": startDate || "",
+            "endDate": endDate || "",
+            "party": mappedParty,
+            "selected_party_name": party || "ALL",
+            "start": startOffset,
+            "limit": PAGE_LIMIT
+        };
+        console.log('[SUMMARY] Fetching batch start=' + startOffset + ' limit=' + PAGE_LIMIT, requestData);
+
+        MessageProcessor.process({
+            serviceId: OWS_SUMMARY_SERVICE_ID,
+            data: requestData,
+            success: function (res) {
+                var data = res && res.result ? res.result : (res || {});
+                if (!firstResponseData) {
+                    firstResponseData = data;
+                }
+
+                var summary = data.summary || {};
+                var dataGrid = data.data_grid || {};
+                var batchRows = dataGrid.rows || [];
+                totalRecords = Math.max(dataGrid.total !== undefined ? dataGrid.total : 0, summary.total !== undefined ? summary.total : 0);
+
+                allRows = allRows.concat(batchRows);
+                updateLoadingStatus(allRows.length, totalRecords);
+
+                // If more records remain and current batch is non-empty, fetch next batch
+                if (totalRecords > allRows.length && batchRows.length > 0) {
+                    fetchPage(startOffset + batchRows.length);
+                } else {
+                    // All pages fetched! Construct full combined response payload
+                    if (!firstResponseData) firstResponseData = {};
+                    if (!firstResponseData.data_grid) firstResponseData.data_grid = {};
+                    firstResponseData.data_grid.rows = allRows;
+                    firstResponseData.data_grid.total = totalRecords || allRows.length;
+                    onSuccess(firstResponseData);
+                }
+            },
+            error: function (err) {
+                if (allRows.length > 0) {
+                    console.warn('[SUMMARY] Partial fetch completed with error on offset ' + startOffset + ':', err);
+                    if (!firstResponseData) firstResponseData = {};
+                    if (!firstResponseData.data_grid) firstResponseData.data_grid = {};
+                    firstResponseData.data_grid.rows = allRows;
+                    onSuccess(firstResponseData);
+                } else {
+                    onError(err);
+                }
+            }
+        });
+    }
+
+    updateLoadingStatus(0, 0);
+    fetchPage(0);
 }
 
 function loadProblemTickets(startDate, endDate, party) {
@@ -295,93 +705,213 @@ function loadProblemTickets(startDate, endDate, party) {
 
 function renderRunScriptFullDashboard(data, isFiltered, party) {
     var summary = data.summary || {};
-    var partnerSum = data.partner_summary || [];
     var dataGrid = data.data_grid || {};
     var rawRows = dataGrid.rows || [];
     var rows = extractTickets(rawRows);
 
-    // Save All-Time Unfiltered Summary and Partner Metrics on initial/unfiltered load
+    // Save All-Time Unfiltered Summary on initial load
     if (!window.allTimeSummary || !isFiltered) {
+        var pausedCount = summary.paused || 0;
+        if (!pausedCount && Array.isArray(rows)) {
+            rows.forEach(function (t) {
+                var sp = String(t.slapaused || '').toLowerCase();
+                if (sp === 'yes' || sp === 'true' || sp === '1') pausedCount++;
+            });
+        }
+        summary.paused = pausedCount;
         window.allTimeSummary = summary;
     }
 
+    var registeredParties = PartyManager.getRegisteredParties();
+
+    // Dynamically compute partner breakdown cards using rows returned by server on initial unfiltered load
     if (!window.allTimePartnerMetrics || !isFiltered) {
-        var taOpen = 0, taPending = 0, taClosed = 0, taCanceled = 0;
-        var mOpen = 0, mPending = 0, mClosed = 0, mCanceled = 0;
-        var pOpen = 0, pPending = 0, pClosed = 0, pCanceled = 0;
-        var othOpen = 0, othPending = 0, othClosed = 0, othCanceled = 0;
+        var partnerMetrics = {};
+        registeredParties.forEach(function (p) {
+            partnerMetrics[p] = { open: 0, pending: 0, closed: 0, canceled: 0 };
+        });
+        partnerMetrics['Others'] = { open: 0, pending: 0, closed: 0, canceled: 0 };
 
         if (Array.isArray(rows)) {
             rows.forEach(function (t) {
                 var partner = getTicketPartner(t);
                 var statusCat = getStatusCategory(t.ticketstatus || t.status || '');
-
-                if (partner === 'Telkom Akses') {
-                    if (statusCat === 'open') taOpen++;
-                    else if (statusCat === 'pending') taPending++;
-                    else if (statusCat === 'closed') taClosed++;
-                    else if (statusCat === 'canceled') taCanceled++;
-                } else if (partner === 'Mandau') {
-                    if (statusCat === 'open') mOpen++;
-                    else if (statusCat === 'pending') mPending++;
-                    else if (statusCat === 'closed') mClosed++;
-                    else if (statusCat === 'canceled') mCanceled++;
-                } else if (partner === 'Persada') {
-                    if (statusCat === 'open') pOpen++;
-                    else if (statusCat === 'pending') pPending++;
-                    else if (statusCat === 'closed') pClosed++;
-                    else if (statusCat === 'canceled') pCanceled++;
-                } else {
-                    if (statusCat === 'open') othOpen++;
-                    else if (statusCat === 'pending') othPending++;
-                    else if (statusCat === 'closed') othClosed++;
-                    else if (statusCat === 'canceled') othCanceled++;
+                if (!partnerMetrics[partner]) {
+                    partnerMetrics[partner] = { open: 0, pending: 0, closed: 0, canceled: 0 };
                 }
+                if (statusCat === 'open') partnerMetrics[partner].open++;
+                else if (statusCat === 'pending') partnerMetrics[partner].pending++;
+                else if (statusCat === 'closed') partnerMetrics[partner].closed++;
+                else if (statusCat === 'canceled') partnerMetrics[partner].canceled++;
             });
         }
-
-        window.allTimePartnerMetrics = {
-            taOpen: taOpen, taPending: taPending, taClosed: taClosed, taCanceled: taCanceled,
-            mOpen: mOpen, mPending: mPending, mClosed: mClosed, mCanceled: mCanceled,
-            pOpen: pOpen, pPending: pPending, pClosed: pClosed, pCanceled: pCanceled,
-            othOpen: othOpen, othPending: othPending, othClosed: othClosed, othCanceled: othCanceled
-        };
+        window.allTimePartnerMetrics = partnerMetrics;
     }
 
-    // 1. Header Stat Cards (Always All-Time Unfiltered)
-    var headerSum = window.allTimeSummary || summary;
-    setCardValue('statTotal', headerSum.total || 0);
-    setCardValue('statOpen', headerSum.open || 0);
-    setCardValue('statInProgress', headerSum.pending || 0);
-    setCardValue('statClosed', headerSum.closed || 0);
-    setCardValue('statCanceled', headerSum.canceled || 0);
+    // 1. Header Stat Cards (Reflects Filtered Summary when Filter is Active)
+    var headerSum = isFiltered ? summary : (window.allTimeSummary || summary);
+    setCardValue('statTotal', headerSum.total !== undefined ? headerSum.total : (rows.length || 0));
+    setCardValue('statOpen', headerSum.open !== undefined ? headerSum.open : 0);
+    setCardValue('statInProgress', headerSum.pending !== undefined ? headerSum.pending : 0);
+    setCardValue('statClosed', headerSum.closed !== undefined ? headerSum.closed : 0);
+    setCardValue('statCanceled', headerSum.canceled !== undefined ? headerSum.canceled : 0);
+    setCardValue('statPaused', headerSum.paused !== undefined ? headerSum.paused : 0);
 
-    // 2. Partner Breakdown Cards (Always All-Time Unfiltered)
-    var pm = window.allTimePartnerMetrics || {};
-    setCardValue('taOpen', pm.taOpen || 0); setCardValue('taPending', pm.taPending || 0); setCardValue('taClosed', pm.taClosed || 0); setCardValue('taCanceled', pm.taCanceled || 0);
-    setCardValue('mOpen', pm.mOpen || 0); setCardValue('mPending', pm.mPending || 0); setCardValue('mClosed', pm.mClosed || 0); setCardValue('mCanceled', pm.mCanceled || 0);
-    setCardValue('pOpen', pm.pOpen || 0); setCardValue('pPending', pm.pPending || 0); setCardValue('pClosed', pm.pClosed || 0); setCardValue('pCanceled', pm.pCanceled || 0);
-    setCardValue('othOpen', pm.othOpen || 0); setCardValue('othPending', pm.othPending || 0); setCardValue('othClosed', pm.othClosed || 0); setCardValue('othCanceled', pm.othCanceled || 0);
+    // 2. Dynamic Partner Breakdown Cards (Rendered via JS DOM into #partnerCardsContainer)
+    renderDynamicPartnerCards();
 
     // 3. Render SELURUH Dashboard (Severity, Phase, Trends, SLA & List Tabel)
     window.allTicketsData = rows;
+
     renderTicketsData(rows, rows);
     renderSeverityDashboard(rows);
     renderPhaseDashboard(rows);
     renderTrendsAndCompliance(rows, rows, rows);
+    renderSlaPauseReason(rows);
     updatePanelFilterBadges(party);
+    updateLastUpdatedTimestamp();
+}
+
+function updateLastUpdatedTimestamp() {
+    var el = document.getElementById('lastUpdatedTimestamp');
+    if (!el) return;
+    var now = new Date();
+    var h = String(now.getHours()).padStart(2, '0');
+    var m = String(now.getMinutes()).padStart(2, '0');
+    var s = String(now.getSeconds()).padStart(2, '0');
+    el.textContent = 'Updated: ' + h + ':' + m + ':' + s;
+}
+
+function escapeHtmlStr(str) {
+    if (!str) return '';
+    return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+}
+
+function renderSlaPauseReason(rows) {
+    var container = document.getElementById('slaPauseReasonContainer');
+    if (!container) return;
+
+    var pausedTickets = (rows || []).filter(function (t) {
+        var sp = String(t.slapaused || t.slapausing || t.sla_suspend_state || '').toLowerCase();
+        return sp === 'yes' || sp === 'true' || sp === '1';
+    });
+
+    var counts = {};
+
+    pausedTickets.forEach(function (t) {
+        var r = String(t.slapausereason || t.pause_reason || t.exemptreason || '').trim();
+        if (!r) r = 'Unspecified Reason';
+
+        // Format raw reason string e.g. SLAPauseReasonThirdPartiesDeployment -> Third Parties Deployment
+        var cleanReason = r.replace(/^SLAPauseReason/i, '');
+        cleanReason = cleanReason.replace(/([A-Z])/g, ' $1').trim();
+        if (!cleanReason) cleanReason = r;
+
+        counts[cleanReason] = (counts[cleanReason] || 0) + 1;
+    });
+
+    var sortedReasons = Object.keys(counts).map(function (k) {
+        return { reason: k, count: counts[k] };
+    }).sort(function (a, b) {
+        return b.count - a.count;
+    });
+
+    if (sortedReasons.length === 0) {
+        container.innerHTML = '<div style="color: #8b949e; padding: 16px; font-size: 13px; text-align: center; background-color: #161b22; border: 1px solid #30363d; border-radius: 8px;">No tickets with SLA Paused = YES found for this filter.</div>';
+        return;
+    }
+
+    var html = '<div class="custom-pause-reason-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 14px;">';
+
+    sortedReasons.forEach(function (item) {
+        html += '<div style="background-color: #161b22; border: 1px solid #30363d; border-radius: 8px; padding: 14px 18px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 6px rgba(0,0,0,0.25);">' +
+            '<div style="color: #f0f6fc; font-weight: 700; font-size: 14px; letter-spacing: 0.3px; max-width: 75%; line-height: 1.3;">' + escapeHtmlStr(item.reason) + '</div>' +
+            '<div style="background: rgba(167, 139, 250, 0.18); color: #c4b5fd; border: 1px solid rgba(167, 139, 250, 0.4); font-weight: 800; font-size: 18px; border-radius: 6px; padding: 4px 14px; min-width: 40px; text-align: center;">' +
+            item.count +
+            '</div>' +
+            '</div>';
+    });
+    html += '</div>';
+
+    container.innerHTML = html;
+}
+
+function renderDynamicPartnerCards() {
+    var container = document.getElementById('partnerCardsContainer');
+    if (!container) return;
+
+    var registeredParties = PartyManager.getRegisteredParties();
+    var displayParties = registeredParties.slice();
+    displayParties.push('Others'); // Always show Others bucket
+
+    var pm = window.allTimePartnerMetrics || {};
+
+    container.innerHTML = '';
+    displayParties.forEach(function (partnerName) {
+        var metrics = pm[partnerName] || { open: 0, pending: 0, closed: 0, canceled: 0 };
+
+        var cardDiv = document.createElement('div');
+        cardDiv.className = 'custom-partner-card';
+
+        var logoDiv = document.createElement('div');
+        logoDiv.className = 'custom-partner-logo';
+
+        var titleSpan = document.createElement('span');
+        titleSpan.style.cssText = 'color: #e4e4e7; font-weight: 700; font-size: 15px; text-transform: uppercase; letter-spacing: 0.5px;';
+        titleSpan.innerText = partnerName;
+        logoDiv.appendChild(titleSpan);
+
+        var metricsDiv = document.createElement('div');
+        metricsDiv.className = 'custom-partner-metrics';
+
+        var statusCols = [
+            { label: 'Open PT', val: metrics.open },
+            { label: 'Pending PT', val: metrics.pending },
+            { label: 'Closed PT', val: metrics.closed },
+            { label: 'Canceled PT', val: metrics.canceled }
+        ];
+
+        statusCols.forEach(function (sc) {
+            var colDiv = document.createElement('div');
+            colDiv.className = 'custom-metric-col';
+
+            var lblDiv = document.createElement('div');
+            lblDiv.className = 'custom-metric-label';
+            lblDiv.innerText = sc.label;
+
+            var valDiv = document.createElement('div');
+            valDiv.className = 'custom-metric-val';
+            valDiv.innerText = sc.val;
+
+            colDiv.appendChild(lblDiv);
+            colDiv.appendChild(valDiv);
+            metricsDiv.appendChild(colDiv);
+        });
+
+        cardDiv.appendChild(logoDiv);
+        cardDiv.appendChild(metricsDiv);
+        container.appendChild(cardDiv);
+    });
 }
 
 function updatePanelFilterBadges(party) {
     var headers = document.querySelectorAll('.custom-panel-header span');
     for (var i = 0; i < headers.length; i++) {
         var el = headers[i];
-        var text = el.innerText || el.textContent || '';
+        var text = (el.innerText || el.textContent || '').toUpperCase();
 
         var isTarget = text.indexOf('1. SEVERITY OVERVIEW') !== -1 ||
+            text.indexOf('2. PHASE STATUS') !== -1 ||
             text.indexOf('3. WEEKLY TREND') !== -1 ||
             text.indexOf('4. TOP ROOT CAUSE') !== -1 ||
-            text.indexOf('6. PROBLEM TICKET LIST') !== -1;
+            text.indexOf('5. SLA COMPLIANCE') !== -1 ||
+            text.indexOf('6. SLA PAUSE REASON') !== -1 ||
+            text.indexOf('7. PROBLEM TICKET LIST') !== -1;
 
         if (isTarget) {
             var parent = el.parentNode;
@@ -505,7 +1035,7 @@ function renderCurrentTicketsPage() {
         var status = item.ticketstatus || item.status || item.active_status || 'Open';
         var title = item.title || item.problem_name || item.description || 'Tanpa Judul';
         var id = item.orderid || item.id || item.code || 'TCK';
-        var phase = item.operate_phase || item.phase || item.current_phase || '-';
+        var phase = item.current_phase || '-';
 
         // Calculate aging days dynamically from timestamps if not pre-calculated in DB
         var agingVal = item.aging || item.aging_days || item.days || calculateAgingDays(item.createtime, item.closetime, item.lastupdatetime, item.operate_time, status);
@@ -678,7 +1208,7 @@ function renderSeverityDashboard(tickets) {
     if (tickets && tickets.length > 0) {
         tickets.forEach(function (t) {
             // Use centralised helpers to avoid duplicating mapping logic
-            var sev = getSeverityLabel(t.severity || t.createticketlevel || t.priority || '');
+            var sev = getSeverityLabel(t.severity || t.createticketlevel || t.priority || '', t);
             severityData[sev].total++;
 
             var statusCat = getStatusCategory(t.ticketstatus || t.status || '');
@@ -855,9 +1385,14 @@ function renderPhaseDashboard(tickets) {
         '8. Canceled PT'
     ];
 
-    var categories = ['Overall', 'TelkomAkses', 'Mandau', 'Persada', 'Others'];
-    var phaseData = {};
+    var registeredParties = PartyManager.getRegisteredParties();
+    var categories = ['Overall'];
+    registeredParties.forEach(function (p) {
+        categories.push(p);
+    });
+    categories.push('Others');
 
+    var phaseData = {};
     categories.forEach(function (cat) {
         phaseData[cat] = phases.map(function (p) {
             return { phase: p, total: 0, b1: 0, b2: 0, b3: 0, b4: 0, avg: 0, agingSum: 0 };
@@ -875,9 +1410,8 @@ function renderPhaseDashboard(tickets) {
                 phase = '8. Canceled PT';
             } else {
                 var isRejected = (String(t.confirmaccept || t['Accept or Not(Confirm PT)'] || '').toLowerCase().indexOf('reject') !== -1);
-                var phaseRaw = String(t.operate_phase || t.phase || t.current_phase || t.state || '').toLowerCase();
+                var phaseRaw = String(t.current_phase || t.state || '').toLowerCase();
 
-                // Looping rule: If Confirm PT is Rejected, ticket loops back to 5. Implement PT
                 if (isRejected) {
                     phase = '5. Implement PT';
                 } else if (phaseRaw.indexOf('confirm') !== -1) {
@@ -896,21 +1430,20 @@ function renderPhaseDashboard(tickets) {
             var statusRaw = String(t.ticketstatus || t.status || '').toLowerCase();
             var aging = parseFloat(t.aging || t.aging_days || t.days || calculateAgingDays(t.createtime, t.closetime, t.lastupdatetime, t.operate_time, statusRaw));
 
-            var partner = getTicketPartner(t).replace(' ', ''); // Returns 'TelkomAkses', 'Mandau', 'Persada', 'Others', etc.
-            var targetPartner = partner;
-            if (partner !== 'TelkomAkses' && partner !== 'Mandau' && partner !== 'Persada') {
-                targetPartner = 'Others';
-            }
+            var partner = getTicketPartner(t);
+            var targetPartner = categories.indexOf(partner) !== -1 ? partner : 'Others';
 
             var buck = 'b1';
             if (aging > 7) buck = 'b2';
 
             [targetPartner, 'Overall'].forEach(function (targetCat) {
-                var row = phaseData[targetCat].find(function (r) { return r.phase === phase; });
-                if (row) {
-                    row.total++;
-                    row[buck]++;
-                    row.agingSum += aging;
+                if (phaseData[targetCat]) {
+                    var row = phaseData[targetCat].find(function (r) { return r.phase === phase; });
+                    if (row) {
+                        row.total++;
+                        row[buck]++;
+                        row.agingSum += aging;
+                    }
                 }
             });
         });
@@ -923,12 +1456,39 @@ function renderPhaseDashboard(tickets) {
         });
     }
 
-    // Render columns
+    // Render Overall
     renderPhaseOverall('tablePhaseOverall', phaseData.Overall);
-    renderPhasePartner('tablePhaseTelkom', phaseData.TelkomAkses);
-    renderPhasePartner('tablePhaseMandau', phaseData.Mandau);
-    renderPhasePartner('tablePhasePersada', phaseData.Persada);
-    renderPhasePartner('tablePhaseOthers', phaseData.Others);
+
+    // Dynamic Render for Partner Phase Columns
+    var gridContainer = document.getElementById('phasePartnersGrid');
+    if (gridContainer) {
+        gridContainer.innerHTML = '';
+        var partnerCats = categories.filter(function (c) { return c !== 'Overall'; });
+
+        partnerCats.forEach(function (catName) {
+            var colDiv = document.createElement('div');
+            colDiv.className = 'custom-phase-col';
+
+            var headerDiv = document.createElement('div');
+            headerDiv.className = 'custom-phase-col-header';
+
+            var titleSpan = document.createElement('span');
+            titleSpan.style.cssText = 'font-weight: 700; font-size: 14px; text-transform: uppercase; color: #e4e4e7;';
+            titleSpan.innerText = catName;
+            headerDiv.appendChild(titleSpan);
+
+            var wrapperDiv = document.createElement('div');
+            wrapperDiv.className = 'custom-phase-table-wrapper';
+            var tableId = 'tablePhase_' + catName.replace(/[^a-zA-Z0-9]/g, '_');
+            wrapperDiv.id = tableId;
+
+            colDiv.appendChild(headerDiv);
+            colDiv.appendChild(wrapperDiv);
+            gridContainer.appendChild(colDiv);
+
+            renderPhasePartner(tableId, phaseData[catName]);
+        });
+    }
 }
 
 function renderPhaseOverall(containerId, phaseRows) {
@@ -1079,14 +1639,11 @@ function renderTrendsAndCompliance(weeklyTrendTickets, rootCauseTickets, complia
         { name: 'Others', value: 0, color: '#8b949e' }
     ];
 
-    // complianceData: 3 fixed partners + 'Others' bucket for everyone else.
-    // (IJE, Surge removed — they are never returned by getTicketPartner and always show 0)
-    var complianceData = [
-        { party: 'Telkom Akses', total: 0, within: 0, over: 0, ach: '0.0%' },
-        { party: 'Mandau', total: 0, within: 0, over: 0, ach: '0.0%' },
-        { party: 'Persada', total: 0, within: 0, over: 0, ach: '0.0%' },
-        { party: 'Others', total: 0, within: 0, over: 0, ach: '0.0%' }
-    ];
+    var registeredParties = PartyManager.getRegisteredParties();
+    var complianceData = registeredParties.map(function (p) {
+        return { party: p, total: 0, within: 0, over: 0, ach: '0.0%' };
+    });
+    complianceData.push({ party: 'Others', total: 0, within: 0, over: 0, ach: '0.0%' });
 
     var weeklyMap = {};
     // getWeekLabel and getWeekRangeString are now top-level functions — no closure redefinition needed
@@ -1592,7 +2149,10 @@ function initDashboard() {
             initDetailModalDOM();
             initDateFilterDOM();
             startLiveClock();
-            loadProblemTickets();
+            PartyManager.fetchFromOwsDb(function () {
+                initDateFilterDOM(); // Re-render dropdown with DB parties
+                loadProblemTickets();
+            });
         } else if (retryCount < 100) { // Retry for up to 5 seconds
             retryCount++;
             setTimeout(tryInit, 50);
@@ -1600,7 +2160,9 @@ function initDashboard() {
             console.warn('customFilterContainer placeholder not found in DOM after 5s. Loading tickets fallback.');
             initDetailModalDOM();
             startLiveClock();
-            loadProblemTickets();
+            PartyManager.fetchFromOwsDb(function () {
+                loadProblemTickets();
+            });
         }
     }
     tryInit();
@@ -1610,13 +2172,18 @@ if (typeof U !== 'undefined' && typeof U.ready === 'function') {
     U.ready(initDashboard);
 } else if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', initDashboard);
-} else {
-    initDashboard();
 }
 
 function initDateFilterDOM() {
     var container = document.getElementById('customFilterContainer');
     if (!container) return;
+
+    var registeredParties = PartyManager.getRegisteredParties();
+    var partyOptionsHtml = '<option value="ALL">All Party</option>';
+    registeredParties.forEach(function (p) {
+        partyOptionsHtml += '<option value="' + p + '">' + p + '</option>';
+    });
+    partyOptionsHtml += '<option value="Others">Others</option>';
 
     container.innerHTML = '<div class="custom-filter-card">' +
         '  <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; flex-wrap:wrap; gap:10px;">' +
@@ -1635,11 +2202,7 @@ function initDateFilterDOM() {
         '    <div class="custom-filter-field">' +
         '      <label>Party</label>' +
         '      <select class="custom-filter-party-input" style="background-color: #09090b; border: 1px solid #27272a; border-radius: 6px; color: #e4e4e7; padding: 8px 12px; font-size: 13px; outline: none; width: 160px; color-scheme: dark;">' +
-        '        <option value="ALL">All Party</option>' +
-        '        <option value="Telkom Akses">Telkom Akses</option>' +
-        '        <option value="Mandau">Mandau</option>' +
-        '        <option value="Persada">Persada</option>' +
-        '        <option value="Others">Others</option>' +
+        partyOptionsHtml +
         '      </select>' +
         '    </div>' +
         '    <div class="custom-filter-actions">' +
@@ -1725,7 +2288,7 @@ function showTicketDetailModal(ticketId) {
     var createTime = ticket.createtime || '-';
     var lastUpdate = ticket.lastupdatetime || '-';
     var closeTime = ticket.closetime || '-';
-    var phase = ticket.current_phase || ticket.operate_phase || '-';
+    var phase = ticket.current_phase || '-';
     var assign = ticket.createptassignto || '-';
     var operator = ticket.currentoperator || '-';
     var originator = ticket.originator || '-';
@@ -1942,3 +2505,500 @@ window.isTicketAccepted = isTicketAccepted;
 window.isTicketClosed = isTicketClosed;
 window.getConfirmSubmitTime = getConfirmSubmitTime;
 window.handleTicketSearch = handleTicketSearch;
+
+// ─────────────────────────────────────────────────────────────────────────────
+// PAGE NAVIGATION & PARTY CONFIGURATION PAGE HANDLERS
+// ─────────────────────────────────────────────────────────────────────────────
+window.OWS_PARTY_CONFIG_NAME = 'party_config';
+window.OWS_DASHBOARD_NAME = 'problem_ticket_dashboard';
+
+function navigateToOwsPage(pageName, fallbackFile) {
+    try {
+        var search = window.location.search;
+        var hash = window.location.hash;
+
+        // 1. OWS Designer Mode (spl-designer.html?pageName=...)
+        if (search && search.indexOf('pageName=') !== -1) {
+            window.location.search = search.replace(/pageName=[^&]+/, 'pageName=' + encodeURIComponent(pageName));
+            return;
+        }
+
+        // 2. OWS Runtime Hash Mode (#page/...)
+        if (hash && hash.indexOf('page/') !== -1) {
+            window.location.hash = '#page/' + pageName;
+            return;
+        }
+
+        // 3. Fallback Local File Mode
+        window.location.href = fallbackFile;
+    } catch (e) {
+        console.warn('[OWS Navigation] Redirect fallback:', e);
+        window.location.href = fallbackFile;
+    }
+}
+
+function switchDashboardPage(pageId) {
+    var dashView = document.getElementById('pageDashboardView');
+    var configView = document.getElementById('pagePartyConfigView');
+
+    if (pageId === 'partyConfig') {
+        // If configView is not in DOM (2 separate OWS Pages mode in OWS Portal)
+        if (!configView) {
+            navigateToOwsPage(window.OWS_PARTY_CONFIG_NAME, 'party_config.html');
+            return;
+        }
+
+        if (dashView) dashView.style.display = 'none';
+        configView.style.display = 'block';
+        var btnDash = document.getElementById('btnNavDashboard');
+        var btnConfig = document.getElementById('btnNavPartyConfig');
+        if (btnDash) btnDash.classList.remove('active');
+        if (btnConfig) btnConfig.classList.add('active');
+        renderPartyConfigPage();
+    } else {
+        if (!dashView) {
+            navigateToOwsPage(window.OWS_DASHBOARD_NAME, 'index.html');
+            return;
+        }
+        if (configView) configView.style.display = 'none';
+        dashView.style.display = 'block';
+        var btnDash = document.getElementById('btnNavDashboard');
+        var btnConfig = document.getElementById('btnNavPartyConfig');
+        if (btnConfig) btnConfig.classList.remove('active');
+        if (btnDash) btnDash.classList.add('active');
+        if (window.allTicketsData) {
+            renderRunScriptFullDashboard({ data_grid: { rows: window.allTicketsData } }, false, 'ALL');
+        }
+    }
+}
+
+function renderBackNavigation() {
+    var container = document.getElementById('backNavContainer');
+    if (!container) return;
+
+    container.innerHTML = '';
+    var btnWrapper = document.createElement('div');
+    btnWrapper.className = 'custom-btn-wrapper';
+
+    var btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'custom-btn custom-btn-secondary';
+    btn.innerText = '<- Back to Dashboard';
+    btn.onclick = function () {
+        switchDashboardPage('dashboard');
+    };
+
+    btnWrapper.appendChild(btn);
+    container.appendChild(btnWrapper);
+}
+
+function renderPartyConfigPage() {
+    var registered = PartyManager.getRegisteredParties();
+
+    // 2. Render Form Label & Form Input + Button dynamically via JS DOM (Sanitizer Proof)
+    var formSectionDom = document.getElementById('addPartyFormSection');
+    if (formSectionDom) {
+        formSectionDom.innerHTML = '';
+
+        var label = document.createElement('label');
+        label.style.cssText = 'font-size: 12px; font-weight: 600; color: #a1a1aa; display: block; margin-bottom: 6px;';
+        label.innerText = '+ Add New Official Party:';
+
+        var formDiv = document.createElement('div');
+        formDiv.className = 'custom-add-party-form';
+
+        var input = document.createElement('input');
+        input.type = 'text';
+        input.id = 'inputNewPartyName';
+        input.className = 'custom-add-party-input';
+        input.placeholder = 'Enter new party name (e.g., Cyber Partner)';
+
+        var btnWrapper = document.createElement('div');
+        btnWrapper.className = 'custom-btn-wrapper';
+
+        var addBtn = document.createElement('button');
+        addBtn.type = 'button';
+        addBtn.className = 'custom-btn custom-btn-primary';
+        addBtn.id = 'btnAddNewParty';
+        addBtn.innerText = '+ Add Party';
+        addBtn.onclick = handleAddNewParty;
+
+        btnWrapper.appendChild(addBtn);
+        formDiv.appendChild(input);
+        formDiv.appendChild(btnWrapper);
+
+        formSectionDom.appendChild(label);
+        formSectionDom.appendChild(formDiv);
+    }
+
+    // 3. Render Scan Button dynamically via JS DOM nodes
+    var scanDom = document.getElementById('scanBtnContainer');
+    if (scanDom) {
+        scanDom.innerHTML = '';
+        var scanWrapper = document.createElement('div');
+        scanWrapper.className = 'custom-btn-wrapper';
+
+        var scanBtn = document.createElement('button');
+        scanBtn.type = 'button';
+        scanBtn.className = 'custom-btn custom-btn-secondary';
+        scanBtn.style.cssText = 'font-size: 11px; padding: 4px 10px;';
+        scanBtn.innerText = 'Scan Database';
+        scanBtn.onclick = refreshAutoDetectParties;
+
+        scanWrapper.appendChild(scanBtn);
+        scanDom.appendChild(scanWrapper);
+    }
+
+    // 4. Render Tag List dynamically via JS DOM nodes
+    var tagListDom = document.getElementById('registeredPartiesTagList');
+    var countDom = document.getElementById('activePartiesCount');
+    if (countDom) countDom.innerText = registered.length + ' Registered';
+
+    if (tagListDom) {
+        tagListDom.innerHTML = '';
+        var mappings = PartyManager.getPartyMappings();
+        var mappingKeys = Object.keys(mappings);
+
+        if (registered.length === 0 && mappingKeys.length === 0) {
+            var emptyMsg = document.createElement('div');
+            emptyMsg.style.cssText = 'color: #a1a1aa; font-size: 13px;';
+            emptyMsg.innerText = 'No registered parties found. Add one below.';
+            tagListDom.appendChild(emptyMsg);
+        } else {
+            registered.forEach(function (party) {
+                var tagDiv = document.createElement('div');
+                tagDiv.className = 'custom-party-tag';
+
+                // If party name is an alias mapping, display clean label
+                var displayName = party;
+                var mappings = PartyManager.getPartyMappings();
+                var rawMapped = null;
+                Object.keys(mappings).forEach(function (k) {
+                    if (mappings[k].toLowerCase() === party.toLowerCase()) {
+                        rawMapped = k;
+                    }
+                });
+
+                var nameSpan = document.createElement('span');
+                nameSpan.innerText = rawMapped ? (party + ' (' + rawMapped.substring(0, 8) + '...)') : party;
+
+                var delBtn = document.createElement('button');
+                delBtn.type = 'button';
+                delBtn.className = 'custom-party-tag-del';
+                delBtn.innerText = 'x';
+                delBtn.title = 'Remove party from registered list';
+                delBtn.onclick = function (e) {
+                    if (e) e.stopPropagation();
+                    handleRemoveParty(party);
+                };
+
+                tagDiv.appendChild(nameSpan);
+                tagDiv.appendChild(delBtn);
+                tagListDom.appendChild(tagDiv);
+            });
+        }
+    }
+
+    refreshAutoDetectParties();
+}
+
+function handleAddNewParty() {
+    var input = document.getElementById('inputNewPartyName');
+    if (!input || !input.value.trim()) return;
+
+    var name = input.value.trim();
+    if (PartyManager.addParty(name)) {
+        window.allTimePartnerMetrics = null;
+        input.value = '';
+        renderPartyConfigPage();
+    }
+}
+
+function handleRemoveParty(partyName) {
+    if (confirm('Are you sure you want to remove the party "' + partyName + '" from the registered list?\nTickets for this party will be automatically grouped under OTHERS.')) {
+        PartyManager.removeParty(partyName);
+        window.allTimePartnerMetrics = null;
+        renderPartyConfigPage();
+    }
+}
+
+function getDetectedResponsibilitiesMap() {
+    var detectedMap = {};
+
+    // 1. Try reading in-memory window.allTicketsData (live data from OWS)
+    var rawTickets = window.allTicketsData || [];
+    if (rawTickets.length > 0) {
+        rawTickets.forEach(function (t) {
+            var rawParty = String(t.responsibility || t.problem_responsible_party || '').trim();
+            if (rawParty) {
+                if (!detectedMap[rawParty]) detectedMap[rawParty] = 0;
+                detectedMap[rawParty]++;
+            }
+        });
+        try {
+            localStorage.setItem('OWS_DB_RESPONSIBILITIES', JSON.stringify(detectedMap));
+        } catch (e) { }
+        return detectedMap;
+    }
+
+    // 2. Try reading cached responsibilities from localStorage
+    try {
+        var cached = localStorage.getItem('OWS_DB_RESPONSIBILITIES');
+        if (cached) {
+            var parsed = JSON.parse(cached);
+            if (parsed && typeof parsed === 'object' && Object.keys(parsed).length > 0) {
+                return parsed;
+            }
+        }
+    } catch (e) { }
+
+    // 3. Return empty object if no live DB data or cache exists
+    return {};
+}
+
+function refreshAutoDetectParties() {
+    var autoContainer = document.getElementById('autoDetectPartiesContainer');
+    if (!autoContainer) return;
+
+    var registered = PartyManager.getRegisteredParties();
+    var registeredLowers = registered.map(function (p) { return p.toLowerCase(); });
+    var mappings = PartyManager.getPartyMappings();
+
+    var detectedMap = getDetectedResponsibilitiesMap();
+    var keys = Object.keys(detectedMap).sort(function (a, b) { return detectedMap[b] - detectedMap[a]; });
+
+    autoContainer.innerHTML = '';
+    var table = document.createElement('table');
+    table.className = 'custom-config-table';
+
+    var thead = document.createElement('thead');
+    var trHead = document.createElement('tr');
+    trHead.innerHTML = '<th>DB Responsibility</th><th>Ticket Count</th><th>Registration Status</th><th>Action</th>';
+    thead.appendChild(trHead);
+    table.appendChild(thead);
+
+    var tbody = document.createElement('tbody');
+
+    if (keys.length === 0) {
+        var trEmpty = document.createElement('tr');
+        var tdEmpty = document.createElement('td');
+        tdEmpty.colSpan = 4;
+        tdEmpty.style.cssText = 'color: #a1a1aa; text-align: center; padding: 16px;';
+        tdEmpty.innerText = 'No responsibility records found in database.';
+        trEmpty.appendChild(tdEmpty);
+        tbody.appendChild(trEmpty);
+    } else {
+        keys.forEach(function (partyName) {
+            var tr = document.createElement('tr');
+
+            // isReg: exact/substring match OR UUID has a mapping entry
+            var partyLower = partyName.toLowerCase();
+            var isReg = registeredLowers.some(function (r) {
+                return partyLower === r || partyLower.indexOf(r) !== -1 || r.indexOf(partyLower) !== -1;
+            });
+            // UUID mapped to an alias also counts as Registered
+            if (!isReg && mappings && mappings[partyName]) {
+                isReg = true;
+            }
+
+            var td1 = document.createElement('td');
+            td1.style.fontWeight = '600';
+            td1.innerText = partyName;
+
+            var td2 = document.createElement('td');
+            var badge2 = document.createElement('span');
+            badge2.className = 'custom-badge custom-bg-secondary';
+            badge2.innerText = detectedMap[partyName] + ' Tickets';
+            td2.appendChild(badge2);
+
+            var td3 = document.createElement('td');
+            var td4 = document.createElement('td');
+
+            if (isReg) {
+                var badge3 = document.createElement('span');
+                badge3.className = 'custom-badge custom-bg-success';
+                badge3.innerText = 'Registered';
+                td3.appendChild(badge3);
+
+                var span4 = document.createElement('span');
+                span4.style.cssText = 'color: #a1a1aa; font-size: 11px;';
+                span4.innerText = 'Already Registered';
+                td4.appendChild(span4);
+            } else {
+                var badge3 = document.createElement('span');
+                badge3.className = 'custom-badge custom-bg-warning';
+                badge3.innerText = 'Discovered (OTHERS)';
+                td3.appendChild(badge3);
+
+                var btnWrap = document.createElement('div');
+                btnWrap.className = 'custom-btn-wrapper';
+
+                var addBtn = document.createElement('button');
+                addBtn.type = 'button';
+                addBtn.className = 'custom-btn custom-btn-primary';
+                addBtn.style.cssText = 'font-size: 11px; padding: 3px 8px;';
+                addBtn.innerText = '+ Register';
+                addBtn.onclick = function () {
+                    handleQuickAddParty(partyName);
+                };
+
+                btnWrap.appendChild(addBtn);
+                td4.appendChild(btnWrap);
+            }
+
+            tr.appendChild(td1);
+            tr.appendChild(td2);
+            tr.appendChild(td3);
+            tr.appendChild(td4);
+            tbody.appendChild(tr);
+        });
+    }
+
+    table.appendChild(tbody);
+    autoContainer.appendChild(table);
+}
+
+function handleQuickAddParty(rawPartyName) {
+    if (!rawPartyName) return;
+
+    // If rawPartyName looks like a UUID or raw DB ID (e.g. 0b5f02b9-ed39-11f0...)
+    if (rawPartyName.length > 20 && rawPartyName.indexOf('-') !== -1) {
+        var aliasName = prompt('Daftarkan ID Responsibility DB:\n"' + rawPartyName + '"\n\nMasukkan Nama Party / Mitra Resmi untuk ID ini:', 'Mitra Baru');
+        if (aliasName && aliasName.trim()) {
+            // setMapping internally registers the alias via addParty
+            PartyManager.setMapping(rawPartyName, aliasName.trim());
+            window.allTimePartnerMetrics = null; // Force dashboard re-compute
+            renderPartyConfigPage();
+            return;
+        }
+        return; // User cancelled — do nothing
+    }
+
+    if (PartyManager.addParty(rawPartyName)) {
+        window.allTimePartnerMetrics = null; // Force dashboard re-compute
+        renderPartyConfigPage();
+    }
+}
+
+// Auto-Refresh Manager
+var _autoRefreshIntervalId = null;
+
+function setupAutoRefresh() {
+    var placeholder = document.getElementById('customHeaderControlsPlaceholder');
+    var header = document.querySelector('.custom-dashboard-header');
+    
+    var container = placeholder || document.getElementById('autoRefreshControlsContainer');
+    if (!container && header) {
+        container = document.createElement('div');
+        container.id = 'autoRefreshControlsContainer';
+        header.appendChild(container);
+    }
+    
+    if (!container) return;
+    if (container.dataset.initialized === 'true') return;
+    container.dataset.initialized = 'true';
+    container.className = 'custom-header-controls';
+
+    // Inject DOM elements dynamically to bypass OWS HTML Panel Sanitizer escaping
+    var label = document.createElement('label');
+    label.htmlFor = 'autoRefreshSelect';
+    label.className = 'custom-refresh-label';
+    label.style.display = 'flex';
+    label.style.alignItems = 'center';
+    label.style.gap = '4px';
+    label.style.fontSize = '12px';
+    label.style.fontWeight = '600';
+    label.style.color = '#a1a1aa';
+
+    var svgNS = 'http://www.w3.org/2000/svg';
+    var svg = document.createElementNS(svgNS, 'svg');
+    svg.setAttribute('class', 'custom-refresh-svg');
+    svg.setAttribute('width', '14');
+    svg.setAttribute('height', '14');
+    svg.setAttribute('viewBox', '0 0 24 24');
+    svg.setAttribute('fill', 'none');
+    svg.setAttribute('stroke', '#c4b5fd');
+    svg.setAttribute('stroke-width', '2');
+    svg.setAttribute('stroke-linecap', 'round');
+    svg.setAttribute('stroke-linejoin', 'round');
+
+    var path = document.createElementNS(svgNS, 'path');
+    path.setAttribute('d', 'M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2');
+    svg.appendChild(path);
+
+    label.appendChild(svg);
+    label.appendChild(document.createTextNode(' Auto Refresh:'));
+
+    var select = document.createElement('select');
+    select.id = 'autoRefreshSelect';
+    select.className = 'custom-refresh-select';
+
+    var options = [
+        { text: 'Off', val: 'off' },
+        { text: '30s', val: '30' },
+        { text: '1m', val: '60' },
+        { text: '5m', val: '300' }
+    ];
+
+    options.forEach(function (opt) {
+        var el = document.createElement('option');
+        el.value = opt.val;
+        el.textContent = opt.text;
+        select.appendChild(el);
+    });
+
+    var timeBadge = document.createElement('span');
+    timeBadge.id = 'lastUpdatedTimestamp';
+    timeBadge.className = 'custom-last-updated';
+    timeBadge.textContent = 'Updated: --:--:--';
+
+    container.innerHTML = '';
+    container.appendChild(label);
+    container.appendChild(select);
+    container.appendChild(timeBadge);
+
+    select.addEventListener('change', function () {
+        if (_autoRefreshIntervalId) {
+            clearInterval(_autoRefreshIntervalId);
+            _autoRefreshIntervalId = null;
+        }
+
+        var sec = parseInt(this.value, 10);
+        if (!isNaN(sec) && sec > 0) {
+            _autoRefreshIntervalId = setInterval(function () {
+                var sDate = window.currentStartDate || '';
+                var eDate = window.currentEndDate || '';
+                var party = window.currentSelectedParty || 'ALL';
+                loadProblemTickets(sDate, eDate, party);
+            }, sec * 1000);
+        }
+    });
+}
+
+// Auto-run when DOM is ready
+(function initDashboardNavAndPartyConfig() {
+    function tryInit() {
+        setupAutoRefresh();
+        if (document.getElementById('registeredPartiesTagList') || document.getElementById('partyConfigPageContainer')) {
+            PartyManager.fetchFromOwsDb(function () {
+                renderPartyConfigPage();
+            });
+            startLiveClock();
+        }
+    }
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', tryInit);
+    } else {
+        tryInit();
+    }
+    setTimeout(tryInit, 50);
+    setTimeout(tryInit, 300);
+})();
+
+// Global Exports
+window.renderBackNavigation = renderBackNavigation;
+window.renderPartyConfigPage = renderPartyConfigPage;
+window.handleAddNewParty = handleAddNewParty;
+window.handleRemoveParty = handleRemoveParty;
+window.refreshAutoDetectParties = refreshAutoDetectParties;
+window.handleQuickAddParty = handleQuickAddParty;

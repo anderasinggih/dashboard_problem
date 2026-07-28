@@ -62,13 +62,25 @@
 
     <!-- Main Dashboard Wrapper -->
     <div class="custom-dashboard-wrapper">
-        <!-- Header Bar -->
-        <div class="custom-dashboard-header">
-            <div class="custom-header-info">
-                <h1 class="custom-header-title">PROBLEM MANAGEMENT DASHBOARD</h1>
-                <p class="custom-header-subtitle" id="liveTickerClock">Real-time enterprise monitoring & ticket tracking (Local Sandbox)</p>
-            </div>
+        <!-- Top Navigation Bar (Multi-Page Switcher) -->
+        <div class="custom-top-nav">
+            <button class="custom-nav-btn active" id="btnNavDashboard" onclick="switchDashboardPage('dashboard')">
+                <span>📊</span> Dashboard
+            </button>
+            <button class="custom-nav-btn" id="btnNavPartyConfig" onclick="switchDashboardPage('partyConfig')">
+                <span>⚙️</span> Party Management Page
+            </button>
         </div>
+
+        <!-- Page View 1: Main Dashboard -->
+        <div id="pageDashboardView" class="custom-page-view">
+            <!-- Header Bar -->
+            <div class="custom-dashboard-header">
+                <div class="custom-header-info">
+                    <h1 class="custom-header-title">PROBLEM MANAGEMENT DASHBOARD</h1>
+                    <p class="custom-header-subtitle" id="liveTickerClock">Real-time enterprise monitoring & ticket tracking (Local Sandbox)</p>
+                </div>
+            </div>
 
         <!-- Date Filter Container Placeholder -->
         <div id="customFilterContainer"></div>
@@ -409,6 +421,60 @@
                 <div id="ticketSearchContainer"></div>
                 <div id="ticketContainer">
                     <div style="color: #6c757d; padding: 12px;">Memuat data tiket...</div>
+                </div>
+            </div>
+        </div>
+        </div> <!-- End #pageDashboardView -->
+
+        <!-- Page View 2: Dedicated Party Management Page -->
+        <div id="pagePartyConfigView" class="custom-page-view" style="display: none;">
+            <div class="custom-dashboard-header">
+                <div class="custom-header-info">
+                    <h1 class="custom-header-title">PARTY MANAGEMENT CONFIGURATION</h1>
+                    <p class="custom-header-subtitle">Daftarkan Party resmi enterprise. Party yang belum terdaftar otomatis dikelompokkan ke OTHERS.</p>
+                </div>
+                <div>
+                    <button class="custom-btn custom-btn-secondary" onclick="switchDashboardPage('dashboard')">
+                        ← Kembali ke Dashboard
+                    </button>
+                </div>
+            </div>
+
+            <div class="custom-config-container">
+                <div class="custom-config-grid">
+                    <!-- Card 1: Daftar Party Resmi Aktif -->
+                    <div class="custom-config-card">
+                        <div class="custom-config-header">
+                            <span>Daftar Party Resmi Terdaftar</span>
+                            <span class="custom-badge custom-bg-success" id="activePartiesCount">0 Registered</span>
+                        </div>
+                        <div class="custom-config-body">
+                            <div class="custom-party-tag-list" id="registeredPartiesTagList">
+                                <div style="color: #a1a1aa; font-size: 13px;">Memuat daftar party...</div>
+                            </div>
+
+                            <div style="margin-top: 16px; border-top: 1px solid #27272a; padding-top: 16px;">
+                                <label style="font-size: 12px; font-weight: 600; color: #a1a1aa; display: block; margin-bottom: 6px;">+ Tambah Party Resmi Baru:</label>
+                                <div class="custom-add-party-form">
+                                    <input type="text" id="inputNewPartyName" class="custom-add-party-input" placeholder="Masukkan nama party baru (misal: Mitra Cyber)">
+                                    <button class="custom-btn custom-btn-primary" onclick="handleAddNewParty()">+ Tambahkan</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Card 2: Auto-Detected Parties dari Database OWS -->
+                    <div class="custom-config-card">
+                        <div class="custom-config-header">
+                            <span>Auto-Detected Responsibility dari OWS DB</span>
+                            <button class="custom-btn custom-btn-secondary" style="font-size: 11px; padding: 4px 10px;" onclick="refreshAutoDetectParties()">⚡ Scan DB</button>
+                        </div>
+                        <div class="custom-config-body" style="padding: 0;">
+                            <div id="autoDetectPartiesContainer">
+                                <div style="color: #a1a1aa; padding: 16px; font-size: 13px;">Memindai database OWS...</div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
