@@ -1891,7 +1891,8 @@ function renderTrendsAndCompliance(weeklyTrendTickets, rootCauseTickets, complia
 
                     if (isClosed) {
                         weekRow.closedPT++;
-                    } else {
+                    } else if (getStatusCategory(t) === 'pending') {
+                        // Hanya tiket dengan 22 UUID businessstatus penanganan resmi yg masuk Pending PT
                         weekRow.pendingPT++;
                     }
 
