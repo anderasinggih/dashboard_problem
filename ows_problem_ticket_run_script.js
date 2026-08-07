@@ -295,8 +295,8 @@ summaryTql =
     "sum(case when lower(pt.ticketstatus) in ('closed','completed') then 1 else 0 end) as closed, " +
     "sum(case when lower(pt.ticketstatus) in ('canceled','cancelled','rejected') then 1 else 0 end) as canceled, " +
     "sum(case when lower(pt.ticketstatus) in ('pending','in progress') then 1 else 0 end) as pending, " +
-    "sum(case when lower(pt.ticketstatus) in ('running','open') then 1 else 0 end) as open, " +
-    "sum(case when lower(pt.slapaused) = 'yes' or lower(pt.slapaused) = 'true' or pt.slapaused = '1' then 1 else 0 end) as paused " +
+    "sum(case when lower(pt.ticketstatus) = 'running' then 1 else 0 end) as open, " +
+    "sum(case when lower(pt.slapausing) = 'yes' or lower(pt.slapausing) = 'true' or pt.slapausing = '1' then 1 else 0 end) as paused " +
     "from " + modelUri + " pt " + whereClause;
 
 // 2. SEVERITY OVERVIEW TQL (SLA Based: Emergency, Critical, Major, Minor)
@@ -405,6 +405,7 @@ alldataGridTql =
     "pt.confirmaccept as confirmaccept, " +
     "pt.slastatus as slastatus, " +
     "pt.slapaused as slapaused, " +
+    "pt.slapausing as slapausing, " +
     "pt.slapausereason as slapausereason " +
     "from " + modelUri + " pt " +
     whereClause + " " +
