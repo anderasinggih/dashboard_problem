@@ -1,11 +1,3 @@
-/**
- * OWS GDE Studio - Problem Ticket Run Script Backend
- * Target Data Model: "/ProblemTicket/ProblemTicket/pt_problemticket"
- * 
- * RunScript ini mengeksekusi TQL langsung ke database OWS dan mengembalikan
- * payload terstruktur siap pakai untuk Dashboard Problem Ticket.
- */
-
 function normalizeText(value) {
     if (value === null || typeof value === "undefined") {
         return "";
@@ -103,10 +95,6 @@ function formatWeekLabel(weekKey) {
     return year + "-W" + week;
 }
 
-// -----------------------------------------------------------------------------
-// MAIN EXECUTION LOGIC
-// -----------------------------------------------------------------------------
-
 var input = _message.Input;
 var startDate;
 var endDate;
@@ -117,7 +105,6 @@ var parameters;
 var dataStart;
 var dataLimit;
 
-// Target Data Model OWS Problem Ticket
 var modelUri = "\"/ProblemTicket/ProblemTicket/pt_problemticket\"";
 
 var summaryTql;
@@ -155,7 +142,6 @@ var partyOptions = [];
 var i;
 var row;
 
-// Parse Input Message
 if (input === null ||
     typeof input === "undefined" ||
     typeof input !== "object") {
@@ -192,7 +178,6 @@ if (party.toUpperCase() === "ALL" ||
     party = "";
 }
 
-// Date Filter Validations
 if ((startDate !== "" && endDate === "") ||
     (startDate === "" && endDate !== "")) {
     throw new ScriptError(
@@ -200,7 +185,6 @@ if ((startDate !== "" && endDate === "") ||
     );
 }
 
-// Support both 'yyyy-MM-dd' and 'yyyy-MM-dd HH:mm:ss'
 if (startDate !== "") {
     if (startDate.length > 10) {
         startDate = startDate.substring(0, 10);
@@ -238,7 +222,6 @@ parameters = {
     party: party
 };
 
-// Build dynamic WHERE clause based on provided parameters
 var whereClause = " where 1 = 1";
 
 if (startTime !== "") {
@@ -249,7 +232,6 @@ if (endTime !== "") {
 }
 if (party !== "") {
     if (party.toLowerCase() === 'others') {
-        // Query active registered parties & raw mappings from OWS DB model
         var registeredPartyValues = [];
         try {
             var configModelUri = "\"/ProblemTicket/ProblemTicket/problem_ticket_dashboard_party_config\"";
@@ -269,10 +251,8 @@ if (party !== "") {
         }
 
         if (registeredPartyValues.length === 0) {
-            // No parties registered: ALL tickets belong to Others
             whereClause += " and 1 = 1";
         } else {
-            // Exclude registered parties and raw UUID mappings
             whereClause += " and (pt.responsibility is null or pt.responsibility = ''";
             for (var pIdx = 0; pIdx < registeredPartyValues.length; pIdx++) {
                 var paramKey = "reg_p_" + pIdx;
@@ -288,7 +268,6 @@ if (party !== "") {
     }
 }
 
-// 1. SUMMARY STAT CARDS TQL (All-Time Unfiltered Overview)
 summaryTql =
     "select " +
     "sum(case when lower(pt.ticketstatus) in ('canceled','cancelled','rejected') then 0 else 1 end) as total, " +
@@ -299,7 +278,6 @@ summaryTql =
     "sum(case when lower(pt.slapausing) = 'yes' or lower(pt.slapausing) = 'true' or pt.slapausing = '1' then 1 else 0 end) as paused " +
     "from " + modelUri + " pt " + whereClause;
 
-// 2. SEVERITY OVERVIEW TQL (SLA Based: Emergency, Critical, Major, Minor)
 severityTql =
     "select " +
     "pt.createticketlevel as severity, " +
@@ -309,7 +287,6 @@ severityTql =
     "group by pt.createticketlevel " +
     "order by total desc";
 
-// 3. PHASE STATUS TQL
 phaseStatusTql =
     "select " +
     "pt.operate_phase as operate_phase, " +
@@ -321,7 +298,6 @@ phaseStatusTql =
     "group by pt.operate_phase, pt.current_phase, pt.confirmaccept " +
     "order by total desc";
 
-// 4. PARTNER SUMMARY TQL (Telkom Akses, Mandau, Persada, Others)
 var partnerWhereClause = " where 1 = 1";
 if (startTime !== "") partnerWhereClause += " and pt.createtime >= $!start_time";
 if (endTime !== "") partnerWhereClause += " and pt.createtime <= $!end_time";
@@ -335,7 +311,6 @@ partnerSummaryTql =
     "group by pt.responsibility " +
     "order by total desc";
 
-// 5. ROOT CAUSE BREAKDOWN TQL
 rootCauseTql =
     "select " +
     "pt.root_cause as name, " +
@@ -346,7 +321,6 @@ rootCauseTql =
     "order by value desc " +
     "limit 10";
 
-// 6. WEEKLY TREND TQL
 var weeklyWhereClause = whereClause + (whereClause.indexOf('createtime') !== -1 ? "" : " and pt.createtime is not null");
 weeklyTrendTql =
     "select " +
@@ -360,7 +334,6 @@ weeklyTrendTql =
     "order by week_key asc " +
     "limit 500";
 
-// 7. RESPONSIBILITY PARTY OPTIONS TQL (For Filter Dropdown)
 partyOptionsTql =
     "select " +
     "pt.responsibility as party, " +
@@ -371,7 +344,6 @@ partyOptionsTql =
     "order by pt.responsibility asc " +
     "limit 500";
 
-// 8. TICKET LIST DATA GRID TQL (Detail List - Optimized Explicit Fields Selection)
 alldataGridTql =
     "select " +
     "pt.orderid as orderid, " +
@@ -399,8 +371,12 @@ alldataGridTql =
     "pt.pt14_createtime as pt14_createtime, " +
     "pt.pt14_submittime as pt14_submittime, " +
     "pt.root_cause as root_cause, " +
+    "pt.sub_root_cause as sub_root_cause, " +
     "pt.createptproblemdes as createptproblemdes, " +
     "pt.currentoperator as currentoperator, " +
+    "pt.lastoperator as lastoperator, " +
+    "pt.createptassignto as createptassignto, " +
+    "pt.implhandleplandate as implhandleplandate, " +
     "pt.originator as originator, " +
     "pt.confirmaccept as confirmaccept, " +
     "pt.slastatus as slastatus, " +
@@ -417,7 +393,6 @@ dataGridTotalTql =
     "from " + modelUri + " pt " +
     whereClause;
 
-// EXECUTE ALL QUERIES SAFELY WITH DETAILED QUERY-LEVEL TRY-CATCH
 try {
     try { summaryRows = queryByTql(summaryTql, parameters, 0, 10); } catch (e1) { console.error('summaryTql error:', e1); summaryRows = []; }
     try { severityRows = queryByTql(severityTql, parameters, 0, 50); } catch (e2) { console.error('severityTql error:', e2); severityRows = []; }
@@ -434,7 +409,6 @@ try {
     );
 }
 
-// FORMAT SUMMARY OUTPUT
 summaryRow = summaryRows.length > 0 ? summaryRows[0] : {};
 summary = {
     total: toNumber(summaryRow.total),
@@ -448,7 +422,6 @@ summary = {
 dataGridTotalRow = dataGridTotalRows.length > 0 ? dataGridTotalRows[0] : {};
 dataGridTotal = toNumber(dataGridTotalRow.total);
 
-// FORMAT SEVERITY OVERVIEW
 for (i = 0; i < severityRows.length; i++) {
     row = severityRows[i];
     severityOverview.push({
@@ -459,7 +432,6 @@ for (i = 0; i < severityRows.length; i++) {
     });
 }
 
-// FORMAT PHASE STATUS & AGING
 for (i = 0; i < phaseRows.length; i++) {
     row = phaseRows[i];
     phaseStatus.push({
@@ -471,7 +443,6 @@ for (i = 0; i < phaseRows.length; i++) {
     });
 }
 
-// FORMAT PARTNER SUMMARY
 for (i = 0; i < partnerRows.length; i++) {
     row = partnerRows[i];
     partnerSummary.push({
@@ -484,7 +455,6 @@ for (i = 0; i < partnerRows.length; i++) {
     });
 }
 
-// FORMAT ROOT CAUSE
 for (i = 0; i < rootRows.length; i++) {
     row = rootRows[i];
     rootCause.push({
@@ -493,7 +463,6 @@ for (i = 0; i < rootRows.length; i++) {
     });
 }
 
-// FORMAT WEEKLY TREND
 for (i = 0; i < weeklyRows.length; i++) {
     row = weeklyRows[i];
     if (row.week_key !== null && typeof row.week_key !== "undefined") {
@@ -507,7 +476,6 @@ for (i = 0; i < weeklyRows.length; i++) {
     }
 }
 
-// FORMAT PARTY OPTIONS
 for (i = 0; i < partyOptionRows.length; i++) {
     row = partyOptionRows[i];
     if (row.party && normalizeText(row.party) !== "") {
@@ -515,7 +483,6 @@ for (i = 0; i < partyOptionRows.length; i++) {
     }
 }
 
-// RETURN CLEAN JSON PAYLOAD
 return {
     result: {
         success: true,

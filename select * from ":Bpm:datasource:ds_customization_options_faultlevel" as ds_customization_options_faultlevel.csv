@@ -1,0 +1,8 @@
+﻿option_name,option_label,description,parent_option_name,source_name,priority,id,keycode,actual_model_id,active,change_time
+Emergency,Emergency,	,	,	,	7,606516bb-07ec-11f1-bcfe-0255ac121029,Emergency,	,true,	1770884723621
+Critical,Critical,	,	,customization_options_faultlevel,	1,8fb52507-e172-11f0-9941-0255ac1202e7,Critical,	,true,	1766654260263
+Major,Major,	,	,customization_options_faultlevel,	2,8fb52508-e172-11f0-9941-0255ac1202e7,Major,	,true,	1766654260263
+Clear,Clear,	,	,customization_options_faultlevel,	3,8fb52509-e172-11f0-9941-0255ac1202e7,Clear,	,true,	1766654260263
+Warning,Warning,	,	,customization_options_faultlevel,	4,8fb5250a-e172-11f0-9941-0255ac1202e7,Warning,	,true,	1766654260263
+Indeterminate,Indeterminate,	,	,customization_options_faultlevel,	5,8fb5250b-e172-11f0-9941-0255ac1202e7,Indeterminate,	,true,	1766654260263
+Minor,Minor,	,	,customization_options_faultlevel,	6,8fb5250c-e172-11f0-9941-0255ac1202e7,Minor,	,true,	1766654260263

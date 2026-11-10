@@ -1,0 +1,46 @@
+﻿ contact, isactual, label, mail, name, phone, vendorcode, id, keycode, actual_model_id, active, change_time
+ , , FiberHome, , FiberHome, , , 0b5f02b9-ed39-11f0-9f6a-0255ac121583, FiberHome, , true,	 1767948970818
+ , , Comnect, , Comnect, , , 19f8313f-ed39-11f0-bbb7-0255ac120452, Comnect, , true,	 1767948995310
+ , , ISP, , ISP, , , 22972c72-4e87-11f1-8b4b-0255ac12102e, ISP, , true,	 1778647773308
+ , , YNet, , YNet, , , 29fb01f6-ed39-11f0-803b-0255ac122060, YNet, , true,	 1767949022172
+ , , OREX SAI, , OREX SAI, , , 3166e140-ed39-11f0-95f9-0255ac120037, OREX SAI, , true,	 1779936694550
+ , , Baicells, , Baicells, , , 3c1c944e-ed39-11f0-95f9-0255ac120037, Baicells, , true,	 1767949052591
+ , , MicroTik, , MicroTik, , , 47fa6464-541e-11f1-8d7d-0255ac1209a9, MicroTik, , true,	 1779262445854
+ , , CICT mobile, , CICT mobile, , , 4a3d5f1b-ed39-11f0-9e05-0255ac122052, CICT mobile, , true,	 1767949076294
+ , , Common, , Common, , , 52db7aff-5423-11f1-b35e-0255ac12003d, Common, , true,	 1779264611590
+ , , Protelindo, , Protelindo, , , 53fc2e87-ed39-11f0-9e05-0255ac122052, Protelindo, , true,	 1767949092644
+ , , OrexSai, , OrexSai, , , 58476811-541f-11f1-b35e-0255ac12003d, OrexSai, , false,	 1779936682020
+ , , Tower Bersama, , Tower Bersama, , , 5aed389a-ed39-11f0-9388-0255ac1200af, Tower Bersama, , true,	 1767949104290
+ , , Centratama, , Centratama, , , 61d9603e-ed39-11f0-803b-0255ac122060, Centratama, , true,	 1767949115904
+ , , Persada, , Persada, , , 67a3c491-ed39-11f0-ae8e-0255ac12157b, Persada, , true,	 1767949125619
+ , , IFORTE, , IFORTE, , , 67ebe504-7365-11f1-840a-0255ac12102e, IFORTE, , true,	 1782701479760
+ test, , test, , test, , , 6bf0d20a-5f21-11f1-ae90-0255ac121a11, test, , true,	 1780473257470
+ , , Telkom Akses, , Telkom Akses, , , 731f9b37-707d-11f1-8686-0255ac120033, Telkom Akses, , true,	 1782381952987
+ , , Viberlink, , Viberlink, , , 795f0f40-7365-11f1-93e1-0255ac120577, Viberlink, , true,	 1782701509036
+ , , Triasmitra, , Triasmitra, , , 8180a97b-7365-11f1-840a-0255ac12102e, Triasmitra, , true,	 1782701522678
+ , , TBG, , TBG, , , 909486cf-7365-11f1-93aa-0255ac120835, TBG, , true,	 1782701547974
+ , , ARI, , ARI, , , 9c3b3a9a-54bf-11f1-a242-0255ac1215a4, ARI, , true,	 1779331736181
+ , , Mandau, , Mandau, , , a7a0a508-7365-11f1-93aa-0255ac120835, Mandau, , true,	 1782701586641
+ , , Outsourcing, , Outsourcing, , , a9991b54-e172-11f0-b28c-0255ac120410, Outsourcing, , false,	 1767949217098
+ , , NEC, , NEC, , , a9991b55-e172-11f0-b28c-0255ac120410, NEC, , false,	 1767949217098
+ , , Nokia_Siemens, , Nokia_Siemens, , , a9991b56-e172-11f0-b28c-0255ac120410, Nokia_Siemens, , false,	 1767949014704
+ , , Others, , Others, , , a9991b57-e172-11f0-b28c-0255ac120410, Others, , false,	 1767949014704
+ , , Sonix, , Sonix, , , a9991b58-e172-11f0-b28c-0255ac120410, Sonix, , false,	 1767949014704
+ , , Motorola, , Motorola, , , a9991b59-e172-11f0-b28c-0255ac120410, Motorola, , false,	 1767949014704
+ , , Alcatel_Lucent, , Alcatel_Lucent, , , a9991b5a-e172-11f0-b28c-0255ac120410, Alcatel_Lucent, , false,	 1767949014704
+ , , ZTE, , ZTE, , , a9991b5b-e172-11f0-b28c-0255ac120410, ZTE, , true,	 1766654304295
+ , , Cisco, , Cisco, , , a9991b5c-e172-11f0-b28c-0255ac120410, Cisco, , false,	 1767949217098
+ , , Ericsson, , Ericsson, , , a9991b5d-e172-11f0-b28c-0255ac120410, Ericsson, , false,	 1767949043013
+ , , Nokia, , Nokia, , , a9991b5e-e172-11f0-b28c-0255ac120410, Nokia, , true,	 1766654304295
+ , , Huawei_M2000_corba, , Huawei_M2000_corba, , , a9991b5f-e172-11f0-b28c-0255ac120410, Huawei_M2000_corba, , false,	 1767948945300
+ , , Nortel, , Nortel, , , a9991b60-e172-11f0-b28c-0255ac120410, Nortel, , false,	 1767949217098
+ , , Huawei, , Huawei, , , a9991b61-e172-11f0-b28c-0255ac120410, Huawei, , true,	 1766654304295
+ , , H3C, , H3C, , , a9991b62-e172-11f0-b28c-0255ac120410, H3C, , false,	 1767949217098
+ , , Juniper, , Juniper, , , a9991b63-e172-11f0-b28c-0255ac120410, Juniper, , false,	 1767949217098
+ , , Ruijie, , Ruijie, , , a9991b64-e172-11f0-b28c-0255ac120410, Ruijie, , false,	 1767949217098
+ , , Tellabs, , Tellabs, , , a9991b65-e172-11f0-b28c-0255ac120410, Tellabs, , false,	 1767949169520
+ , , Kopindosat, , Kopindosat, , , ae59600b-7365-11f1-a0a2-0255ac120459, Kopindosat, , true,	 1782701597918
+ , , IJE, , IJE, , , b92cd43d-7365-11f1-93e1-0255ac120577, IJE, , true,	 1782701616081
+ , , Famika, , Famika, , , c703767f-7365-11f1-840a-0255ac12102e, Famika, , true,	 1782701639298
+ , , CMI, , CMI, , , cece3ef5-7365-11f1-9bb9-0255ac1215ab, CMI, , true,	 1782701652371
+	 444, , WANWAN DIDIK, , WANWAN DIDIK, , , e1bb9edf-b1c1-11f1-ae01-0255ac120f4d, WANWAN DIDIK, , false,	 1789558216605

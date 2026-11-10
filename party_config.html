@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="id">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -16,39 +16,39 @@
         <div class="custom-dashboard-header">
             <div class="custom-header-info">
                 <h1 class="custom-header-title">PARTY MANAGEMENT CONFIGURATION</h1>
-                <p class="custom-header-subtitle" id="liveTickerClock">Daftarkan Party resmi enterprise. Party yang belum terdaftar otomatis dikelompokkan ke OTHERS.</p>
+                <p class="custom-header-subtitle" id="liveTickerClock">Manage official enterprise parties. Unregistered parties are automatically categorized under OTHERS.</p>
             </div>
             <div id="backNavContainer"></div>
         </div>
 
         <div class="custom-config-container">
             <div class="custom-config-grid">
-                <!-- Card 1: Daftar Party Resmi Aktif -->
+                <!-- Card 1: Official Registered Parties List -->
                 <div class="custom-config-card">
                     <div class="custom-config-header">
-                        <span>Daftar Party Resmi Terdaftar</span>
+                        <span>Official Registered Parties</span>
                         <span class="custom-badge custom-bg-success" id="activePartiesCount">0 Registered</span>
                     </div>
                     <div class="custom-config-body">
                         <div class="custom-party-tag-list" id="registeredPartiesTagList">
-                            <div style="color: #a1a1aa; font-size: 13px;">Memuat daftar party...</div>
+                            <div style="color: #a1a1aa; font-size: 13px;">Loading party list...</div>
                         </div>
 
                         <div style="margin-top: 16px; border-top: 1px solid #27272a; padding-top: 16px;" id="addPartyFormSection">
-                            <div style="color: #a1a1aa; font-size: 13px;">Memuat form...</div>
+                            <div style="color: #a1a1aa; font-size: 13px;">Loading form...</div>
                         </div>
                     </div>
                 </div>
 
-                <!-- Card 2: Auto-Detected Parties dari Database OWS -->
+                <!-- Card 2: Auto-Detected Parties from OWS Database -->
                 <div class="custom-config-card">
                     <div class="custom-config-header">
-                        <span>Auto-Detected Responsibility dari OWS DB</span>
+                        <span>Auto-Detected Responsibilities from OWS DB</span>
                         <div id="scanBtnContainer"></div>
                     </div>
                     <div class="custom-config-body" style="padding: 0;">
                         <div id="autoDetectPartiesContainer">
-                            <div style="color: #a1a1aa; padding: 16px; font-size: 13px;">Memindai responsibility di database...</div>
+                            <div style="color: #a1a1aa; padding: 16px; font-size: 13px;">Scanning database responsibilities...</div>
                         </div>
                     </div>
                 </div>
