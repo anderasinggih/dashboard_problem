@@ -1,20 +1,11 @@
-// Safe JSON.parse wrapper for GDE Studio Previewer environment to catch undefined/null inputs
-(function () {
-    if (typeof JSON !== 'undefined' && JSON.parse) {
-        var _nativeJSONParse = JSON.parse;
-        JSON.parse = function (text, reviver) {
-            if (text === undefined || text === null || text === 'undefined' || text === '') {
-                return null;
-            }
-            try {
-                return _nativeJSONParse.call(JSON, text, reviver);
-            } catch (e) {
-                console.warn('[OWS Safe JSON.parse] Prevented crash on invalid JSON input:', text);
-                return null;
-            }
-        };
+function safeJsonParse(text) {
+    if (!text || text === 'undefined' || text === 'null') return null;
+    try {
+        return JSON.parse(text);
+    } catch (e) {
+        return null;
     }
-})();
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // ─────────────────────────────────────────────────────────────────────────────
@@ -135,7 +126,7 @@ window.PartyManager = {
         try {
             var stored = typeof localStorage !== 'undefined' ? localStorage.getItem(this.STORAGE_KEY) : null;
             if (stored !== null) {
-                var parsed = JSON.parse(stored);
+                var parsed = safeJsonParse(stored);
                 if (Array.isArray(parsed)) {
                     _memoryParties = parsed;
                     return parsed.slice();
@@ -155,7 +146,7 @@ window.PartyManager = {
         try {
             var stored = typeof localStorage !== 'undefined' ? localStorage.getItem(this.MAPPING_STORAGE_KEY) : null;
             if (stored) {
-                var parsed = JSON.parse(stored);
+                var parsed = safeJsonParse(stored);
                 if (parsed && typeof parsed === 'object') {
                     _memoryPartyMappings = parsed;
                     return Object.assign({}, parsed);
@@ -365,7 +356,16 @@ var SEV_UUID_MINOR = '1029';
  */
 function extractOWSField(val) {
     if (val === null || val === undefined) return '';
-    if (typeof val === 'string') return val;
+    if (typeof val === 'string') {
+        var trimmed = val.trim();
+        if ((trimmed.startsWith('{') && trimmed.endsWith('}')) || (trimmed.startsWith('[') && trimmed.endsWith(']'))) {
+            var parsed = safeJsonParse(trimmed);
+            if (parsed !== null) val = parsed;
+            else return val;
+        } else {
+            return val;
+        }
+    }
     if (typeof val === 'number' || typeof val === 'boolean') return String(val);
     if (Array.isArray(val) && val.length > 0) {
         var item = val[0];
@@ -457,7 +457,7 @@ function getStatusCategory(rawStatusOrTicket, rawBusinessStatus) {
         bs === 'canceled' || bs === 'rejected') {
         return 'canceled';
     }
-    
+
     // 2. CLOSED (Strict Production UUIDs & labels)
     if (ts === 'closed' || ts === 'completed' ||
         bs === 'bb129922-e165-11f0-aa35-0255ac1218d9' || // Closed (Production)
@@ -524,6 +524,7 @@ function getStatusCategory(rawStatusOrTicket, rawBusinessStatus) {
  */
 /**
  * Returns the custom week label (e.g. 'W30') for a given date string based on Thursday-to-Wednesday cycle.
+ * W1 always starts on Jan 1st (Thursday) of the target year.
  * (e.g., 23 - 29 July 2026 = Week 30)
  * @param {string} dateStr
  * @returns {string|null}
@@ -539,13 +540,16 @@ function getWeekLabel(dateStr) {
     var d = new Date(yr, mo, dy);
     if (isNaN(d.getTime())) return null;
 
-    // Custom Thursday-to-Wednesday Cycle:
-    // Shift date by +3 days (Thursday becomes Sunday of current week calculation)
-    var shifted = new Date(d.getFullYear(), d.getMonth(), d.getDate() + 3);
-    var dayNum = shifted.getDay() || 7;
-    shifted.setDate(shifted.getDate() + 4 - dayNum);
-    var yearStart = new Date(shifted.getFullYear(), 0, 1);
-    var weekNo = Math.ceil((((shifted - yearStart) / 86400000) + 1) / 7);
+    // Direct Thursday-to-Wednesday Cycle starting Jan 1st (Thu) of the year
+    var w1Start = new Date(yr, 0, 1); // Jan 1st
+    var diffMs = d.getTime() - w1Start.getTime();
+    if (diffMs < 0) {
+        // Fallback for dates before Jan 1st of current year
+        w1Start = new Date(yr - 1, 0, 1);
+        diffMs = d.getTime() - w1Start.getTime();
+    }
+    var diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+    var weekNo = Math.floor(diffDays / 7) + 1;
     return 'W' + weekNo;
 }
 
@@ -569,13 +573,9 @@ function getWeekRangeString(wLabel, tickets) {
             }
         }
     }
-    // Calculate Thursday of Week 1 for the year
-    var jan4 = new Date(year, 0, 4);
-    var jan4Day = jan4.getDay() || 7;
-    var mondayOfW1 = new Date(jan4.getTime() - (jan4Day - 1) * 86400000);
-    // Shift Monday to Thursday (-4 days from ISO week start)
-    var thursdayOfW1 = new Date(mondayOfW1.getTime() - 4 * 86400000);
-    var startOfWeek = new Date(thursdayOfW1.getTime() + (num - 1) * 7 * 86400000);
+    // W1 starts on Jan 1st (Thursday)
+    var w1Start = new Date(year, 0, 1);
+    var startOfWeek = new Date(w1Start.getTime() + (num - 1) * 7 * 86400000);
     var endOfWeek = new Date(startOfWeek.getTime() + 6 * 86400000);
     var mo = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
     return startOfWeek.getDate() + ' ' + mo[startOfWeek.getMonth()] + ' - ' +
@@ -605,35 +605,37 @@ function sanitizeTicket(raw) {
     if (!raw || typeof raw !== 'object') return raw;
     var sevRaw = extractOWSField(raw.severity || raw.createticketlevel || '');
     var slaStat = extractOWSField(raw.slastatus || '');
-    var statusStr = extractOWSField(raw.ticketstatus || raw.status || '');
+    var statusStr = extractOWSField(raw.ticketstatus || '');
 
-    var createTimeStr = extractOWSField(raw.createtime || raw.createfirstoccurtime || '');
+    var createTimeStr = extractOWSField(raw.createtime || '');
     var closeTimeStr = extractOWSField(raw.closetime || '');
     var lastUpdateStr = extractOWSField(raw.lastupdatetime || '');
     var operateTimeStr = extractOWSField(raw.operate_time || '');
-    var respStr = extractOWSField(raw.responsibility || raw.problem_responsible_party || '');
+    var respStr = extractOWSField(raw.responsibility || '');
 
     var agingDays = raw.aging !== undefined && raw.aging !== null ? Number(raw.aging) : calculateAgingDays(createTimeStr, closeTimeStr, lastUpdateStr, operateTimeStr, statusStr);
     var targetSlaDays = getSlaTargetDays(sevRaw);
 
-    var isOver = raw.over_sla !== undefined && raw.over_sla !== null 
+    var isOver = raw.over_sla !== undefined && raw.over_sla !== null
         ? (raw.over_sla === true || String(raw.over_sla).toLowerCase() === 'true' || String(raw.over_sla) === '1')
         : (String(slaStat).toLowerCase() === 'sla_violation' || String(slaStat).toLowerCase() === 'over' || agingDays > targetSlaDays);
 
     return {
-        orderid: raw.orderid || raw.keycode || raw.id || '',
+        orderid: raw.orderid || raw.id || '',
         title: raw.title || '',
         ticketstatus: statusStr,
-        businessstatus: extractOWSField(raw.businessstatus || raw.businessstate || raw.business_status || ''),
+        businessstatus: extractOWSField(raw.businessstatus || ''),
         severity: sevRaw,
         createticketlevel: sevRaw,
-        root_cause: extractOWSField(raw.root_cause || raw.analyzecause || ''),
-        operate_phase: extractOWSField(raw.current_phase || ''),
-        current_phase: extractOWSField(raw.current_phase || ''),
+        root_cause: extractOWSField(raw.root_cause || ''),
+        sub_root_cause: extractOWSField(raw.sub_root_cause || ''),
+        operate_phase: extractOWSField(raw.current_phase || raw.operate_phase || ''),
+        current_phase: extractOWSField(raw.current_phase || raw.operate_phase || ''),
         responsibility: respStr,
-        createptproblemdes: raw.createptproblemdes || raw.procfaultreasondes || '',
+        createptproblemdes: raw.createptproblemdes || '',
         createptassignto: extractOWSField(raw.createptassignto || ''),
         currentoperator: extractOWSField(raw.currentoperator || ''),
+        lastoperator: extractOWSField(raw.lastoperator || ''),
         originator: extractOWSField(raw.originator || ''),
         createtime: createTimeStr,
         closetime: closeTimeStr,
@@ -656,7 +658,8 @@ function sanitizeTicket(raw) {
         pt12_submittime: extractOWSField(raw.pt12_submittime || ''),
         pt14_createtime: extractOWSField(raw.pt14_createtime || ''),
         pt14_submittime: extractOWSField(raw.pt14_submittime || ''),
-        slapaused: extractOWSField(raw.slapaused || raw.slapausing || raw.sla_suspend_state || ''),
+        slapausing: extractOWSField(raw.slapausing || ''),
+        slapaused: extractOWSField(raw.slapaused || raw.sla_suspend_state || ''),
         slapausereason: extractOWSField(raw.slapausereason || raw.pause_reason || raw.exemptreason || '')
     };
 }
@@ -815,11 +818,14 @@ function renderRunScriptFullDashboard(data, isFiltered, party) {
                 computedSum.canceled++;
             } else {
                 computedSum.total++;
-                if (cat === 'open' || cat === 'pending') computedSum.open++;
-                if (cat === 'pending') computedSum.pending++;
+                var ts = String(t.ticketstatus || t.status || '').toLowerCase();
+                if (cat !== 'closed' && (ts === 'running' || ts === 'open')) computedSum.open++;
+                var phaseRaw = String(t.current_phase || t.operate_phase || t.state || '').toLowerCase();
+                var isPendingPhase = (phaseRaw.indexOf('implement') !== -1 || phaseRaw.indexOf('confirm') !== -1);
+                if (cat !== 'closed' && isPendingPhase) computedSum.pending++;
                 if (cat === 'closed') computedSum.closed++;
             }
-            var sp = String(t.slapaused || '').toLowerCase();
+            var sp = String(t.slapausing || '').toLowerCase();
             if (sp === 'yes' || sp === 'true' || sp === '1') computedSum.paused++;
         });
         summary = computedSum;
@@ -851,10 +857,18 @@ function renderRunScriptFullDashboard(data, isFiltered, party) {
                 if (!partnerMetrics[partner]) {
                     partnerMetrics[partner] = { open: 0, pending: 0, closed: 0, canceled: 0 };
                 }
-                if (statusCat === 'open') partnerMetrics[partner].open++;
-                else if (statusCat === 'pending') partnerMetrics[partner].pending++;
-                else if (statusCat === 'closed') partnerMetrics[partner].closed++;
-                else if (statusCat === 'canceled') partnerMetrics[partner].canceled++;
+                var ts = String(t.ticketstatus || t.status || '').toLowerCase();
+                var phaseRaw = String(t.current_phase || t.operate_phase || t.state || '').toLowerCase();
+                var isPendingPhase = (phaseRaw.indexOf('implement') !== -1 || phaseRaw.indexOf('confirm') !== -1);
+
+                if (statusCat === 'canceled') {
+                    partnerMetrics[partner].canceled++;
+                } else if (statusCat === 'closed') {
+                    partnerMetrics[partner].closed++;
+                } else {
+                    if (ts === 'running' || ts === 'open') partnerMetrics[partner].open++;
+                    if (isPendingPhase) partnerMetrics[partner].pending++;
+                }
             });
         }
         window.allTimePartnerMetrics = partnerMetrics;
@@ -919,7 +933,7 @@ function renderSlaPauseReason(rows) {
     if (!container) return;
 
     var pausedTickets = (rows || []).filter(function (t) {
-        var sp = String(t.slapaused || t.slapausing || t.sla_suspend_state || '').toLowerCase();
+        var sp = String(t.slapausing || '').toLowerCase();
         return sp === 'yes' || sp === 'true' || sp === '1';
     });
 
@@ -1066,8 +1080,75 @@ function updatePanelFilterBadges(party) {
 window.ticketsPagination = {
     tickets: [],
     currentPage: 1,
-    pageSize: 10
+    pageSize: 10,
+    sortColumn: null,
+    sortOrder: 'asc' // 'asc' atau 'desc'
 };
+
+function sortTicketsTable(colKey) {
+    var pag = window.ticketsPagination;
+    if (pag.sortColumn === colKey) {
+        pag.sortOrder = pag.sortOrder === 'asc' ? 'desc' : 'asc';
+    } else {
+        pag.sortColumn = colKey;
+        pag.sortOrder = 'asc';
+    }
+
+    var isAsc = pag.sortOrder === 'asc';
+
+    pag.tickets.sort(function (a, b) {
+        var valA = getSortableValue(a, colKey);
+        var valB = getSortableValue(b, colKey);
+
+        if (typeof valA === 'number' && typeof valB === 'number') {
+            return isAsc ? valA - valB : valB - valA;
+        }
+        valA = String(valA || '').toLowerCase();
+        valB = String(valB || '').toLowerCase();
+        if (valA < valB) return isAsc ? -1 : 1;
+        if (valA > valB) return isAsc ? 1 : -1;
+        return 0;
+    });
+
+    pag.currentPage = 1;
+    renderCurrentTicketsPage();
+}
+
+function getSortableValue(item, colKey) {
+    if (colKey === 'id') return item.orderid || item.id || item.code || '';
+    if (colKey === 'title') return item.title || item.problem_name || item.description || '';
+    if (colKey === 'slastatus') return item.slastatus || '';
+    if (colKey === 'assignee') return getTicketPartner(item);
+    if (colKey === 'severity') {
+        var sev = getSeverityLabel(item.severity || item.createticketlevel || '');
+        var order = { 'Emergency': 1, 'Critical': 2, 'Major': 3, 'Minor': 4 };
+        return order[sev] || 5;
+    }
+    if (colKey === 'root_cause') return item.root_cause || item.rootcause || item.cause || '';
+    if (colKey === 'phase') return item.current_phase || '';
+    if (colKey === 'aging') {
+        var phaseRaw = String(item.current_phase || item.state || '').toLowerCase();
+        var phaseStartTime = item.createtime;
+        var statusCat = getStatusCategory(item);
+        if (statusCat === 'closed' || statusCat === 'canceled') {
+            phaseStartTime = item.createtime;
+        } else if (phaseRaw.indexOf('handle analyze') !== -1) {
+            phaseStartTime = item.tt10_submittime || item.tt11_createtime || item.createtime;
+        } else if (phaseRaw.indexOf('analyze') !== -1) {
+            phaseStartTime = item.tt11_submittime || item.tt12_createtime || item.tt10_submittime || item.createtime;
+        } else if (phaseRaw.indexOf('handle implement') !== -1) {
+            phaseStartTime = item.tt12_submittime || item.pt10_createtime || item.tt11_submittime || item.createtime;
+        } else if (phaseRaw.indexOf('implement') !== -1) {
+            phaseStartTime = item.pt10_submittime || item.pt12_createtime || item.tt12_submittime || item.createtime;
+        } else if (phaseRaw.indexOf('confirm') !== -1) {
+            phaseStartTime = item.pt12_submittime || item.pt14_createtime || item.pt10_submittime || item.createtime;
+        }
+        var agingVal = parseFloat(calculateAgingDays(phaseStartTime, item.closetime, item.lastupdatetime, item.operate_time, item.ticketstatus || item.status));
+        return isNaN(agingVal) ? 0 : agingVal;
+    }
+    if (colKey === 'status') return getStatusCategory(item);
+    return '';
+}
 
 function renderSearchBar() {
     var container = document.getElementById('ticketSearchContainer');
@@ -1090,6 +1171,8 @@ function renderSearchBar() {
     html += '    <option value="5. Implement PT" ' + (selectedPhase === '5. Implement PT' ? 'selected' : '') + '>5. Implement PT</option>';
     html += '    <option value="6. Confirm PT" ' + (selectedPhase === '6. Confirm PT' ? 'selected' : '') + '>6. Confirm PT</option>';
     html += '    <option value="7. Closed PT" ' + (selectedPhase === '7. Closed PT' ? 'selected' : '') + '>7. Closed PT</option>';
+    html += '    <option value="8. Canceled PT" ' + (selectedPhase === '8. Canceled PT' ? 'selected' : '') + '>8. Canceled PT</option>';
+    html += '    <option value="SLA Paused" ' + (selectedPhase === 'SLA Paused' ? 'selected' : '') + '>⏸ SLA Paused</option>';
     html += '  </select>';
     html += '</div>';
     container.innerHTML = html;
@@ -1135,25 +1218,6 @@ function renderCurrentTicketsPage() {
     var selectedPhase = window.selectedPhaseFilter || 'ALL';
     var selectedQuery = (document.getElementById('customTicketSearchInput')?.value || '');
 
-    var searchHtml =
-        '<div style="padding: 12px 16px; border-bottom: 1px solid #27272a; display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">' +
-        '  <input type="text" id="customTicketSearchInput" placeholder="Search by Ticket ID, Title, Operator..." ' +
-        '    value="' + selectedQuery + '" ' +
-        '    style="flex: 1; min-width: 200px; background-color: #0d0d10; border: 1px solid #27272a; border-radius: 6px; padding: 8px 12px; color: #e4e4e7; font-size: 13px; outline: none;" ' +
-        '    oninput="handleTicketSearchFilter()">' +
-        '  <select id="customTicketPhaseFilter" onchange="handleTicketSearchFilter()" ' +
-        '    style="background-color: #0d0d10; border: 1px solid #27272a; border-radius: 6px; padding: 8px 12px; color: #e4e4e7; font-size: 13px; outline: none; cursor: pointer;">' +
-        '    <option value="ALL" ' + (selectedPhase === 'ALL' ? 'selected' : '') + '>All Phases</option>' +
-        '    <option value="1. Create PT" ' + (selectedPhase === '1. Create PT' ? 'selected' : '') + '>1. Create PT</option>' +
-        '    <option value="2. Handle Analyze PT" ' + (selectedPhase === '2. Handle Analyze PT' ? 'selected' : '') + '>2. Handle Analyze PT</option>' +
-        '    <option value="3. Analyze PT" ' + (selectedPhase === '3. Analyze PT' ? 'selected' : '') + '>3. Analyze PT</option>' +
-        '    <option value="4. Handle Implement PT" ' + (selectedPhase === '4. Handle Implement PT' ? 'selected' : '') + '>4. Handle Implement PT</option>' +
-        '    <option value="5. Implement PT" ' + (selectedPhase === '5. Implement PT' ? 'selected' : '') + '>5. Implement PT</option>' +
-        '    <option value="6. Confirm PT" ' + (selectedPhase === '6. Confirm PT' ? 'selected' : '') + '>6. Confirm PT</option>' +
-        '    <option value="7. Closed PT" ' + (selectedPhase === '7. Closed PT' ? 'selected' : '') + '>7. Closed PT</option>' +
-        '    <option value="8. Canceled PT" ' + (selectedPhase === '8. Canceled PT' ? 'selected' : '') + '>8. Canceled PT</option>' +
-        '  </select>' +
-        '</div>';
 
     if (tickets.length === 0) {
         container.innerHTML = '<div style="color: #6c757d; padding: 12px;">No tickets found for the selected date range.</div>';
@@ -1164,18 +1228,24 @@ function renderCurrentTicketsPage() {
     var endIdx = Math.min(startIdx + pag.pageSize, tickets.length);
     var pageTickets = tickets.slice(startIdx, endIdx);
 
+    function getSortIcon(colKey) {
+        if (pag.sortColumn !== colKey) return '<span style="opacity: 0.35; margin-left: 4px;">↕</span>';
+        return pag.sortOrder === 'asc' ? '<span style="color: #58a6ff; margin-left: 4px;">↑</span>' : '<span style="color: #58a6ff; margin-left: 4px;">↓</span>';
+    }
+
     var html = '<table class="custom-noc-table">';
     html += '<thead>';
     html += '<tr>';
     html += '<th style="width: 50px; text-align: center;">No.</th>';
-    html += '<th>Ticket ID</th>';
-    html += '<th>Title / Description</th>';
-    html += '<th>Assignee</th>';
-    html += '<th>Severity</th>';
-    html += '<th>Root Cause</th>';
-    html += '<th>Current Phase</th>';
-    html += '<th>Aging</th>';
-    html += '<th>Status</th>';
+    html += '<th class="sortable" onclick="sortTicketsTable(\'id\')">Ticket ID ' + getSortIcon('id') + '</th>';
+    html += '<th class="sortable" onclick="sortTicketsTable(\'title\')">Title / Description ' + getSortIcon('title') + '</th>';
+    html += '<th class="sortable" onclick="sortTicketsTable(\'slastatus\')">SLA Status ' + getSortIcon('slastatus') + '</th>';
+    html += '<th class="sortable" onclick="sortTicketsTable(\'assignee\')">Assignee ' + getSortIcon('assignee') + '</th>';
+    html += '<th class="sortable" onclick="sortTicketsTable(\'severity\')">Severity ' + getSortIcon('severity') + '</th>';
+    html += '<th class="sortable" onclick="sortTicketsTable(\'root_cause\')">Root Cause ' + getSortIcon('root_cause') + '</th>';
+    html += '<th class="sortable" onclick="sortTicketsTable(\'phase\')">Current Phase ' + getSortIcon('phase') + '</th>';
+    html += '<th class="sortable" onclick="sortTicketsTable(\'aging\')">Aging ' + getSortIcon('aging') + '</th>';
+    html += '<th class="sortable" onclick="sortTicketsTable(\'status\')">Status ' + getSortIcon('status') + '</th>';
     html += '</tr>';
     html += '</thead>';
     html += '<tbody>';
@@ -1189,7 +1259,7 @@ function renderCurrentTicketsPage() {
 
         // Map Status — uses getStatusCategory() helper
         var statusCat = getStatusCategory(item);
-        
+
         // Phase-specific start aging date calculation
         var phaseRaw = String(item.current_phase || item.state || '').toLowerCase();
         var phaseStartTime = item.createtime;
@@ -1227,10 +1297,30 @@ function renderCurrentTicketsPage() {
 
         var displayNo = startIdx + i + 1;
         var rc = item.root_cause || item.rootcause || item.cause || '-';
+        var slaStatRaw = item.slastatus || '-';
+        var isSlaOver = item.over_sla || String(slaStatRaw).toLowerCase().indexOf('violation') !== -1 || String(slaStatRaw).toLowerCase() === 'over';
+
+        var slaDisplay = '-';
+        if (slaStatRaw && slaStatRaw !== '-') {
+            var slaLower = String(slaStatRaw).toLowerCase();
+            if (slaLower === 'normal' || slaLower === 'within_sla' || slaLower === 'within sla') {
+                slaDisplay = 'Within SLA';
+            } else if (slaLower === 'sla_violation' || slaLower === 'over' || slaLower === 'over_sla' || slaLower === 'over sla') {
+                slaDisplay = 'Over SLA';
+            } else {
+                slaDisplay = slaStatRaw;
+            }
+        } else if (item.aging !== undefined || item.over_sla !== undefined) {
+            slaDisplay = isSlaOver ? 'Over SLA' : 'Within SLA';
+        }
+
+        var slaBadgeColor = isSlaOver ? '#ff7b72' : '#56d364';
+
         html += '<tr onclick="showTicketDetailModal(\'' + id + '\')">';
         html += '<td style="text-align: center; color: #8b949e; font-weight: 600;">' + displayNo + '</td>';
         html += '<td style="font-family: monospace; font-weight: bold; color: #58a6ff;">' + id + '</td>';
         html += '<td style="text-align: left; font-weight: 500;">' + title + '</td>';
+        html += '<td style="font-weight: 600; color: ' + slaBadgeColor + ';">' + slaDisplay + '</td>';
         html += '<td>' + partner + '</td>';
         html += '<td><span class="custom-badge-severity ' + sevClass + '">' + sevLabel + '</span></td>';
         html += '<td style="font-weight: 600; text-transform: uppercase;">' + rc + '</td>';
@@ -1364,7 +1454,8 @@ function renderSeverityDashboard(tickets) {
         severityData[cat] = {
             total: 0,
             pending: 0,
-            overSla: 0,
+            closed: 0,
+            withinSla: 0,
             pctOfTotal: '0%',
             rootCauses: [
                 { name: 'Environment', value: 0, pct: '0%', color: '#8a3ffc' },
@@ -1377,19 +1468,27 @@ function renderSeverityDashboard(tickets) {
     });
 
     if (tickets && tickets.length > 0) {
-        tickets.forEach(function (t) {
+        var validTickets = tickets.filter(function (t) {
+            return getStatusCategory(t) !== 'canceled';
+        });
+
+        validTickets.forEach(function (t) {
             // Use centralised helpers to avoid duplicating mapping logic
             var sev = getSeverityLabel(t.severity || t.createticketlevel || t.priority || '', t);
             severityData[sev].total++;
 
-            var statusCat = getStatusCategory(t.ticketstatus || t.status || '');
+            var statusCat = getStatusCategory(t);
             if (statusCat === 'pending' || statusCat === 'open') {
                 severityData[sev].pending++;
+            } else if (statusCat === 'closed') {
+                severityData[sev].closed++;
             }
 
             var slaOver = t.over_sla || t.sla_over || t.is_over_sla || (t.slastatus && String(t.slastatus).toLowerCase() === 'over');
-            if (slaOver === true || String(slaOver).toLowerCase() === 'true' || String(slaOver) === '1') {
-                severityData[sev].overSla++;
+            var isOverVal = (slaOver === true || String(slaOver).toLowerCase() === 'true' || String(slaOver) === '1');
+            // Menghitung tiket yang TIDAK lebih dari target SLA (Within SLA)
+            if (!isOverVal) {
+                severityData[sev].withinSla++;
             }
 
             var rcName = getRootCauseLabel(t.root_cause || t.rootcause || t.cause || '');
@@ -1405,7 +1504,7 @@ function renderSeverityDashboard(tickets) {
         // Recalculate percentages
         categories.forEach(function (cat) {
             var catTotal = severityData[cat].total;
-            severityData[cat].pctOfTotal = tickets.length ? Math.round((catTotal / tickets.length) * 100) + '%' : '0%';
+            severityData[cat].pctOfTotal = validTickets.length ? Math.round((catTotal / validTickets.length) * 100) + '%' : '0%';
 
             severityData[cat].rootCauses.forEach(function (rc) {
                 rc.pct = catTotal ? Math.round((rc.value / catTotal) * 100) + '%' : '0%';
@@ -1421,7 +1520,8 @@ function renderSeverityDashboard(tickets) {
         // Update stats table
         setCardValue(type.toLowerCase() + 'Total', data.total);
         setCardValue(type.toLowerCase() + 'Pending', data.pending);
-        setCardValue(type.toLowerCase() + 'Over', data.overSla);
+        setCardValue(type.toLowerCase() + 'Closed', data.closed);
+        setCardValue(type.toLowerCase() + 'Within', data.withinSla);
 
         // Render legend table
         renderLegend('legend' + type, data.rootCauses);
@@ -1553,7 +1653,8 @@ function renderPhaseDashboard(tickets) {
         '5. Implement PT',
         '6. Confirm PT',
         '7. Closed PT',
-        '8. Canceled PT'
+        '8. Canceled PT',
+        '9. SLA Paused'
     ];
 
     var registeredParties = PartyManager.getRegisteredParties();
@@ -1575,7 +1676,10 @@ function renderPhaseDashboard(tickets) {
             var statusCat = getStatusCategory(t);
             var phase = '1. Create PT';
 
-            if (statusCat === 'closed') {
+            var sp = String(t.slapausing || t.slapaused || '').toLowerCase();
+            if (sp === 'yes' || sp === 'true' || sp === '1') {
+                phase = '9. SLA Paused';
+            } else if (statusCat === 'closed') {
                 phase = '7. Closed PT';
             } else if (statusCat === 'canceled') {
                 phase = '8. Canceled PT';
@@ -1596,7 +1700,7 @@ function renderPhaseDashboard(tickets) {
             }
 
             var statusRaw = String(t.ticketstatus || t.status || '').toLowerCase();
-            
+
             // Phase-specific start aging date calculation
             var phaseStartTime = t.createtime;
             if (phase === '2. Handle Analyze PT') {
@@ -1694,7 +1798,7 @@ function renderPhaseOverall(containerId, phaseRows) {
     html += '<tr>';
     html += '<th style="text-align:left;">Phase</th>';
     html += '<th>Total PT</th>';
-    html += '<th>Aging Bucket (Days)</th>';
+    html += '<th>Aging Bucket (Days) <span style="font-weight:normal; margin-left:8px; font-size:11px; text-transform:none;"><span style="display:inline-block; width:8px; height:8px; background:#58a6ff; border-radius:2px; margin-right:3px;"></span>0-7 Days <span style="display:inline-block; width:8px; height:8px; background:#ff7b72; border-radius:2px; margin-left:8px; margin-right:3px;"></span>&gt;7 Days</span></th>';
     html += '<th>Avg Aging (Days)</th>';
     html += '</tr>';
     html += '</thead>';
@@ -1824,16 +1928,26 @@ function renderTrendsAndCompliance(weeklyTrendTickets, rootCauseTickets, complia
     ];
 
     var registeredParties = PartyManager.getRegisteredParties();
+
+    // complianceData: semua tiket (tidak peduli status) → dipakai donut chart
     var complianceData = registeredParties.map(function (p) {
         return { party: p, total: 0, within: 0, over: 0, ach: '0.0%' };
     });
     complianceData.push({ party: 'Others', total: 0, within: 0, over: 0, ach: '0.0%' });
 
+    // complianceTableData: hanya tiket yg sudah complete/closed → dipakai tabel kanan + SLA Ach
+    var complianceTableData = registeredParties.map(function (p) {
+        return { party: p, total: 0, within: 0, over: 0, ach: '0.0%' };
+    });
+    complianceTableData.push({ party: 'Others', total: 0, within: 0, over: 0, ach: '0.0%' });
+
     var weeklyMap = {};
     // getWeekLabel and getWeekRangeString are now top-level functions — no closure redefinition needed
 
-    // 1. Top Root Cause — uses getRootCauseLabel() helper
-    var rcTickets = rootCauseTickets || [];
+    // 1. Top Root Cause — Filter out canceled tickets
+    var rcTickets = (rootCauseTickets || []).filter(function (t) {
+        return getStatusCategory(t) !== 'canceled';
+    });
     if (rcTickets.length > 0) {
         rcTickets.forEach(function (t) {
             var rcName = getRootCauseLabel(t.root_cause || t.rootcause || t.cause || '');
@@ -1842,8 +1956,10 @@ function renderTrendsAndCompliance(weeklyTrendTickets, rootCauseTickets, complia
         });
     }
 
-    // 2. SLA Compliance — falls back to 'Others' bucket for unrecognised partners
-    var compTickets = complianceTickets || [];
+    // 2a. SLA Compliance (donut) — semua tiket kecuali canceled
+    var compTickets = (complianceTickets || []).filter(function (t) {
+        return getStatusCategory(t) !== 'canceled';
+    });
     if (compTickets.length > 0) {
         compTickets.forEach(function (t) {
             var partner = getTicketPartner(t);
@@ -1861,83 +1977,287 @@ function renderTrendsAndCompliance(weeklyTrendTickets, rootCauseTickets, complia
         });
     }
 
-    // 3. Weekly Trend (using weeklyTrendTickets - fully filtered by date + party)
+    // 2b. SLA Compliance table — hanya tiket yg sudah complete/closed
+    var compClosedTickets = (complianceTickets || []).filter(function (t) {
+        return getStatusCategory(t) === 'closed';
+    });
+    if (compClosedTickets.length > 0) {
+        compClosedTickets.forEach(function (t) {
+            var partner = getTicketPartner(t);
+            var tblObj = complianceTableData.find(function (c) { return c.party === partner; })
+                || complianceTableData.find(function (c) { return c.party === 'Others'; });
+            if (tblObj) {
+                tblObj.total++;
+                var isOver2 = t.over_sla || t.sla_over || t.is_over_sla;
+                var overVal2 = (isOver2 === true || String(isOver2).toLowerCase() === 'true' || String(isOver2) === '1');
+                if (overVal2) { tblObj.over++; } else { tblObj.within++; }
+            }
+        });
+        complianceTableData.forEach(function (c) {
+            c.ach = c.total ? ((c.within / c.total) * 100).toFixed(1) + '%' : '0.0%';
+        });
+    }
+
+    // 3. Weekly Trend — Snapshot Backlog per Minggu
+    //    LOGIC:
+    //      - New PT     → dihitung di minggu createtime tiket
+    //      - Closed PT  → dihitung di minggu closure time (fallback createtime)
+    //      - Pending PT → SNAPSHOT: berapa tiket yang masih pending di AKHIR minggu W tersebut
+    //                     W30 = 500 (tiket yg sudah ada saat W30 berakhir tapi belum closed)
+    //                     W31 = 603 (tiket yg masih pending sekarang = sinkron dgn Stat Card)
     var trendTickets = weeklyTrendTickets || [];
+
+    // Helper: parse date string ke timestamp ms (midnight)
+    function parseDateMs(str) {
+        if (!str) return NaN;
+        var clean = String(str).replace(/\//g, '-').split(' ')[0]; // ambil YYYY-MM-DD
+        var parts = clean.split('-');
+        if (parts.length < 3) return NaN;
+        return new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10)).getTime();
+    }
+
     if (trendTickets.length > 0) {
+        // Deteksi tahun referensi dari data tiket
+        var refYear = 2026;
+        for (var ri = 0; ri < trendTickets.length; ri++) {
+            var rStr = trendTickets[ri].createtime || trendTickets[ri].operate_time;
+            if (rStr) {
+                var rYr = parseInt(String(rStr).replace(/\//g, '-').split('-')[0], 10);
+                if (!isNaN(rYr) && rYr > 2000) { refYear = rYr; break; }
+            }
+        }
+
+        // Pass 1: Hitung New PT (per createtime) & Closed PT (per closure time)
+        //         Sekaligus kumpulkan semua minggu yang relevan ke weeklyMap
         trendTickets.forEach(function (t) {
-            // 1. Count as New PT in the week of creation
+            var isClosed = isTicketClosed(t);
+
+            // New PT → minggu pembuatan
             var createDate = t.createtime || t.createfirstoccurtime || t.operate_time;
             if (createDate) {
                 var createWeek = getWeekLabel(createDate);
                 if (createWeek) {
                     if (!weeklyMap[createWeek]) {
-                        weeklyMap[createWeek] = { newPT: 0, closedPT: 0, pendingPT: 0, overSla: 0, total: 0, withinSla: 0 };
+                        weeklyMap[createWeek] = { newPT: 0, implementPT: 0, closedPT: 0, pendingPT: 0, overSla: 0, total: 0, withinSla: 0, pendingByParty: {} };
                     }
                     weeklyMap[createWeek].newPT++;
-                }
-            }
-
-            // 2. Count as Closed/Pending/SLA in the week of resolution (for closed) or creation (for pending)
-            var isClosed = isTicketClosed(t);
-            var targetDate = isClosed ? getConfirmSubmitTime(t) : (t.createtime || t.createfirstoccurtime || t.operate_time);
-            if (targetDate) {
-                var targetWeek = getWeekLabel(targetDate);
-                if (targetWeek) {
-                    if (!weeklyMap[targetWeek]) {
-                        weeklyMap[targetWeek] = { newPT: 0, closedPT: 0, pendingPT: 0, overSla: 0, total: 0, withinSla: 0 };
-                    }
-                    var weekRow = weeklyMap[targetWeek];
-                    weekRow.total++;
-
-                    if (isClosed) {
-                        weekRow.closedPT++;
-                    } else if (getStatusCategory(t) === 'pending') {
-                        // Hanya tiket dengan 22 UUID businessstatus penanganan resmi yg masuk Pending PT
-                        weekRow.pendingPT++;
-                    }
-
                     var isOverVal = (t.over_sla === true || String(t.over_sla).toLowerCase() === 'true' || String(t.over_sla) === '1');
-                    if (isOverVal) {
-                        weekRow.overSla++;
-                    } else {
-                        weekRow.withinSla++;
+                    if (isOverVal) { weeklyMap[createWeek].overSla++; } else { weeklyMap[createWeek].withinSla++; }
+                }
+            }
+
+            // Implemented PT → berdasarkan minggu lastupdatetime (fallback operate_time) jika fasenya Implement PT
+            var phaseRawStr = String(t.operate_phase || t.current_phase || t.phase || '').toLowerCase();
+            if (phaseRawStr.indexOf('implement') !== -1 || phaseRawStr.indexOf('pt10') !== -1 || phaseRawStr.indexOf('pt12') !== -1) {
+                var updateDate = t.lastupdatetime || t.operate_time || t.createtime;
+                if (updateDate) {
+                    var updateWeek = getWeekLabel(updateDate);
+                    if (updateWeek) {
+                        if (!weeklyMap[updateWeek]) {
+                            weeklyMap[updateWeek] = { newPT: 0, implementPT: 0, closedPT: 0, pendingPT: 0, overSla: 0, total: 0, withinSla: 0, pendingByParty: {} };
+                        }
+                        weeklyMap[updateWeek].implementPT++;
                     }
                 }
             }
+
+            if (isClosed) {
+                var closeDate = getConfirmSubmitTime(t);
+                if (closeDate) {
+                    var closeWeek = getWeekLabel(closeDate);
+                    if (closeWeek) {
+                        if (!weeklyMap[closeWeek]) {
+                            weeklyMap[closeWeek] = { newPT: 0, implementPT: 0, closedPT: 0, pendingPT: 0, overSla: 0, total: 0, withinSla: 0, pendingByParty: {} };
+                        }
+                        weeklyMap[closeWeek].closedPT++;
+                    }
+                }
+            }
+
+            var currentWeek = getWeekLabel(new Date().toISOString().split('T')[0]);
+            if (currentWeek && !weeklyMap[currentWeek]) {
+                weeklyMap[currentWeek] = { newPT: 0, implementPT: 0, closedPT: 0, pendingPT: 0, overSla: 0, total: 0, withinSla: 0, pendingByParty: {} };
+            }
+        });
+
+        var sortedWeeks = Object.keys(weeklyMap).sort(function (a, b) {
+            return parseInt(a.replace('W', ''), 10) - parseInt(b.replace('W', ''), 10);
+        });
+
+        sortedWeeks.forEach(function (wLabel) {
+            var pendingCountTotal = 0;
+            var pendingByParty = {};
+
+            trendTickets.forEach(function (t) {
+                var statusCat = getStatusCategory(t);
+                // Hanya hitung tiket yang saat ini statusnya Pending / Running
+                if (statusCat !== 'pending') return;
+
+                var createDate = t.createtime || t.createfirstoccurtime || t.operate_time;
+                if (!createDate) return;
+                var ticketCreateWeek = getWeekLabel(createDate);
+
+                // Jika tiket di-create pada minggu ini (wLabel)
+                if (ticketCreateWeek === wLabel) {
+                    pendingCountTotal++;
+                    var partner = getTicketPartner(t);
+                    if (!pendingByParty[partner]) {
+                        pendingByParty[partner] = 0;
+                    }
+                    pendingByParty[partner]++;
+                }
+            });
+
+            weeklyMap[wLabel].pendingPT = pendingCountTotal;
+            weeklyMap[wLabel].pendingByParty = pendingByParty;
         });
     }
 
-    // getWeekRangeString is now top-level — no closure redefinition needed
     var weeksList = Object.keys(weeklyMap).sort(function (a, b) {
         var numA = parseInt(a.replace('W', ''), 10);
         var numB = parseInt(b.replace('W', ''), 10);
         return numA - numB;
     });
+
+    var partySet = {};
+    trendTickets.forEach(function (t) {
+        if (getStatusCategory(t) === 'pending') {
+            var p = getTicketPartner(t);
+            if (p) partySet[p] = true;
+        }
+    });
+    registeredParties.forEach(function (p) { partySet[p] = true; });
+    partySet['Others'] = true;
+
+    var activePartyList = Object.keys(partySet);
+
     var trendData = {
         weeks: weeksList,
         ranges: [],
         newPT: [],
+        implementPT: [],
         closedPT: [],
         pendingPT: [],
+        pendingByPartySeries: {},
         overSla: [],
         slaAchievement: []
     };
+
+    activePartyList.forEach(function (party) {
+        trendData.pendingByPartySeries[party] = [];
+    });
 
     weeksList.forEach(function (w) {
         var row = weeklyMap[w];
         trendData.ranges.push(getWeekRangeString(w, trendTickets));
         trendData.newPT.push(row.newPT);
+        trendData.implementPT.push(row.implementPT || 0);
         trendData.closedPT.push(row.closedPT);
         trendData.pendingPT.push(row.pendingPT);
         trendData.overSla.push(row.overSla);
         trendData.slaAchievement.push(row.total ? parseFloat(((row.withinSla / row.total) * 100).toFixed(1)) : 0);
+
+        activePartyList.forEach(function (party) {
+            var partyPending = (row.pendingByParty && row.pendingByParty[party]) ? row.pendingByParty[party] : 0;
+            trendData.pendingByPartySeries[party].push(partyPending);
+        });
     });
 
-    renderSlaComplianceTable('tableSlaCompliance', complianceData);
+    renderSlaComplianceTable('tableSlaCompliance', complianceData, complianceTableData);
 
+    window.lastWeeklyTrendData = trendData;
+    renderWeeklyTrendTabControls();
     drawWeeklyTrendChart('chartWeeklyTrend', trendData);
     drawTopRootCauseChart('chartTopRootCause', rootCauseData);
 }
+
+window.currentWeeklyTrendMode = 'overview'; // 'overview' | 'vendor'
+window.currentWeeklyTimeframe = '12W'; // '4W' | '12W' | 'ALL'
+
+function renderWeeklyTrendTabControls() {
+    var chartDom = document.getElementById('chartWeeklyTrend');
+    if (!chartDom) return;
+
+    var panelCard = chartDom.closest('.custom-panel-card');
+    if (!panelCard) return;
+
+    var header = panelCard.querySelector('.custom-panel-header');
+    if (!header) return;
+
+    header.style.display = 'flex';
+    header.style.justifyContent = 'space-between';
+    header.style.alignItems = 'center';
+    header.style.flexWrap = 'wrap';
+    header.style.gap = '8px';
+
+    var existingTab = header.querySelector('.custom-weekly-tab-container');
+    if (existingTab) {
+        header.removeChild(existingTab);
+    }
+
+    var newTabContainer = document.createElement('div');
+    newTabContainer.className = 'custom-weekly-tab-container';
+    newTabContainer.style.display = 'flex';
+    newTabContainer.style.alignItems = 'center';
+    newTabContainer.style.gap = '12px';
+
+    var modePills =
+        '<div class="custom-weekly-tab-group">' +
+        '  <button type="button" class="custom-weekly-tab-btn ' + (window.currentWeeklyTrendMode === 'overview' ? 'active' : '') + '" id="btnWeeklyTabOverview" onclick="switchWeeklyTrendMode(\'overview\')">Overview</button>' +
+        '  <button type="button" class="custom-weekly-tab-btn ' + (window.currentWeeklyTrendMode === 'vendor' ? 'active' : '') + '" id="btnWeeklyTabVendor" onclick="switchWeeklyTrendMode(\'vendor\')">Vendor Breakdown</button>' +
+        '</div>';
+
+    var tf = window.currentWeeklyTimeframe || '12W';
+    var timeframePills =
+        '<div class="custom-weekly-tab-group custom-timeframe-group">' +
+        '  <button type="button" class="custom-weekly-tab-btn ' + (tf === '4W' ? 'active' : '') + '" id="btnTf4W" onclick="switchWeeklyTimeframe(\'4W\')">4W</button>' +
+        '  <button type="button" class="custom-weekly-tab-btn ' + (tf === '12W' ? 'active' : '') + '" id="btnTf12W" onclick="switchWeeklyTimeframe(\'12W\')">12W</button>' +
+        '  <button type="button" class="custom-weekly-tab-btn ' + (tf === 'ALL' ? 'active' : '') + '" id="btnTfALL" onclick="switchWeeklyTimeframe(\'ALL\')">All</button>' +
+        '</div>';
+
+    newTabContainer.innerHTML = modePills + timeframePills;
+    header.appendChild(newTabContainer);
+}
+
+function switchWeeklyTrendMode(mode) {
+    if (mode !== 'overview' && mode !== 'vendor') return;
+    window.currentWeeklyTrendMode = mode;
+
+    var btnOverview = document.getElementById('btnWeeklyTabOverview');
+    var btnVendor = document.getElementById('btnWeeklyTabVendor');
+
+    if (btnOverview) {
+        if (mode === 'overview') btnOverview.classList.add('active');
+        else btnOverview.classList.remove('active');
+    }
+    if (btnVendor) {
+        if (mode === 'vendor') btnVendor.classList.add('active');
+        else btnVendor.classList.remove('active');
+    }
+
+    if (window.lastWeeklyTrendData) {
+        drawWeeklyTrendChart('chartWeeklyTrend', window.lastWeeklyTrendData);
+    }
+}
+window.switchWeeklyTrendMode = switchWeeklyTrendMode;
+
+function switchWeeklyTimeframe(tf) {
+    if (tf !== '4W' && tf !== '12W' && tf !== 'ALL') return;
+    window.currentWeeklyTimeframe = tf;
+
+    ['4W', '12W', 'ALL'].forEach(function (tItem) {
+        var btn = document.getElementById('btnTf' + tItem);
+        if (btn) {
+            if (tItem === tf) btn.classList.add('active');
+            else btn.classList.remove('active');
+        }
+    });
+
+    if (window.lastWeeklyTrendData) {
+        drawWeeklyTrendChart('chartWeeklyTrend', window.lastWeeklyTrendData);
+    }
+}
+window.switchWeeklyTimeframe = switchWeeklyTimeframe;
 
 function drawWeeklyTrendChart(containerId, data) {
     var chartDom = document.querySelector('#' + containerId);
@@ -1949,6 +2269,260 @@ function drawWeeklyTrendChart(containerId, data) {
     }
 
     var myChart = echarts.init(chartDom);
+    var mode = window.currentWeeklyTrendMode || 'overview';
+    var tf = window.currentWeeklyTimeframe || '12W';
+
+    var totalWeeks = data.weeks ? data.weeks.length : 0;
+    var startIdx = 0;
+    if (tf === '4W') {
+        startIdx = Math.max(0, totalWeeks - 4);
+    } else if (tf === '12W') {
+        startIdx = Math.max(0, totalWeeks - 12);
+    } else {
+        startIdx = 0; // ALL
+    }
+    var endIdx = Math.max(0, totalWeeks - 1);
+
+    var vendorColorPalette = [
+        '#ff9f43', '#00d2d3', '#ff6b6b', '#5f27cd', '#54a0ff',
+        '#1dd1a1', '#feca57', '#ff9ff3', '#48dbfb', '#ff6b81',
+        '#70a1ff', '#eccc68', '#7bed9f', '#ff7f50', '#a4b0be'
+    ];
+
+    function getVendorColor(vendorName, index) {
+        if (index < vendorColorPalette.length) {
+            return vendorColorPalette[index];
+        }
+        var hash = 0;
+        for (var i = 0; i < vendorName.length; i++) {
+            hash = vendorName.charCodeAt(i) + ((hash << 5) - hash);
+        }
+        var c = (hash & 0x00FFFFFF).toString(16).toUpperCase();
+        return '#' + '00000'.substring(0, 6 - c.length) + c;
+    }
+
+    function createTradingViewAreaGradient(colorHex, opacityTop, opacityBottom) {
+        var topOpacity = opacityTop !== undefined ? opacityTop : 0.4;
+        var bottomOpacity = opacityBottom !== undefined ? opacityBottom : 0.02;
+
+        return new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+            { offset: 0, color: hexToRgbaStr(colorHex, topOpacity) },
+            { offset: 1, color: hexToRgbaStr(colorHex, bottomOpacity) }
+        ]);
+    }
+
+    function hexToRgbaStr(hex, opacity) {
+        var cleanHex = hex.replace('#', '');
+        if (cleanHex.length === 8) { cleanHex = cleanHex.substring(0, 6); }
+        if (cleanHex.length === 3) {
+            cleanHex = cleanHex[0] + cleanHex[0] + cleanHex[1] + cleanHex[1] + cleanHex[2] + cleanHex[2];
+        }
+        var num = parseInt(cleanHex, 16);
+        var r = (num >> 16) & 255;
+        var g = (num >> 8) & 255;
+        var b = num & 255;
+        return 'rgba(' + r + ', ' + g + ', ' + b + ', ' + opacity + ')';
+    }
+
+    var legendItems = [];
+    var seriesList = [];
+
+    if (mode === 'overview') {
+        legendItems = ['New PT', 'Implemented PT', 'Closed PT', 'Pending PT', 'Over SLA', 'SLA Achievement (%)'];
+        seriesList = [
+            {
+                name: 'New PT',
+                type: 'bar',
+                yAxisIndex: 0,
+                data: data.newPT,
+                itemStyle: { color: '#58a6ff' },
+                barWidth: '18%',
+                barGap: '15%'
+            },
+            {
+                name: 'Implemented PT',
+                type: 'bar',
+                yAxisIndex: 0,
+                data: data.implementPT,
+                itemStyle: { color: '#a855f7' },
+                barWidth: '18%',
+                barGap: '15%',
+                label: {
+                    show: true,
+                    position: 'top',
+                    color: '#c084fc',
+                    fontSize: 10,
+                    fontWeight: 'bold',
+                    formatter: function (p) { return p.value > 0 ? p.value : ''; }
+                }
+            },
+            {
+                name: 'Closed PT',
+                type: 'bar',
+                yAxisIndex: 0,
+                data: data.closedPT,
+                itemStyle: { color: '#3fb950' },
+                barWidth: '18%',
+                barGap: '15%'
+            },
+            {
+                name: 'Pending PT',
+                type: 'line',
+                yAxisIndex: 1,
+                smooth: 0.3,
+                data: data.pendingPT,
+                itemStyle: { color: '#ffd000' },
+                lineStyle: { width: 3, type: 'solid' },
+                areaStyle: {
+                    color: createTradingViewAreaGradient('#ffd000', 0.45, 0.01)
+                },
+                symbol: 'circle',
+                symbolSize: 8,
+                label: {
+                    show: true,
+                    position: 'top',
+                    color: '#00e5ff',
+                    fontSize: 11,
+                    fontWeight: 'bold',
+                    formatter: function (p) { return p.value > 0 ? p.value : ''; }
+                }
+            },
+            {
+                name: 'Over SLA',
+                type: 'line',
+                yAxisIndex: 0,
+                data: data.overSla,
+                itemStyle: { color: '#ff0055' },
+                lineStyle: { width: 2.5, type: 'dashed' },
+                symbol: 'triangle',
+                symbolSize: 8,
+                label: {
+                    show: true,
+                    position: 'top', // Naikkan label angka Over SLA agar berada bersih di atas titik/titik segitiga
+                    color: '#ff0055',
+                    fontSize: 10,
+                    fontWeight: 'bold',
+                    formatter: function (p) { return p.value > 0 ? p.value : ''; }
+                }
+            },
+            {
+                name: 'SLA Achievement (%)',
+                type: 'line',
+                yAxisIndex: 2, // Menggunakan Sumbu Y Kanan Ke-2 (khusus SLA %)
+                data: data.slaAchievement,
+                itemStyle: { color: '#ab7fff' },
+                lineStyle: { width: 2.5, type: 'dotted' },
+                symbol: 'diamond',
+                symbolSize: 8,
+                label: {
+                    show: true,
+                    position: 'top',
+                    color: '#ab7fff',
+                    fontSize: 10,
+                    formatter: '{c}%'
+                }
+            }
+        ];
+    } else {
+        var partyKeys = Object.keys(data.pendingByPartySeries || {});
+        var activePartiesWithData = partyKeys.filter(function (party) {
+            var arr = data.pendingByPartySeries[party];
+            return arr && arr.some(function (val) { return val > 0; });
+        });
+
+        if (activePartiesWithData.length === 0) {
+            activePartiesWithData = partyKeys.length > 0 ? [partyKeys[0]] : ['Pending PT'];
+        }
+
+        activePartiesWithData.forEach(function (party) {
+            legendItems.push('Pending (' + party + ')');
+        });
+
+        activePartiesWithData.forEach(function (party, idx) {
+            var seriesColor = getVendorColor(party, idx);
+            var seriesData = data.pendingByPartySeries[party] || [];
+
+            seriesList.push({
+                name: 'Pending (' + party + ')',
+                type: 'line',
+                yAxisIndex: 0, // Menggunakan Sumbu Y Tunggal (Pending PT)
+                smooth: 0.35,
+                data: seriesData,
+                itemStyle: { color: seriesColor },
+                lineStyle: { width: 3.5, type: 'solid' },
+                areaStyle: {
+                    color: createTradingViewAreaGradient(seriesColor, 0.4, 0.01)
+                },
+                symbol: 'circle',
+                symbolSize: 8,
+                label: {
+                    show: true,
+                    position: 'top',
+                    color: seriesColor,
+                    fontSize: 11,
+                    fontWeight: 'bold',
+                    formatter: function (p) { return p.value > 0 ? p.value : ''; }
+                }
+            });
+        });
+    }
+
+    // Buat susunan yAxis dinamis sesuai mode
+    var yAxisConfig = [];
+    if (mode === 'overview') {
+        yAxisConfig = [
+            {
+                type: 'value',
+                name: 'Weekly Volume',
+                nameGap: 10,
+                nameTextStyle: { color: '#8b949e' },
+                axisLine: { lineStyle: { color: '#30363d' } },
+                axisLabel: { color: '#8b949e', margin: 6 },
+                splitLine: { lineStyle: { color: '#30363d' } }
+            },
+            {
+                type: 'value',
+                name: 'Pending',
+                nameGap: 10,
+                nameTextStyle: { color: '#ffd000', padding: [0, 15, 0, 0] },
+                position: 'right',
+                axisLine: { lineStyle: { color: '#ffd000' } },
+                axisLabel: { color: '#ffd000', margin: 4 },
+                splitLine: { show: false }
+            },
+            {
+                type: 'value',
+                name: 'SLA %',
+                nameGap: 10,
+                nameTextStyle: { color: '#ab7fff', padding: [0, -10, 0, 0] },
+                position: 'right',
+                offset: 32,
+                min: 0,
+                max: 100,
+                axisLine: { lineStyle: { color: '#ab7fff' } },
+                axisLabel: {
+                    color: '#ab7fff',
+                    margin: 4,
+                    formatter: '{value}%'
+                },
+                splitLine: { show: false }
+            }
+        ];
+    } else {
+        // Mode Vendor Breakdown: 1 Sumbu Y Kanan meppet untuk Pending PT per Vendor
+        yAxisConfig = [
+            {
+                type: 'value',
+                name: 'Pending PT',
+                nameGap: 10,
+                position: 'right',
+                nameTextStyle: { color: '#ffd000' },
+                axisLine: { lineStyle: { color: '#ffd000' } },
+                axisLabel: { color: '#ffd000', margin: 4 },
+                splitLine: { lineStyle: { color: '#30363d' } }
+            }
+        ];
+    }
 
     var option = {
         backgroundColor: 'transparent',
@@ -1974,26 +2548,29 @@ function drawWeeklyTrendChart(containerId, data) {
             }
         },
         legend: {
-            data: ['New PT', 'Closed PT', 'Pending PT', 'Over SLA', 'SLA Achievement (%)'],
+            data: legendItems,
+            selectedMode: true,
+            type: 'scroll',
             textStyle: {
                 color: '#c9d1d9',
-                fontSize: 10
+                fontSize: 11
             },
-            top: '2%'
+            top: '1%',
+            itemGap: 15
         },
         grid: {
-            top: '12%',
-            left: '3%',
-            right: '4%',
-            bottom: '15%',
+            top: '18%',
+            left: '2%',
+            right: mode === 'overview' ? '2%' : '1.5%',
+            bottom: '12%',
             containLabel: true
         },
         dataZoom: [
             {
                 type: 'slider',
                 show: true,
-                startValue: Math.max(0, data.weeks.length - 12),
-                endValue: data.weeks.length - 1,
+                startValue: startIdx,
+                endValue: endIdx,
                 height: 18,
                 bottom: 25,
                 borderColor: 'transparent',
@@ -2007,104 +2584,21 @@ function drawWeeklyTrendChart(containerId, data) {
             },
             {
                 type: 'inside',
-                startValue: Math.max(0, data.weeks.length - 12),
-                endValue: data.weeks.length - 1
+                startValue: startIdx,
+                endValue: endIdx
             }
         ],
         xAxis: [
             {
                 type: 'category',
+                boundaryGap: ['2%', '2%'],
                 data: data.weeks,
                 axisLine: { lineStyle: { color: '#30363d' } },
                 axisLabel: { color: '#8b949e' }
             }
         ],
-        yAxis: [
-            {
-                type: 'value',
-                name: 'PT (Total)',
-                nameTextStyle: { color: '#8b949e' },
-                axisLine: { lineStyle: { color: '#30363d' } },
-                axisLabel: { color: '#8b949e' },
-                splitLine: { lineStyle: { color: '#30363d' } }
-            },
-            {
-                type: 'value',
-                name: 'SLA %',
-                nameTextStyle: { color: '#8b949e' },
-                min: 0,
-                max: 100,
-                axisLine: { lineStyle: { color: '#30363d' } },
-                axisLabel: {
-                    color: '#8b949e',
-                    formatter: '{value}%'
-                },
-                splitLine: { show: false }
-            }
-        ],
-        series: [
-            {
-                name: 'New PT',
-                type: 'bar',
-                data: data.newPT,
-                itemStyle: { color: '#58a6ff' },
-                barWidth: '20%'
-            },
-            {
-                name: 'Closed PT',
-                type: 'bar',
-                data: data.closedPT,
-                itemStyle: { color: '#3fb950' },
-                barWidth: '20%'
-            },
-            {
-                name: 'Pending PT',
-                type: 'line',
-                data: data.pendingPT,
-                itemStyle: { color: '#ffd000ff' },
-                lineStyle: { width: 3.5, type: 'solid' },
-                symbol: 'circle',
-                symbolSize: 8,
-                label: {
-                    show: true,
-                    position: 'top',
-                    color: '#00e5ff',
-                    fontSize: 11,
-                    fontWeight: 'bold'
-                }
-            },
-            {
-                name: 'Over SLA',
-                type: 'line',
-                data: data.overSla,
-                itemStyle: { color: '#ff0055' },
-                lineStyle: { width: 3, type: 'dashed' },
-                symbol: 'triangle',
-                symbolSize: 9,
-                label: {
-                    show: true,
-                    position: 'bottom',
-                    color: '#ff0055',
-                    fontSize: 11,
-                    fontWeight: 'bold'
-                }
-            },
-            {
-                name: 'SLA Achievement (%)',
-                type: 'line',
-                yAxisIndex: 1,
-                data: data.slaAchievement,
-                itemStyle: { color: '#bc8cff' },
-                lineStyle: { type: 'dashed', width: 2 },
-                label: {
-                    show: true,
-                    position: 'top',
-                    formatter: '{c}%',
-                    color: '#bc8cff',
-                    fontSize: 10
-                }
-            }
-        ]
+        yAxis: yAxisConfig,
+        series: seriesList
     };
 
     myChart.setOption(option);
@@ -2188,9 +2682,77 @@ function drawTopRootCauseChart(containerId, data) {
     };
 
     myChart.setOption(option);
+
+    myChart.off('click');
+    myChart.on('click', function (params) {
+        if (params && params.name) {
+            showSubRootCauseModal(params.name);
+        }
+    });
+
     if (_echartsResizeHandlers[containerId]) window.removeEventListener('resize', _echartsResizeHandlers[containerId]);
     _echartsResizeHandlers[containerId] = function () { myChart.resize(); };
     window.addEventListener('resize', _echartsResizeHandlers[containerId]);
+}
+
+function showSubRootCauseModal(rootCauseCategory) {
+    initDetailModalDOM();
+    var modal = document.getElementById('customDetailModal');
+    var body = document.getElementById('customModalBodyContent');
+    if (!modal || !body) return;
+
+    var titleEl = modal.querySelector('.custom-modal-title');
+    if (titleEl) titleEl.innerText = 'Sub Root Cause Breakdown — ' + String(rootCauseCategory).toUpperCase();
+
+    var allTickets = (window.ticketsPagination && window.ticketsPagination.tickets) || [];
+    var filteredTickets = allTickets.filter(function (t) {
+        if (getStatusCategory(t) === 'canceled') return false;
+        var cat = getRootCauseLabel(t.root_cause || t.rootcause || t.cause || '');
+        return cat.toLowerCase() === String(rootCauseCategory).toLowerCase();
+    });
+
+    var subMap = {};
+    filteredTickets.forEach(function (t) {
+        var subName = t.sub_root_cause || t.subrootcause || t.sub_cause || t.createptproblemdes || 'Unspecified Detail';
+        subName = String(subName).trim() || 'Unspecified Detail';
+        if (!subMap[subName]) subMap[subName] = 0;
+        subMap[subName]++;
+    });
+
+    var subList = Object.keys(subMap).map(function (k) {
+        return { name: k, count: subMap[k] };
+    }).sort(function (a, b) { return b.count - a.count; });
+
+    var totalCat = filteredTickets.length;
+
+    var html = '<div style="margin-bottom:16px; font-size:13px; color:#a1a1aa;">';
+    html += 'Total Tiket (' + rootCauseCategory + '): <strong style="color:#f0f6fc;">' + totalCat + ' Tiket</strong>';
+    html += '</div>';
+
+    if (subList.length === 0) {
+        html += '<div style="padding:20px; text-align:center; color:#8b949e;">Tidak ada data Sub Root Cause.</div>';
+    } else {
+        html += '<table style="width:100%; border-collapse:collapse; font-size:13px;">';
+        html += '<thead><tr style="border-bottom:1px solid #27272a; color:#a1a1aa; text-align:left;">';
+        html += '<th style="padding:8px 12px;">Sub Root Cause Detail</th>';
+        html += '<th style="padding:8px 12px; text-align:right;">Jumlah Tiket</th>';
+        html += '<th style="padding:8px 12px; text-align:right;">Persentase</th>';
+        html += '</tr></thead><tbody>';
+
+        subList.forEach(function (item) {
+            var pct = totalCat ? ((item.count / totalCat) * 100).toFixed(1) + '%' : '0%';
+            html += '<tr style="border-bottom:1px solid #18181b;">';
+            html += '<td style="padding:10px 12px; color:#e4e4e7; font-weight:600;">' + item.name + '</td>';
+            html += '<td style="padding:10px 12px; text-align:right; color:#58a6ff; font-weight:700;">' + item.count + '</td>';
+            html += '<td style="padding:10px 12px; text-align:right; color:#3fb950; font-weight:600;">' + pct + '</td>';
+            html += '</tr>';
+        });
+
+        html += '</tbody></table>';
+    }
+
+    body.innerHTML = html;
+    modal.style.display = 'flex';
 }
 
 function renderSlaComplianceTable(containerId, rows) {
@@ -2201,53 +2763,172 @@ function renderSlaComplianceTable(containerId, rows) {
     var totalWithin = 0;
     var totalOver = 0;
 
-    var html = '<table class="custom-compliance-table">';
-    html += '<thead>';
-    html += '<tr>';
-    html += '<th style="text-align:left;">Party</th>';
-    html += '<th>Total PT</th>';
-    html += '<th>Within SLA</th>';
-    html += '<th>Over SLA</th>';
-    html += '<th>SLA Achievement</th>';
-    html += '</tr>';
-    html += '</thead>';
-    html += '<tbody>';
+    var partyPalette = ['#58a6ff', '#3fb950', '#ff9f43', '#a855f7', '#ff6b81', '#00d2d3', '#8b949e'];
+    var partyColorMap = {};
 
-    rows.forEach(function (row) {
+    rows.forEach(function (row, idx) {
+        partyColorMap[row.party] = partyPalette[idx % partyPalette.length];
         totalPT += row.total;
         totalWithin += row.within;
         totalOver += row.over;
+    });
 
+    var withinData = [];
+    var overData = [];
+
+    rows.forEach(function (row) {
+        if (row.within > 0) {
+            withinData.push({ name: row.party, value: row.within, itemStyle: { color: partyColorMap[row.party] } });
+        }
+        if (row.over > 0) {
+            overData.push({ name: row.party, value: row.over, itemStyle: { color: partyColorMap[row.party] } });
+        }
+    });
+
+    var totalAch = totalPT ? ((totalWithin / totalPT) * 100).toFixed(1) + '%' : '0.0%';
+
+    var html = '<div style="display:flex; gap:16px; align-items:flex-start; flex-wrap:wrap;">';
+    html += '  <!-- 2 Donut Charts + Party Breakdown Legend Container -->';
+    html += '  <div style="display:flex; flex-direction:column; align-items:center; flex-shrink:0; background:rgba(255,255,255,0.02); padding:10px; border-radius:8px; border:1px solid rgba(255,255,255,0.05);">';
+    html += '    <div style="display:flex; gap:12px;">';
+    html += '      <div style="display:flex; flex-direction:column; align-items:center; width:130px;">';
+    html += '        <div id="chartSlaComplianceWithinDonut" style="width:130px; height:130px;"></div>';
+    html += '        <span style="color:#3fb950; font-size:11px; font-weight:700; margin-top:2px;">Within SLA (' + totalWithin + ')</span>';
+    html += '      </div>';
+    html += '      <div style="display:flex; flex-direction:column; align-items:center; width:130px;">';
+    html += '        <div id="chartSlaComplianceOverDonut" style="width:130px; height:130px;"></div>';
+    html += '        <span style="color:#ff7b72; font-size:11px; font-weight:700; margin-top:2px;">Over SLA (' + totalOver + ')</span>';
+    html += '      </div>';
+    html += '    </div>';
+
+    // Registered Party Breakdown Legend under 2 Donut Charts
+    html += '    <div style="margin-top:10px; width:100%; border-top:1px dashed rgba(255,255,255,0.1); padding-top:8px; display:flex; flex-direction:column; gap:4px;">';
+    html += '      <div style="font-size:10px; font-weight:700; text-transform:uppercase; color:#8b949e; margin-bottom:2px; text-align:center;">Registered Party Share (% of Total PT)</div>';
+
+    rows.forEach(function (row) {
+        var partySharePct = totalPT > 0 ? ((row.total / totalPT) * 100).toFixed(1) + '%' : '0.0%';
+        var color = partyColorMap[row.party] || '#8b949e';
+        html += '      <div style="display:flex; justify-content:space-between; align-items:center; font-size:10px; padding:2px 4px; background:rgba(0,0,0,0.2); border-radius:4px;">';
+        html += '        <span style="display:flex; align-items:center; gap:6px; font-weight:600; color:#e4e4e7;">';
+        html += '          <span style="display:inline-block; width:8px; height:8px; background:' + color + '; border-radius:2px;"></span>';
+        html += '          ' + row.party;
+        html += '        </span>';
+        html += '        <span style="font-weight:700; color:' + color + ';">' + partySharePct + ' <span style="font-weight:normal; color:#8b949e; font-size:9px;">(' + row.total + ' PT)</span></span>';
+        html += '      </div>';
+    });
+
+    html += '    </div>';
+    html += '  </div>';
+
+    html += '  <!-- Compliance Table -->';
+    html += '  <div style="flex:1; min-width:240px; overflow-x:auto;">';
+    html += '    <table class="custom-compliance-table" style="width:100%; font-size:11px;">';
+    html += '      <thead>';
+    html += '        <tr>';
+    html += '          <th style="text-align:left;">Party</th>';
+    html += '          <th>Total PT</th>';
+    html += '          <th>Within SLA</th>';
+    html += '          <th>Over SLA</th>';
+    html += '          <th>SLA Ach</th>';
+    html += '        </tr>';
+    html += '      </thead>';
+    html += '      <tbody>';
+
+    rows.forEach(function (row) {
         var achPct = parseFloat(row.ach);
         var achClass = 'custom-ach-success';
         if (achPct < 90) achClass = 'custom-ach-danger';
         else if (achPct < 95) achClass = 'custom-ach-warning';
 
-        html += '<tr>';
-        html += '<td class="custom-party-name">' + row.party + '</td>';
-        html += '<td>' + row.total + '</td>';
-        html += '<td>' + row.within + '</td>';
-        html += '<td style="color:#ff7b72; font-weight:700;">' + row.over + '</td>';
-        html += '<td class="' + achClass + '">' + row.ach + '</td>';
-        html += '</tr>';
+        var color = partyColorMap[row.party] || '#e4e4e7';
+
+        html += '        <tr>';
+        html += '          <td class="custom-party-name" style="text-align:left; font-weight:600;"><span style="display:inline-block; width:6px; height:6px; background:' + color + '; border-radius:50%; margin-right:5px;"></span>' + row.party + '</td>';
+        html += '          <td>' + row.total + '</td>';
+        html += '          <td>' + row.within + '</td>';
+        html += '          <td style="color:#ff7b72; font-weight:700;">' + row.over + '</td>';
+        html += '          <td class="' + achClass + '">' + row.ach + '</td>';
+        html += '        </tr>';
     });
 
-    var totalAch = totalPT ? ((totalWithin / totalPT) * 100).toFixed(1) + '%' : '0.0%';
     var totalAchPct = parseFloat(totalAch);
     var totalAchClass = 'custom-ach-success';
     if (totalAchPct < 90) totalAchClass = 'custom-ach-danger';
     else if (totalAchPct < 95) totalAchClass = 'custom-ach-warning';
 
-    html += '<tr class="custom-total-row">';
-    html += '<td style="text-align:left;">TOTAL</td>';
-    html += '<td>' + totalPT + '</td>';
-    html += '<td>' + totalWithin + '</td>';
-    html += '<td style="color:#ff7b72; font-weight:700;">' + totalOver + '</td>';
-    html += '<td class="' + totalAchClass + '">' + totalAch + '</td>';
-    html += '</tr>';
+    html += '        <tr class="custom-total-row">';
+    html += '          <td style="text-align:left;">TOTAL</td>';
+    html += '          <td>' + totalPT + '</td>';
+    html += '          <td>' + totalWithin + '</td>';
+    html += '          <td style="color:#ff7b72; font-weight:700;">' + totalOver + '</td>';
+    html += '          <td class="' + totalAchClass + '">' + totalAch + '</td>';
+    html += '        </tr>';
 
-    html += '</tbody></table>';
+    html += '      </tbody>';
+    html += '    </table>';
+    html += '  </div>';
+    html += '</div>';
+
     wrapper.innerHTML = html;
+
+    // Render 2 Donut Charts (Within SLA Breakdown vs Over SLA Breakdown by Party)
+    if (typeof echarts !== 'undefined') {
+        // Chart 1: Within SLA by Party
+        var withinDom = document.getElementById('chartSlaComplianceWithinDonut');
+        if (withinDom) {
+            var existingInst1 = echarts.getInstanceByDom(withinDom);
+            if (existingInst1) existingInst1.dispose();
+            var chartWithin = echarts.init(withinDom);
+            chartWithin.setOption({
+                backgroundColor: 'transparent',
+                tooltip: { trigger: 'item', formatter: '{b}: {c} ({d}%)', confine: true },
+                series: [{
+                    name: 'Within SLA',
+                    type: 'pie',
+                    radius: ['55%', '85%'],
+                    avoidLabelOverlap: false,
+                    label: { show: false },
+                    labelLine: { show: false },
+                    data: withinData.length > 0 ? withinData : [{ name: 'No Data', value: 0, itemStyle: { color: '#333' } }]
+                }],
+                graphic: [{
+                    type: 'text', left: 'center', top: '42%',
+                    style: { text: String(totalWithin), textAlign: 'center', fill: '#3fb950', fontSize: 15, fontWeight: 'bold' }
+                }, {
+                    type: 'text', left: 'center', top: '62%',
+                    style: { text: 'Within', textAlign: 'center', fill: '#8b949e', fontSize: 9 }
+                }]
+            });
+        }
+
+        // Chart 2: Over SLA by Party
+        var overDom = document.getElementById('chartSlaComplianceOverDonut');
+        if (overDom) {
+            var existingInst2 = echarts.getInstanceByDom(overDom);
+            if (existingInst2) existingInst2.dispose();
+            var chartOver = echarts.init(overDom);
+            chartOver.setOption({
+                backgroundColor: 'transparent',
+                tooltip: { trigger: 'item', formatter: '{b}: {c} ({d}%)', confine: true },
+                series: [{
+                    name: 'Over SLA',
+                    type: 'pie',
+                    radius: ['55%', '85%'],
+                    avoidLabelOverlap: false,
+                    label: { show: false },
+                    labelLine: { show: false },
+                    data: overData.length > 0 ? overData : [{ name: 'No Data', value: 0, itemStyle: { color: '#333' } }]
+                }],
+                graphic: [{
+                    type: 'text', left: 'center', top: '42%',
+                    style: { text: String(totalOver), textAlign: 'center', fill: '#ff7b72', fontSize: 15, fontWeight: 'bold' }
+                }, {
+                    type: 'text', left: 'center', top: '62%',
+                    style: { text: 'Over', textAlign: 'center', fill: '#8b949e', fontSize: 9 }
+                }]
+            });
+        }
+    }
 }
 
 function formatIndonesianDate(dateStr) {
@@ -2474,7 +3155,7 @@ function showTicketDetailModal(ticketId) {
     var lastUpdate = ticket.lastupdatetime || '-';
     var closeTime = ticket.closetime || '-';
     var phase = ticket.current_phase || '-';
-    var assign = ticket.createptassignto || '-';
+    var assign = extractOWSField(ticket.createptassignto || '') || '-';
     var operator = ticket.currentoperator || '-';
     var originator = ticket.originator || '-';
 
@@ -2490,6 +3171,8 @@ function showTicketDetailModal(ticketId) {
         : statusCatModal === 'closed' ? 'custom-badge-closed'
             : statusCatModal === 'canceled' ? 'custom-badge-canceled'
                 : 'custom-badge-open';
+
+    var lastOperator = ticket.lastoperator || '-';
 
     var html = '<div style="margin-bottom:16px;">';
     html += '  <h4 style="margin:0 0 6px 0; color:#f0f6fc; font-size:15px; font-weight:600;">' + title + '</h4>';
@@ -2535,6 +3218,11 @@ function showTicketDetailModal(ticketId) {
     html += '  <div class="custom-detail-item">';
     html += '    <span class="custom-detail-label">CURRENT OPERATOR</span>';
     html += '    <span class="custom-detail-value">' + operator + '</span>';
+    html += '  </div>';
+
+    html += '  <div class="custom-detail-item">';
+    html += '    <span class="custom-detail-label">LAST OPERATOR</span>';
+    html += '    <span class="custom-detail-value">' + lastOperator + '</span>';
     html += '  </div>';
 
     html += '  <div class="custom-detail-item">';
@@ -2665,30 +3353,35 @@ function executeTicketSearchFilter() {
     var filtered = rawList.filter(function (t) {
         // 1. Phase Filter Check
         if (phase !== 'ALL') {
-            var statusCat = getStatusCategory(t);
-            var tPhase = '1. Create PT';
-
-            if (statusCat === 'closed') {
-                tPhase = '7. Closed PT';
-            } else if (statusCat === 'canceled') {
-                tPhase = '8. Canceled PT';
+            if (phase === 'SLA Paused') {
+                var sp = String(t.slapausing || t.slapaused || '').toLowerCase();
+                if (sp !== 'yes' && sp !== 'true' && sp !== '1') return false;
             } else {
-                var phaseRaw = String(t.current_phase || t.state || '').toLowerCase();
+                var statusCat = getStatusCategory(t);
+                var tPhase = '1. Create PT';
 
-                if (phaseRaw.indexOf('confirm') !== -1) {
-                    tPhase = '6. Confirm PT';
-                } else if (phaseRaw.indexOf('handle analyze') !== -1) {
-                    tPhase = '2. Handle Analyze PT';
-                } else if (phaseRaw.indexOf('analyze') !== -1) {
-                    tPhase = '3. Analyze PT';
-                } else if (phaseRaw.indexOf('handle implement') !== -1) {
-                    tPhase = '4. Handle Implement PT';
-                } else if (phaseRaw.indexOf('implement') !== -1) {
-                    tPhase = '5. Implement PT';
+                if (statusCat === 'closed') {
+                    tPhase = '7. Closed PT';
+                } else if (statusCat === 'canceled') {
+                    tPhase = '8. Canceled PT';
+                } else {
+                    var phaseRaw = String(t.current_phase || t.state || '').toLowerCase();
+
+                    if (phaseRaw.indexOf('confirm') !== -1) {
+                        tPhase = '6. Confirm PT';
+                    } else if (phaseRaw.indexOf('handle analyze') !== -1) {
+                        tPhase = '2. Handle Analyze PT';
+                    } else if (phaseRaw.indexOf('analyze') !== -1) {
+                        tPhase = '3. Analyze PT';
+                    } else if (phaseRaw.indexOf('handle implement') !== -1) {
+                        tPhase = '4. Handle Implement PT';
+                    } else if (phaseRaw.indexOf('implement') !== -1) {
+                        tPhase = '5. Implement PT';
+                    }
                 }
-            }
 
-            if (tPhase !== phase) return false;
+                if (tPhase !== phase) return false;
+            }
         }
 
         // 2. Keyword Search Check
@@ -3112,14 +3805,14 @@ var _autoRefreshIntervalId = null;
 function setupAutoRefresh() {
     var placeholder = document.getElementById('customHeaderControlsPlaceholder');
     var header = document.querySelector('.custom-dashboard-header');
-    
+
     var container = placeholder || document.getElementById('autoRefreshControlsContainer');
     if (!container && header) {
         container = document.createElement('div');
         container.id = 'autoRefreshControlsContainer';
         header.appendChild(container);
     }
-    
+
     if (!container) return;
     if (container.dataset.initialized === 'true') return;
     container.dataset.initialized = 'true';
@@ -3222,6 +3915,7 @@ function setupAutoRefresh() {
 })();
 
 // Global Exports
+window.sortTicketsTable = sortTicketsTable;
 window.renderBackNavigation = renderBackNavigation;
 window.renderPartyConfigPage = renderPartyConfigPage;
 window.handleAddNewParty = handleAddNewParty;

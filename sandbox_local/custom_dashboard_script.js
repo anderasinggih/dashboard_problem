@@ -1,20 +1,11 @@
-// Safe JSON.parse wrapper for GDE Studio Previewer environment to catch undefined/null inputs
-(function () {
-    if (typeof JSON !== 'undefined' && JSON.parse) {
-        var _nativeJSONParse = JSON.parse;
-        JSON.parse = function (text, reviver) {
-            if (text === undefined || text === null || text === 'undefined' || text === '') {
-                return null;
-            }
-            try {
-                return _nativeJSONParse.call(JSON, text, reviver);
-            } catch (e) {
-                console.warn('[OWS Safe JSON.parse] Prevented crash on invalid JSON input:', text);
-                return null;
-            }
-        };
+function safeJsonParse(text) {
+    if (!text || text === 'undefined' || text === 'null') return null;
+    try {
+        return JSON.parse(text);
+    } catch (e) {
+        return null;
     }
-})();
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // ─────────────────────────────────────────────────────────────────────────────
@@ -365,7 +356,16 @@ var SEV_UUID_MINOR = '1029';
  */
 function extractOWSField(val) {
     if (val === null || val === undefined) return '';
-    if (typeof val === 'string') return val;
+    if (typeof val === 'string') {
+        var trimmed = val.trim();
+        if ((trimmed.startsWith('{') && trimmed.endsWith('}')) || (trimmed.startsWith('[') && trimmed.endsWith(']'))) {
+            var parsed = safeJsonParse(trimmed);
+            if (parsed !== null) val = parsed;
+            else return val;
+        } else {
+            return val;
+        }
+    }
     if (typeof val === 'number' || typeof val === 'boolean') return String(val);
     if (Array.isArray(val) && val.length > 0) {
         var item = val[0];
@@ -518,15 +518,15 @@ function getSlaTargetDays(sevRaw) {
 
 function sanitizeTicket(raw) {
     if (!raw || typeof raw !== 'object') return raw;
-    var sevRaw = extractOWSField(raw.severity || raw.createticketlevel || '');
+    var sevRaw = extractOWSField(raw.severity || '');
     var slaStat = extractOWSField(raw.slastatus || '');
-    var statusStr = extractOWSField(raw.ticketstatus || raw.status || '');
+    var statusStr = extractOWSField(raw.ticketstatus || '');
 
-    var createTimeStr = extractOWSField(raw.createtime || raw.createfirstoccurtime || '');
+    var createTimeStr = extractOWSField(raw.createtime || '');
     var closeTimeStr = extractOWSField(raw.closetime || '');
     var lastUpdateStr = extractOWSField(raw.lastupdatetime || '');
     var operateTimeStr = extractOWSField(raw.operate_time || '');
-    var respStr = extractOWSField(raw.responsibility || raw.problem_responsible_party || '');
+    var respStr = extractOWSField(raw.responsibility || '');
 
     var agingDays = raw.aging !== undefined && raw.aging !== null ? Number(raw.aging) : calculateAgingDays(createTimeStr, closeTimeStr, lastUpdateStr, operateTimeStr, statusStr);
     var targetSlaDays = getSlaTargetDays(sevRaw);
@@ -542,12 +542,14 @@ function sanitizeTicket(raw) {
         severity: sevRaw,
         createticketlevel: sevRaw,
         root_cause: extractOWSField(raw.root_cause || raw.analyzecause || ''),
-        operate_phase: extractOWSField(raw.current_phase || ''),
-        current_phase: extractOWSField(raw.current_phase || ''),
+        sub_root_cause: extractOWSField(raw.sub_root_cause || raw.subrootcause || raw.sub_cause || raw.procfaultreasondes || ''),
+        operate_phase: extractOWSField(raw.current_phase || raw.operate_phase || ''),
+        current_phase: extractOWSField(raw.current_phase || raw.operate_phase || ''),
         responsibility: respStr,
         createptproblemdes: raw.createptproblemdes || raw.procfaultreasondes || '',
         createptassignto: extractOWSField(raw.createptassignto || ''),
         currentoperator: extractOWSField(raw.currentoperator || ''),
+        lastoperator: extractOWSField(raw.lastoperator || ''),
         originator: extractOWSField(raw.originator || ''),
         createtime: createTimeStr,
         closetime: closeTimeStr,
@@ -739,10 +741,18 @@ function renderRunScriptFullDashboard(data, isFiltered, party) {
                 if (!partnerMetrics[partner]) {
                     partnerMetrics[partner] = { open: 0, pending: 0, closed: 0, canceled: 0 };
                 }
-                if (statusCat === 'open') partnerMetrics[partner].open++;
-                else if (statusCat === 'pending') partnerMetrics[partner].pending++;
-                else if (statusCat === 'closed') partnerMetrics[partner].closed++;
-                else if (statusCat === 'canceled') partnerMetrics[partner].canceled++;
+                var ts = String(t.ticketstatus || t.status || '').toLowerCase();
+                var phaseRaw = String(t.current_phase || t.operate_phase || t.state || '').toLowerCase();
+                var isPendingPhase = (phaseRaw.indexOf('implement') !== -1 || phaseRaw.indexOf('confirm') !== -1);
+
+                if (statusCat === 'canceled') {
+                    partnerMetrics[partner].canceled++;
+                } else if (statusCat === 'closed') {
+                    partnerMetrics[partner].closed++;
+                } else {
+                    if (ts === 'running' || ts === 'open') partnerMetrics[partner].open++;
+                    if (isPendingPhase) partnerMetrics[partner].pending++;
+                }
             });
         }
         window.allTimePartnerMetrics = partnerMetrics;
@@ -1020,6 +1030,7 @@ function renderCurrentTicketsPage() {
     html += '<th style="width: 50px; text-align: center;">No.</th>';
     html += '<th>Ticket ID</th>';
     html += '<th>Title / Description</th>';
+    html += '<th>SLA Status</th>';
     html += '<th>Assignee</th>';
     html += '<th>Severity</th>';
     html += '<th>Root Cause</th>';
@@ -1056,10 +1067,30 @@ function renderCurrentTicketsPage() {
 
         var displayNo = startIdx + i + 1;
         var rc = item.root_cause || item.rootcause || item.cause || '-';
+        var slaStatRaw = item.slastatus || '-';
+        var isSlaOver = item.over_sla || String(slaStatRaw).toLowerCase().indexOf('violation') !== -1 || String(slaStatRaw).toLowerCase() === 'over';
+
+        var slaDisplay = '-';
+        if (slaStatRaw && slaStatRaw !== '-') {
+            var slaLower = String(slaStatRaw).toLowerCase();
+            if (slaLower === 'normal' || slaLower === 'within_sla' || slaLower === 'within sla') {
+                slaDisplay = 'Within SLA';
+            } else if (slaLower === 'sla_violation' || slaLower === 'over' || slaLower === 'over_sla' || slaLower === 'over sla') {
+                slaDisplay = 'Over SLA';
+            } else {
+                slaDisplay = slaStatRaw;
+            }
+        } else if (item.aging !== undefined || item.over_sla !== undefined) {
+            slaDisplay = isSlaOver ? 'Over SLA' : 'Within SLA';
+        }
+
+        var slaBadgeColor = isSlaOver ? '#ff7b72' : '#56d364';
+
         html += '<tr onclick="showTicketDetailModal(\'' + id + '\')">';
         html += '<td style="text-align: center; color: #8b949e; font-weight: 600;">' + displayNo + '</td>';
         html += '<td style="font-family: monospace; font-weight: bold; color: #58a6ff;">' + id + '</td>';
         html += '<td style="text-align: left; font-weight: 500;">' + title + '</td>';
+        html += '<td style="font-weight: 600; color: ' + slaBadgeColor + ';">' + slaDisplay + '</td>';
         html += '<td>' + partner + '</td>';
         html += '<td><span class="custom-badge-severity ' + sevClass + '">' + sevLabel + '</span></td>';
         html += '<td style="font-weight: 600; text-transform: uppercase;">' + rc + '</td>';
@@ -1193,7 +1224,8 @@ function renderSeverityDashboard(tickets) {
         severityData[cat] = {
             total: 0,
             pending: 0,
-            overSla: 0,
+            closed: 0,
+            withinSla: 0,
             pctOfTotal: '0%',
             rootCauses: [
                 { name: 'Environment', value: 0, pct: '0%', color: '#8a3ffc' },
@@ -1250,7 +1282,8 @@ function renderSeverityDashboard(tickets) {
         // Update stats table
         setCardValue(type.toLowerCase() + 'Total', data.total);
         setCardValue(type.toLowerCase() + 'Pending', data.pending);
-        setCardValue(type.toLowerCase() + 'Over', data.overSla);
+        setCardValue(type.toLowerCase() + 'Closed', data.closed);
+        setCardValue(type.toLowerCase() + 'Within', data.withinSla);
 
         // Render legend table
         renderLegend('legend' + type, data.rootCauses);
@@ -1510,7 +1543,7 @@ function renderPhaseOverall(containerId, phaseRows) {
     html += '<tr>';
     html += '<th style="text-align:left;">Phase</th>';
     html += '<th>Total PT</th>';
-    html += '<th>Aging Bucket (Days)</th>';
+    html += '<th>Aging Bucket (Days) <span style="font-weight:normal; margin-left:8px; font-size:11px; text-transform:none;"><span style="display:inline-block; width:8px; height:8px; background:#58a6ff; border-radius:2px; margin-right:3px;"></span>0-7 Days <span style="display:inline-block; width:8px; height:8px; background:#ff7b72; border-radius:2px; margin-left:8px; margin-right:3px;"></span>&gt;7 Days</span></th>';
     html += '<th>Avg Aging (Days)</th>';
     html += '</tr>';
     html += '</thead>';
@@ -1687,9 +1720,25 @@ function renderTrendsAndCompliance(weeklyTrendTickets, rootCauseTickets, complia
                 var createWeek = getWeekLabel(createDate);
                 if (createWeek) {
                     if (!weeklyMap[createWeek]) {
-                        weeklyMap[createWeek] = { newPT: 0, closedPT: 0, pendingPT: 0, overSla: 0, total: 0, withinSla: 0 };
+                        weeklyMap[createWeek] = { newPT: 0, closedPT: 0, pendingPT: 0, overSla: 0, total: 0, withinSla: 0, implementPT: 0 };
                     }
                     weeklyMap[createWeek].newPT++;
+                    weeklyMap[createWeek].total++;
+                }
+            }
+
+            // Implemented PT → berdasarkan minggu lastupdatetime (fallback operate_time) jika fasenya Implement PT
+            var phaseRawStr = String(t.operate_phase || t.current_phase || t.phase || '').toLowerCase();
+            if (phaseRawStr.indexOf('implement') !== -1 || phaseRawStr.indexOf('pt10') !== -1 || phaseRawStr.indexOf('pt12') !== -1) {
+                var updateDate = t.lastupdatetime || t.operate_time || t.createtime;
+                if (updateDate) {
+                    var updateWeek = getWeekLabel(updateDate);
+                    if (updateWeek) {
+                        if (!weeklyMap[updateWeek]) {
+                            weeklyMap[updateWeek] = { newPT: 0, closedPT: 0, pendingPT: 0, overSla: 0, total: 0, withinSla: 0, implementPT: 0 };
+                        }
+                        weeklyMap[updateWeek].implementPT = (weeklyMap[updateWeek].implementPT || 0) + 1;
+                    }
                 }
             }
 
@@ -1732,6 +1781,7 @@ function renderTrendsAndCompliance(weeklyTrendTickets, rootCauseTickets, complia
         weeks: weeksList,
         ranges: [],
         newPT: [],
+        implementPT: [],
         closedPT: [],
         pendingPT: [],
         overSla: [],
@@ -1742,6 +1792,7 @@ function renderTrendsAndCompliance(weeklyTrendTickets, rootCauseTickets, complia
         var row = weeklyMap[w];
         trendData.ranges.push(getWeekRangeString(w, trendTickets));
         trendData.newPT.push(row.newPT);
+        trendData.implementPT.push(row.implementPT || 0);
         trendData.closedPT.push(row.closedPT);
         trendData.pendingPT.push(row.pendingPT);
         trendData.overSla.push(row.overSla);
@@ -1863,14 +1914,24 @@ function drawWeeklyTrendChart(containerId, data) {
                 type: 'bar',
                 data: data.newPT,
                 itemStyle: { color: '#58a6ff' },
-                barWidth: '20%'
+                barWidth: '18%',
+                barGap: '15%'
+            },
+            {
+                name: 'Implemented PT',
+                type: 'bar',
+                data: data.implementPT || [],
+                itemStyle: { color: '#a855f7' },
+                barWidth: '18%',
+                barGap: '15%'
             },
             {
                 name: 'Closed PT',
                 type: 'bar',
                 data: data.closedPT,
                 itemStyle: { color: '#3fb950' },
-                barWidth: '20%'
+                barWidth: '18%',
+                barGap: '15%'
             },
             {
                 name: 'Pending PT',
@@ -2003,9 +2064,77 @@ function drawTopRootCauseChart(containerId, data) {
     };
 
     myChart.setOption(option);
+
+    myChart.off('click');
+    myChart.on('click', function (params) {
+        if (params && params.name) {
+            showSubRootCauseModal(params.name);
+        }
+    });
+
     if (_echartsResizeHandlers[containerId]) window.removeEventListener('resize', _echartsResizeHandlers[containerId]);
     _echartsResizeHandlers[containerId] = function () { myChart.resize(); };
     window.addEventListener('resize', _echartsResizeHandlers[containerId]);
+}
+
+function showSubRootCauseModal(rootCauseCategory) {
+    initDetailModalDOM();
+    var modal = document.getElementById('customDetailModal');
+    var body = document.getElementById('customModalBodyContent');
+    if (!modal || !body) return;
+
+    var titleEl = modal.querySelector('.custom-modal-title');
+    if (titleEl) titleEl.innerText = 'Sub Root Cause Breakdown — ' + String(rootCauseCategory).toUpperCase();
+
+    var allTickets = (window.ticketsPagination && window.ticketsPagination.tickets) || [];
+    var filteredTickets = allTickets.filter(function (t) {
+        if (getStatusCategory(t) === 'canceled') return false;
+        var cat = getRootCauseLabel(t.root_cause || t.rootcause || t.cause || '');
+        return cat.toLowerCase() === String(rootCauseCategory).toLowerCase();
+    });
+
+    var subMap = {};
+    filteredTickets.forEach(function (t) {
+        var subName = t.sub_root_cause || t.subrootcause || t.sub_cause || t.createptproblemdes || 'Unspecified Detail';
+        subName = String(subName).trim() || 'Unspecified Detail';
+        if (!subMap[subName]) subMap[subName] = 0;
+        subMap[subName]++;
+    });
+
+    var subList = Object.keys(subMap).map(function (k) {
+        return { name: k, count: subMap[k] };
+    }).sort(function (a, b) { return b.count - a.count; });
+
+    var totalCat = filteredTickets.length;
+
+    var html = '<div style="margin-bottom:16px; font-size:13px; color:#a1a1aa;">';
+    html += 'Total Tiket (' + rootCauseCategory + '): <strong style="color:#f0f6fc;">' + totalCat + ' Tiket</strong>';
+    html += '</div>';
+
+    if (subList.length === 0) {
+        html += '<div style="padding:20px; text-align:center; color:#8b949e;">Tidak ada data Sub Root Cause.</div>';
+    } else {
+        html += '<table style="width:100%; border-collapse:collapse; font-size:13px;">';
+        html += '<thead><tr style="border-bottom:1px solid #27272a; color:#a1a1aa; text-align:left;">';
+        html += '<th style="padding:8px 12px;">Sub Root Cause Detail</th>';
+        html += '<th style="padding:8px 12px; text-align:right;">Jumlah Tiket</th>';
+        html += '<th style="padding:8px 12px; text-align:right;">Persentase</th>';
+        html += '</tr></thead><tbody>';
+
+        subList.forEach(function (item) {
+            var pct = totalCat ? ((item.count / totalCat) * 100).toFixed(1) + '%' : '0%';
+            html += '<tr style="border-bottom:1px solid #18181b;">';
+            html += '<td style="padding:10px 12px; color:#e4e4e7; font-weight:600;">' + item.name + '</td>';
+            html += '<td style="padding:10px 12px; text-align:right; color:#58a6ff; font-weight:700;">' + item.count + '</td>';
+            html += '<td style="padding:10px 12px; text-align:right; color:#3fb950; font-weight:600;">' + pct + '</td>';
+            html += '</tr>';
+        });
+
+        html += '</tbody></table>';
+    }
+
+    body.innerHTML = html;
+    modal.style.display = 'flex';
 }
 
 function renderSlaComplianceTable(containerId, rows) {
@@ -2016,53 +2145,172 @@ function renderSlaComplianceTable(containerId, rows) {
     var totalWithin = 0;
     var totalOver = 0;
 
-    var html = '<table class="custom-compliance-table">';
-    html += '<thead>';
-    html += '<tr>';
-    html += '<th style="text-align:left;">Party</th>';
-    html += '<th>Total PT</th>';
-    html += '<th>Within SLA</th>';
-    html += '<th>Over SLA</th>';
-    html += '<th>SLA Achievement</th>';
-    html += '</tr>';
-    html += '</thead>';
-    html += '<tbody>';
+    var partyPalette = ['#58a6ff', '#3fb950', '#ff9f43', '#a855f7', '#ff6b81', '#00d2d3', '#8b949e'];
+    var partyColorMap = {};
 
-    rows.forEach(function (row) {
+    rows.forEach(function (row, idx) {
+        partyColorMap[row.party] = partyPalette[idx % partyPalette.length];
         totalPT += row.total;
         totalWithin += row.within;
         totalOver += row.over;
+    });
 
+    var withinData = [];
+    var overData = [];
+
+    rows.forEach(function (row) {
+        if (row.within > 0) {
+            withinData.push({ name: row.party, value: row.within, itemStyle: { color: partyColorMap[row.party] } });
+        }
+        if (row.over > 0) {
+            overData.push({ name: row.party, value: row.over, itemStyle: { color: partyColorMap[row.party] } });
+        }
+    });
+
+    var totalAch = totalPT ? ((totalWithin / totalPT) * 100).toFixed(1) + '%' : '0.0%';
+
+    var html = '<div style="display:flex; gap:16px; align-items:flex-start; flex-wrap:wrap;">';
+    html += '  <!-- 2 Donut Charts + Party Breakdown Legend Container -->';
+    html += '  <div style="display:flex; flex-direction:column; align-items:center; flex-shrink:0; background:rgba(255,255,255,0.02); padding:10px; border-radius:8px; border:1px solid rgba(255,255,255,0.05);">';
+    html += '    <div style="display:flex; gap:12px;">';
+    html += '      <div style="display:flex; flex-direction:column; align-items:center; width:130px;">';
+    html += '        <div id="chartSlaComplianceWithinDonut" style="width:130px; height:130px;"></div>';
+    html += '        <span style="color:#3fb950; font-size:11px; font-weight:700; margin-top:2px;">Within SLA (' + totalWithin + ')</span>';
+    html += '      </div>';
+    html += '      <div style="display:flex; flex-direction:column; align-items:center; width:130px;">';
+    html += '        <div id="chartSlaComplianceOverDonut" style="width:130px; height:130px;"></div>';
+    html += '        <span style="color:#ff7b72; font-size:11px; font-weight:700; margin-top:2px;">Over SLA (' + totalOver + ')</span>';
+    html += '      </div>';
+    html += '    </div>';
+
+    // Registered Party Breakdown Legend under 2 Donut Charts
+    html += '    <div style="margin-top:10px; width:100%; border-top:1px dashed rgba(255,255,255,0.1); padding-top:8px; display:flex; flex-direction:column; gap:4px;">';
+    html += '      <div style="font-size:10px; font-weight:700; text-transform:uppercase; color:#8b949e; margin-bottom:2px; text-align:center;">Registered Party Share (% of Total PT)</div>';
+
+    rows.forEach(function (row) {
+        var partySharePct = totalPT > 0 ? ((row.total / totalPT) * 100).toFixed(1) + '%' : '0.0%';
+        var color = partyColorMap[row.party] || '#8b949e';
+        html += '      <div style="display:flex; justify-content:space-between; align-items:center; font-size:10px; padding:2px 4px; background:rgba(0,0,0,0.2); border-radius:4px;">';
+        html += '        <span style="display:flex; align-items:center; gap:6px; font-weight:600; color:#e4e4e7;">';
+        html += '          <span style="display:inline-block; width:8px; height:8px; background:' + color + '; border-radius:2px;"></span>';
+        html += '          ' + row.party;
+        html += '        </span>';
+        html += '        <span style="font-weight:700; color:' + color + ';">' + partySharePct + ' <span style="font-weight:normal; color:#8b949e; font-size:9px;">(' + row.total + ' PT)</span></span>';
+        html += '      </div>';
+    });
+
+    html += '    </div>';
+    html += '  </div>';
+
+    html += '  <!-- Compliance Table -->';
+    html += '  <div style="flex:1; min-width:240px; overflow-x:auto;">';
+    html += '    <table class="custom-compliance-table" style="width:100%; font-size:11px;">';
+    html += '      <thead>';
+    html += '        <tr>';
+    html += '          <th style="text-align:left;">Party</th>';
+    html += '          <th>Total PT</th>';
+    html += '          <th>Within SLA</th>';
+    html += '          <th>Over SLA</th>';
+    html += '          <th>SLA Ach</th>';
+    html += '        </tr>';
+    html += '      </thead>';
+    html += '      <tbody>';
+
+    rows.forEach(function (row) {
         var achPct = parseFloat(row.ach);
         var achClass = 'custom-ach-success';
         if (achPct < 90) achClass = 'custom-ach-danger';
         else if (achPct < 95) achClass = 'custom-ach-warning';
 
-        html += '<tr>';
-        html += '<td class="custom-party-name">' + row.party + '</td>';
-        html += '<td>' + row.total + '</td>';
-        html += '<td>' + row.within + '</td>';
-        html += '<td style="color:#ff7b72; font-weight:700;">' + row.over + '</td>';
-        html += '<td class="' + achClass + '">' + row.ach + '</td>';
-        html += '</tr>';
+        var color = partyColorMap[row.party] || '#e4e4e7';
+
+        html += '        <tr>';
+        html += '          <td class="custom-party-name" style="text-align:left; font-weight:600;"><span style="display:inline-block; width:6px; height:6px; background:' + color + '; border-radius:50%; margin-right:5px;"></span>' + row.party + '</td>';
+        html += '          <td>' + row.total + '</td>';
+        html += '          <td>' + row.within + '</td>';
+        html += '          <td style="color:#ff7b72; font-weight:700;">' + row.over + '</td>';
+        html += '          <td class="' + achClass + '">' + row.ach + '</td>';
+        html += '        </tr>';
     });
 
-    var totalAch = totalPT ? ((totalWithin / totalPT) * 100).toFixed(1) + '%' : '0.0%';
     var totalAchPct = parseFloat(totalAch);
     var totalAchClass = 'custom-ach-success';
     if (totalAchPct < 90) totalAchClass = 'custom-ach-danger';
     else if (totalAchPct < 95) totalAchClass = 'custom-ach-warning';
 
-    html += '<tr class="custom-total-row">';
-    html += '<td style="text-align:left;">TOTAL</td>';
-    html += '<td>' + totalPT + '</td>';
-    html += '<td>' + totalWithin + '</td>';
-    html += '<td style="color:#ff7b72; font-weight:700;">' + totalOver + '</td>';
-    html += '<td class="' + totalAchClass + '">' + totalAch + '</td>';
-    html += '</tr>';
+    html += '        <tr class="custom-total-row">';
+    html += '          <td style="text-align:left;">TOTAL</td>';
+    html += '          <td>' + totalPT + '</td>';
+    html += '          <td>' + totalWithin + '</td>';
+    html += '          <td style="color:#ff7b72; font-weight:700;">' + totalOver + '</td>';
+    html += '          <td class="' + totalAchClass + '">' + totalAch + '</td>';
+    html += '        </tr>';
 
-    html += '</tbody></table>';
+    html += '      </tbody>';
+    html += '    </table>';
+    html += '  </div>';
+    html += '</div>';
+
     wrapper.innerHTML = html;
+
+    // Render 2 Donut Charts (Within SLA Breakdown vs Over SLA Breakdown by Party)
+    if (typeof echarts !== 'undefined') {
+        // Chart 1: Within SLA by Party
+        var withinDom = document.getElementById('chartSlaComplianceWithinDonut');
+        if (withinDom) {
+            var existingInst1 = echarts.getInstanceByDom(withinDom);
+            if (existingInst1) existingInst1.dispose();
+            var chartWithin = echarts.init(withinDom);
+            chartWithin.setOption({
+                backgroundColor: 'transparent',
+                tooltip: { trigger: 'item', formatter: '{b}: {c} ({d}%)', confine: true },
+                series: [{
+                    name: 'Within SLA',
+                    type: 'pie',
+                    radius: ['55%', '85%'],
+                    avoidLabelOverlap: false,
+                    label: { show: false },
+                    labelLine: { show: false },
+                    data: withinData.length > 0 ? withinData : [{ name: 'No Data', value: 0, itemStyle: { color: '#333' } }]
+                }],
+                graphic: [{
+                    type: 'text', left: 'center', top: '42%',
+                    style: { text: String(totalWithin), textAlign: 'center', fill: '#3fb950', fontSize: 15, fontWeight: 'bold' }
+                }, {
+                    type: 'text', left: 'center', top: '62%',
+                    style: { text: 'Within', textAlign: 'center', fill: '#8b949e', fontSize: 9 }
+                }]
+            });
+        }
+
+        // Chart 2: Over SLA by Party
+        var overDom = document.getElementById('chartSlaComplianceOverDonut');
+        if (overDom) {
+            var existingInst2 = echarts.getInstanceByDom(overDom);
+            if (existingInst2) existingInst2.dispose();
+            var chartOver = echarts.init(overDom);
+            chartOver.setOption({
+                backgroundColor: 'transparent',
+                tooltip: { trigger: 'item', formatter: '{b}: {c} ({d}%)', confine: true },
+                series: [{
+                    name: 'Over SLA',
+                    type: 'pie',
+                    radius: ['55%', '85%'],
+                    avoidLabelOverlap: false,
+                    label: { show: false },
+                    labelLine: { show: false },
+                    data: overData.length > 0 ? overData : [{ name: 'No Data', value: 0, itemStyle: { color: '#333' } }]
+                }],
+                graphic: [{
+                    type: 'text', left: 'center', top: '42%',
+                    style: { text: String(totalOver), textAlign: 'center', fill: '#ff7b72', fontSize: 15, fontWeight: 'bold' }
+                }, {
+                    type: 'text', left: 'center', top: '62%',
+                    style: { text: 'Over', textAlign: 'center', fill: '#8b949e', fontSize: 9 }
+                }]
+            });
+        }
+    }
 }
 
 function formatIndonesianDate(dateStr) {
@@ -2289,8 +2537,9 @@ function showTicketDetailModal(ticketId) {
     var lastUpdate = ticket.lastupdatetime || '-';
     var closeTime = ticket.closetime || '-';
     var phase = ticket.current_phase || '-';
-    var assign = ticket.createptassignto || '-';
+    var assign = extractOWSField(ticket.createptassignto || '') || '-';
     var operator = ticket.currentoperator || '-';
+    var lastOperator = ticket.lastoperator || '-';
     var originator = ticket.originator || '-';
 
     var agingVal = ticket.aging !== null && ticket.aging !== undefined ? ticket.aging : calculateAgingDays(ticket.createtime, ticket.closetime, ticket.lastupdatetime, ticket.operate_time, status);
@@ -2350,6 +2599,11 @@ function showTicketDetailModal(ticketId) {
     html += '  <div class="custom-detail-item">';
     html += '    <span class="custom-detail-label">CURRENT OPERATOR</span>';
     html += '    <span class="custom-detail-value">' + operator + '</span>';
+    html += '  </div>';
+
+    html += '  <div class="custom-detail-item">';
+    html += '    <span class="custom-detail-label">LAST OPERATOR</span>';
+    html += '    <span class="custom-detail-value">' + lastOperator + '</span>';
     html += '  </div>';
 
     html += '  <div class="custom-detail-item">';

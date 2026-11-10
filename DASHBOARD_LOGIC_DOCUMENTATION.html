@@ -1,0 +1,468 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dokumentasi Logika & SQL Formula - Problem Ticket Dashboard</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Fira+Code:wght@400;500;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-body: #0f172a;
+            --bg-card: #1e293b;
+            --bg-card-header: #334155;
+            --border-color: #475569;
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --accent-blue: #38bdf8;
+            --accent-green: #4ade80;
+            --accent-amber: #fbbf24;
+            --accent-purple: #c084fc;
+            --accent-red: #f87171;
+            --code-bg: #090d16;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Inter', system-ui, -apple-system, sans-serif;
+            background-color: var(--bg-body);
+            color: var(--text-main);
+            line-height: 1.6;
+            padding: 40px 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        header {
+            margin-bottom: 40px;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 20px;
+        }
+
+        h1 {
+            font-size: 2rem;
+            font-weight: 700;
+            color: var(--accent-blue);
+            margin-bottom: 8px;
+        }
+
+        p.subtitle {
+            color: var(--text-muted);
+            font-size: 1rem;
+        }
+
+        .grid-cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 20px;
+            margin-bottom: 40px;
+        }
+
+        .stat-card {
+            background-color: var(--bg-card);
+            border-radius: 12px;
+            padding: 20px;
+            border-left: 5px solid var(--border-color);
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
+        }
+
+        .stat-card.total { border-left-color: var(--accent-blue); }
+        .stat-card.open { border-left-color: var(--accent-amber); }
+        .stat-card.pending { border-left-color: var(--accent-purple); }
+        .stat-card.closed { border-left-color: var(--accent-green); }
+        .stat-card.canceled { border-left-color: var(--accent-red); }
+
+        .stat-title {
+            font-size: 0.875rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--text-muted);
+            font-weight: 600;
+        }
+
+        .stat-desc {
+            font-size: 0.9rem;
+            margin-top: 8px;
+            color: var(--text-main);
+        }
+
+        .section-card {
+            background-color: var(--bg-card);
+            border-radius: 12px;
+            margin-bottom: 32px;
+            overflow: hidden;
+            border: 1px solid var(--border-color);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3);
+        }
+
+        .section-header {
+            background-color: var(--bg-card-header);
+            padding: 16px 24px;
+            font-size: 1.15rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .section-header .badge {
+            background: var(--accent-blue);
+            color: #000;
+            font-size: 0.75rem;
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-weight: 700;
+        }
+
+        .section-body {
+            padding: 24px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 16px;
+            font-size: 0.9rem;
+        }
+
+        th, td {
+            padding: 12px 16px;
+            text-align: left;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        th {
+            background-color: rgba(255, 255, 255, 0.05);
+            color: var(--accent-blue);
+            font-weight: 600;
+        }
+
+        tr:hover {
+            background-color: rgba(255, 255, 255, 0.02);
+        }
+
+        .code-block {
+            background-color: var(--code-bg);
+            border-radius: 8px;
+            padding: 16px;
+            font-family: 'Fira Code', monospace;
+            font-size: 0.85rem;
+            color: #e2e8f0;
+            overflow-x: auto;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            margin-top: 12px;
+            line-height: 1.5;
+        }
+
+        .keyword { color: #f472b6; font-weight: 600; }
+        .function { color: #38bdf8; }
+        .string { color: #a3e635; }
+        .comment { color: #64748b; font-style: italic; }
+
+        .tag-field {
+            font-family: 'Fira Code', monospace;
+            background: rgba(56, 189, 248, 0.15);
+            color: var(--accent-blue);
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 0.82rem;
+        }
+
+        .formula-box {
+            background: #090d16;
+            border: 1px solid #38bdf8;
+            padding: 16px;
+            border-radius: 8px;
+            font-family: 'Fira Code', monospace;
+            font-size: 0.88rem;
+            color: #4ade80;
+            margin: 16px 0;
+            text-align: center;
+        }
+
+        .highlight-box {
+            background: rgba(56, 189, 248, 0.08);
+            border-left: 4px solid var(--accent-blue);
+            padding: 14px 18px;
+            border-radius: 0 6px 6px 0;
+            margin: 16px 0;
+        }
+
+        .highlight-box p {
+            margin: 0;
+            font-size: 0.9rem;
+            color: var(--text-main);
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <header>
+        <h1>📊 Problem Ticket Dashboard - Logic & Field Data Documentation</h1>
+        <p class="subtitle">Dokumentasi lengkap pemetaan status bisnis, formula Aging, Weekly Trending, Pause PT, dan mapping kolom database OWS.</p>
+    </header>
+
+    <!-- STAT CARDS OVERVIEW -->
+    <div class="grid-cards">
+        <div class="stat-card total">
+            <div class="stat-title">TOTAL PT</div>
+            <div class="stat-desc">Formula: <b>OPEN + PENDING + CLOSED</b></div>
+            <small style="color: var(--text-muted);">*Tiket Canceled di-exclude</small>
+        </div>
+        <div class="stat-card open">
+            <div class="stat-title">OPEN PT</div>
+            <div class="stat-desc">Status <b>running / open</b></div>
+            <small style="color: var(--text-muted);">Di luar 22 status Pending & Canceled</small>
+        </div>
+        <div class="stat-card pending">
+            <div class="stat-title">PENDING PT</div>
+            <div class="stat-desc">Status <b>running</b></div>
+            <small style="color: var(--text-muted);">Cocok dengan 22 Business Status UUID</small>
+        </div>
+        <div class="stat-card closed">
+            <div class="stat-title">CLOSED PT</div>
+            <div class="stat-desc">Status <b>closed / completed</b></div>
+            <small style="color: var(--text-muted);">Tiket telah selesai ditangani</small>
+        </div>
+        <div class="stat-card canceled">
+            <div class="stat-title">CANCELED PT</div>
+            <div class="stat-desc">Status <b>canceled / rejected</b></div>
+            <small style="color: var(--text-muted);">Tiket dibatalkan / diexclude</small>
+        </div>
+    </div>
+
+    <!-- SECTION 1: LOGIKA AGING & FORMULA -->
+    <div class="section-card">
+        <div class="section-header">
+            <span>1. Logika & Formula Perhitungan AGING</span>
+            <span class="badge">Aging Calculation</span>
+        </div>
+        <div class="section-body">
+            <p><strong>Definisi Aging:</strong> Durasi waktu selisih antara saat tiket dibuat (atau masuk ke phase terkait) hingga waktu saat ini (untuk tiket aktif) atau waktu tiket selesai (untuk tiket closed).</p>
+
+            <div class="formula-box">
+                Aging (Hari) = FLOOR( ( Waktu Acuan Selesai - Waktu Acuan Mulai ) / ( 1000 × 60 × 60 × 24 ) )
+            </div>
+
+            <div class="highlight-box">
+                <p><strong>Waktu Acuan Selesai (End Point):</strong><br>
+                - Jika status tiket adalah <b>CLOSED</b>: Menggunakan kolom <span class="tag-field">finishtime</span> atau <span class="tag-field">closetime</span>.<br>
+                - Jika status tiket masih <b>OPEN / RUNNING / PENDING</b>: Menggunakan waktu <b>Saat Ini (NOW)</b>.</p>
+            </div>
+
+            <h4 style="margin-top: 24px; color: var(--accent-blue);">A. Kategori Pengelompokan Aging (Aging Bucket):</h4>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Aging Bucket</th>
+                        <th>Range Durasi (Hari)</th>
+                        <th>Formula Kondisi JS / SQL</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><b>< 7 Days</b></td>
+                        <td>0 – 6 Hari</td>
+                        <td><code>agingDays < 7</code></td>
+                    </tr>
+                    <tr>
+                        <td><b>7 - 14 Days</b></td>
+                        <td>7 – 14 Hari</td>
+                        <td><code>agingDays >= 7 AND agingDays <= 14</code></td>
+                    </tr>
+                    <tr>
+                        <td><b>15 - 30 Days</b></td>
+                        <td>15 – 30 Hari</td>
+                        <td><code>agingDays >= 15 AND agingDays <= 30</code></td>
+                    </tr>
+                    <tr>
+                        <td><b>> 30 Days</b></td>
+                        <td>> 30 Hari</td>
+                        <td><code>agingDays > 30</code></td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <h4 style="margin-top: 28px; color: var(--accent-purple);">B. Pemetaan Field Column untuk Aging per Phase:</h4>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Nama Phase Aging</th>
+                        <th>Column Field Database OWS</th>
+                        <th>Penjelasan Sumber Field</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><b>1. Total Ticket Aging</b></td>
+                        <td><span class="tag-field">createtime</span></td>
+                        <td>Waktu pertama kali tiket Problem Ticket dibuat di sistem OWS.</td>
+                    </tr>
+                    <tr>
+                        <td><b>2. Handle Analyze Phase</b></td>
+                        <td><span class="tag-field">tt10_submittime</span> / <span class="tag-field">tt11_createtime</span></td>
+                        <td>Timestamp serah terima dari tahap Create ke Handle Analyze.</td>
+                    </tr>
+                    <tr>
+                        <td><b>3. Analyze Phase</b></td>
+                        <td><span class="tag-field">tt11_submittime</span> / <span class="tag-field">tt12_createtime</span></td>
+                        <td>Timestamp masuk ke tahap Analisis Utama (Root Cause Analysis).</td>
+                    </tr>
+                    <tr>
+                        <td><b>4. Handle Implement Phase</b></td>
+                        <td><span class="tag-field">tt12_submittime</span> / <span class="tag-field">pt10_createtime</span></td>
+                        <td>Timestamp serah terima ke tim pelaksana perbaikan (Implementor).</td>
+                    </tr>
+                    <tr>
+                        <td><b>5. Implement Phase</b></td>
+                        <td><span class="tag-field">pt10_submittime</span> / <span class="tag-field">pt12_createtime</span></td>
+                        <td>Timestamp pelaksanaan pekerjaan fisik/sistem di lapangan.</td>
+                    </tr>
+                    <tr>
+                        <td><b>6. Confirm Phase</b></td>
+                        <td><span class="tag-field">pt12_submittime</span> / <span class="tag-field">pt14_createtime</span></td>
+                        <td>Timestamp tiket masuk ke tahap konfirmasi penyelesaian oleh requester.</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- SECTION 2: LOGIKA WEEKLY TRENDING -->
+    <div class="section-card">
+        <div class="section-header">
+            <span>2. Logika Perhitungan WEEKLY TRENDING</span>
+            <span class="badge">Weekly Trend</span>
+        </div>
+        <div class="section-body">
+            <p><strong>Definisi Weekly Trending:</strong> Grafik tren pergerakan jumlah tiket per minggu (Week-1 hingga Week-4) berdasarkan tanggal pembuatan tiket (<span class="tag-field">createtime</span>).</p>
+
+            <div class="highlight-box">
+                <p><strong>Metode Penentuan Minggu (Week Windowing):</strong><br>
+                Sistem menghitung mundur 4 minggu (28 hari terakhir) dari tanggal hari ini:</p>
+            </div>
+
+            <table>
+                <thead>
+                    <tr>
+                        <th>Minggu (Week)</th>
+                        <th>Formula Rentang Tanggal</th>
+                        <th>Penjelasan Field & Logika</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><b>Week 4 (Minggu Ini)</b></td>
+                        <td><code>NOW - 7 Hari</code> s/d <code>NOW</code></td>
+                        <td>Jumlah tiket baru dengan <span class="tag-field">createtime</span> 7 hari terakhir.</td>
+                    </tr>
+                    <tr>
+                        <td><b>Week 3</b></td>
+                        <td><code>NOW - 14 Hari</code> s/d <code>NOW - 7 Hari</code></td>
+                        <td>Tiket yang dibuat antara 8-14 hari yang lalu.</td>
+                    </tr>
+                    <tr>
+                        <td><b>Week 2</b></td>
+                        <td><code>NOW - 21 Hari</code> s/d <code>NOW - 14 Hari</code></td>
+                        <td>Tiket yang dibuat antara 15-21 hari yang lalu.</td>
+                    </tr>
+                    <tr>
+                        <td><b>Week 1</b></td>
+                        <td><code>NOW - 28 Hari</code> s/d <code>NOW - 21 Hari</code></td>
+                        <td>Tiket yang dibuat antara 22-28 hari yang lalu.</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <h4 style="margin-top: 24px; color: var(--accent-green);">Metode ISO Week Number (Alternatif Berdasar Kalender):</h4>
+            <div class="code-block">
+<span class="comment">-- Contoh Formula SQL untuk Mengelompokkan Tiket per Minggu Kalender</span>
+<span class="keyword">SELECT</span> 
+    <span class="function">DATE_TRUNC</span>(<span class="string">'week'</span>, pt.createtime) <span class="keyword">AS</span> week_start_date,
+    <span class="function">COUNT</span>(1) <span class="keyword">AS</span> total_created_tickets
+<span class="keyword">FROM</span> <span class="string">"/ProblemTicket/ProblemTicket/pt_problemticket"</span> pt
+<span class="keyword">WHERE</span> pt.createtime >= <span class="function">CURRENT_DATE</span> - <span class="keyword">INTERVAL</span> <span class="string">'28 days'</span>
+<span class="keyword">GROUP BY</span> 1
+<span class="keyword">ORDER BY</span> 1 <span class="keyword">ASC</span>;
+            </div>
+        </div>
+    </div>
+
+    <!-- SECTION 3: LOGIKA PAUSE PT & LAIN-LAIN -->
+    <div class="section-card">
+        <div class="section-header">
+            <span>3. Logika PAUSE PT, Partner, & Status Mapping</span>
+            <span class="badge">Business Status</span>
+        </div>
+        <div class="section-body">
+            
+            <h4 style="color: var(--accent-amber);">A. Logika PAUSE PT (Pending PT)</h4>
+            <p>Tiket dikategorikan <strong>PAUSE / PENDING PT</strong> apabila tiket masih berstatus running (belum closed/canceled), tetapi penanganannya di-pause sementara karena menunggu persetujuan, konfirmasi, atau analisa tertentu.</p>
+
+            <p><strong>Sumber Field:</strong> Column <span class="tag-field">businessstatus</span> (berisi string UUID di database OWS).</p>
+
+            <div class="highlight-box">
+                <p><strong>Daftar 22 Business Status UUID yang Masuk Kategori PAUSE / PENDING PT:</strong></p>
+            </div>
+
+            <table>
+                <thead>
+                    <tr>
+                        <th>No</th>
+                        <th>Business Status UUID (<span class="tag-field">businessstatus</span>)</th>
+                        <th>Nama Status Bisnis OWS</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr><td>1</td><td><span class="tag-field">bb12992f-e165-11f0-aa35-0255ac1218d9</span></td><td>Pending for Approval</td></tr>
+                    <tr><td>2</td><td><span class="tag-field">bb129928-e165-11f0-aa35-0255ac1218d9</span></td><td>Pending for Assessment</td></tr>
+                    <tr><td>3</td><td><span class="tag-field">bb129941-e165-11f0-aa35-0255ac1218d9</span></td><td>Pending for Validation</td></tr>
+                    <tr><td>4</td><td><span class="tag-field">bb12991d-e165-11f0-aa35-0255ac1218d9</span></td><td>Pending</td></tr>
+                    <tr><td>5</td><td><span class="tag-field">bb12993a-e165-11f0-aa35-0255ac1218d9</span></td><td>Pending for Analyze</td></tr>
+                    <tr><td>6</td><td><span class="tag-field">bb129916-e165-11f0-aa35-0255ac1218d9</span></td><td>Pending for Handle</td></tr>
+                    <tr><td>7</td><td><span class="tag-field">bb12993c-e165-11f0-aa35-0255ac1218d9</span></td><td>Pending for Review</td></tr>
+                    <tr><td>8</td><td><span class="tag-field">bb129923-e165-11f0-aa35-0255ac1218d9</span></td><td>Pending for Analyze Plan</td></tr>
+                    <tr><td>9</td><td><span class="tag-field">bb129927-e165-11f0-aa35-0255ac1218d9</span></td><td>Pending for Approve Plan</td></tr>
+                    <tr><td>10</td><td><span class="tag-field">bb12993f-e165-11f0-aa35-0255ac1218d9</span></td><td>Pending for BO Accept</td></tr>
+                    <tr><td>11</td><td><span class="tag-field">bb129940-e165-11f0-aa35-0255ac1218d9</span></td><td>Pending for BO Resolve</td></tr>
+                    <tr><td>12</td><td><span class="tag-field">bb12991c-e165-11f0-aa35-0255ac1218d9</span></td><td>Pending for Confirmation</td></tr>
+                    <tr><td>13</td><td><span class="tag-field">bb129925-e165-11f0-aa35-0255ac1218d9</span></td><td>Pending for Execute</td></tr>
+                    <tr><td>14</td><td><span class="tag-field">bb12992d-e165-11f0-aa35-0255ac1218d9</span></td><td>Pending for Implementation</td></tr>
+                    <tr><td>15</td><td><span class="tag-field">bb129942-e165-11f0-aa35-0255ac1218d9</span></td><td>Pending for Review Improvement Plan</td></tr>
+                    <tr><td>16</td><td><span class="tag-field">bb129944-e165-11f0-aa35-0255ac1218d9</span></td><td>Pending for requester confirm</td></tr>
+                    <tr><td>17</td><td><span class="tag-field">bb12991a-e165-11f0-aa35-0255ac1218d9</span></td><td>BusinessStatusWIP</td></tr>
+                    <tr><td>18</td><td><span class="tag-field">bb12992e-e165-11f0-aa35-0255ac1218d9</span></td><td>BusinessStatusNew</td></tr>
+                    <tr><td>19</td><td><span class="tag-field">bb12993e-e165-11f0-aa35-0255ac1218d9</span></td><td>BusinessStatusAssigned</td></tr>
+                    <tr><td>20</td><td><span class="tag-field">bb12993b-e165-11f0-aa35-0255ac1218d9</span></td><td>BusinessStatusInProgress</td></tr>
+                    <tr><td>21</td><td><span class="tag-field">bb12993d-e165-11f0-aa35-0255ac1218d9</span></td><td>BusinessStatusBuildandTestInProgress</td></tr>
+                    <tr><td>22</td><td><span class="tag-field">bb129932-e165-11f0-aa35-0255ac1218d9</span></td><td>BusinessStatusImplementationInProgress</td></tr>
+                </tbody>
+            </table>
+
+            <h4 style="margin-top: 28px; color: var(--accent-purple);">B. Pengelompokan Vendor / Partner</h4>
+            <p><strong>Sumber Field:</strong> Column <span class="tag-field">partner</span> atau <span class="tag-field">vendor_name</span>.</p>
+            <div class="code-block">
+<span class="keyword">CASE</span> 
+    <span class="keyword">WHEN</span> <span class="function">LOWER</span>(pt.partner) <span class="keyword">LIKE</span> <span class="string">'%telkom akses%'</span> <span class="keyword">OR</span> <span class="function">LOWER</span>(pt.partner) <span class="keyword">LIKE</span> <span class="string">'%ta%'</span> <span class="keyword">THEN</span> <span class="string">'Telkom Akses'</span>
+    <span class="keyword">WHEN</span> <span class="function">LOWER</span>(pt.partner) <span class="keyword">LIKE</span> <span class="string">'%mandau%'</span> <span class="keyword">THEN</span> <span class="string">'Mandau'</span>
+    <span class="keyword">WHEN</span> <span class="function">LOWER</span>(pt.partner) <span class="keyword">LIKE</span> <span class="string">'%persada%'</span> <span class="keyword">THEN</span> <span class="string">'Persada'</span>
+    <span class="keyword">ELSE</span> <span class="string">'Others'</span>
+<span class="keyword">END</span> <span class="keyword">AS</span> partner_group
+            </div>
+        </div>
+    </div>
+
+</div>
+
+</body>
+</html>

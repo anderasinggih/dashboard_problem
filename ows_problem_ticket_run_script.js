@@ -295,7 +295,7 @@ summaryTql =
     "sum(case when lower(pt.ticketstatus) in ('closed','completed') then 1 else 0 end) as closed, " +
     "sum(case when lower(pt.ticketstatus) in ('canceled','cancelled','rejected') then 1 else 0 end) as canceled, " +
     "sum(case when lower(pt.ticketstatus) in ('pending','in progress') then 1 else 0 end) as pending, " +
-    "sum(case when lower(pt.ticketstatus) = 'running' then 1 else 0 end) as open, " +
+    "sum(case when lower(pt.ticketstatus) in ('running','open') then 1 else 0 end) as open, " +
     "sum(case when lower(pt.slapausing) = 'yes' or lower(pt.slapausing) = 'true' or pt.slapausing = '1' then 1 else 0 end) as paused " +
     "from " + modelUri + " pt " + whereClause;
 
@@ -399,8 +399,11 @@ alldataGridTql =
     "pt.pt14_createtime as pt14_createtime, " +
     "pt.pt14_submittime as pt14_submittime, " +
     "pt.root_cause as root_cause, " +
+    "pt.sub_root_cause as sub_root_cause, " +
     "pt.createptproblemdes as createptproblemdes, " +
+    "pt.createptassignto as createptassignto, " +
     "pt.currentoperator as currentoperator, " +
+    "pt.lastoperator as lastoperator, " +
     "pt.originator as originator, " +
     "pt.confirmaccept as confirmaccept, " +
     "pt.slastatus as slastatus, " +

@@ -105,14 +105,16 @@
               <tr>
                 <th>Total PT</th>
                 <th>Pending PT</th>
-                <th>Over SLA</th>
+                <th>Closed PT</th>
+                <th>WITHIN SLA</th>
               </tr>
             </thead>
             <tbody>
               <tr>
                 <td id="emergencyTotal">0</td>
                 <td id="emergencyPending">0</td>
-                <td id="emergencyOver" class="custom-text-danger">0</td>
+                <td id="emergencyClosed" style="color:#56d364; font-weight:700;">0</td>
+                <td id="emergencyWithin" style="color:#3fb950; font-weight:700;">0</td>
               </tr>
             </tbody>
           </table>
@@ -131,14 +133,16 @@
               <tr>
                 <th>Total PT</th>
                 <th>Pending PT</th>
-                <th>Over SLA</th>
+                <th>Closed PT</th>
+                <th>WITHIN SLA</th>
               </tr>
             </thead>
             <tbody>
               <tr>
                 <td id="criticalTotal">0</td>
                 <td id="criticalPending">0</td>
-                <td id="criticalOver" class="custom-text-danger">0</td>
+                <td id="criticalClosed" style="color:#56d364; font-weight:700;">0</td>
+                <td id="criticalWithin" style="color:#3fb950; font-weight:700;">0</td>
               </tr>
             </tbody>
           </table>
@@ -157,14 +161,16 @@
               <tr>
                 <th>Total PT</th>
                 <th>Pending PT</th>
-                <th>Over SLA</th>
+                <th>Closed PT</th>
+                <th>WITHIN SLA</th>
               </tr>
             </thead>
             <tbody>
               <tr>
                 <td id="majorTotal">0</td>
                 <td id="majorPending">0</td>
-                <td id="majorOver" class="custom-text-danger">0</td>
+                <td id="majorClosed" style="color:#56d364; font-weight:700;">0</td>
+                <td id="majorWithin" style="color:#3fb950; font-weight:700;">0</td>
               </tr>
             </tbody>
           </table>
@@ -183,14 +189,16 @@
               <tr>
                 <th>Total PT</th>
                 <th>Pending PT</th>
-                <th>Over SLA</th>
+                <th>Closed PT</th>
+                <th>WITHIN SLA</th>
               </tr>
             </thead>
             <tbody>
               <tr>
                 <td id="minorTotal">0</td>
                 <td id="minorPending">0</td>
-                <td id="minorOver" class="custom-text-danger">0</td>
+                <td id="minorClosed" style="color:#56d364; font-weight:700;">0</td>
+                <td id="minorWithin" style="color:#3fb950; font-weight:700;">0</td>
               </tr>
             </tbody>
           </table>
@@ -205,7 +213,7 @@
   <!-- 3. PHASE STATUS BY RESPONSIBILITY PARTY (Pending) -->
   <div class="custom-panel-card" style="margin-top: 24px;">
     <div class="custom-panel-header">
-      <span>2. PHASE STATUS BY RESPONSIBILITY PARTY (Pending)</span>
+      <span>2. PHASE STATUS BY RESPONSIBILITY PARTY</span>
     </div>
     <div class="custom-panel-body" style="padding: 16px; overflow-x: auto;">
       <!-- Row 1: OVERALL SUMMARY (Full width) -->
